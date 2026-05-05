@@ -301,15 +301,16 @@ export default {
       highlightedVenueId: null,
 
       filters: {
-        sport:    this.$route?.query.sport    || "",
-        city:     this.$route?.query.city     || "",
-        booking:  this.$route?.query.booking  ? [].concat(this.$route.query.booking) : [],
-        byDate:   this.$route?.query.byDate   === "true" || !!this.$route?.query.date,
-        date:     this.$route?.query.date     || formatDateInputLocal(),
-        format:   this.$route?.query.format   ? [].concat(this.$route.query.format)  : [],
-        surface:  this.$route?.query.surface  ? [].concat(this.$route.query.surface) : [],
-        radius:   this.$route?.query.radius   || "100", // Default to 100km (All)
-        facility: this.$route?.query.facility ? [].concat(this.$route.query.facility): [],
+        name:    this.$route?.query.name     || "",
+        sport:   this.$route?.query.sport    || "",
+        city:    this.$route?.query.city     || "",
+        booking: this.$route?.query.booking  ? [].concat(this.$route.query.booking) : [],
+        byDate:  this.$route?.query.byDate   === "true" || !!this.$route?.query.date,
+        date:    this.$route?.query.date     || formatDateInputLocal(),
+        format:  this.$route?.query.format   ? [].concat(this.$route.query.format)  : [],
+        surface: this.$route?.query.surface  ? [].concat(this.$route.query.surface) : [],
+        radius:  this.$route?.query.radius   || "100", // Default to 100km (All)
+        facility:this.$route?.query.facility ? [].concat(this.$route.query.facility): [],
       },
 
       sortOptions: [
@@ -408,11 +409,21 @@ export default {
   },
 
   watch: {
+    // Khi query trên URL thay đổi (từ ô tìm kiếm ở navbar),
+    // đồng bộ lại vào filters để kích hoạt fetchVenues qua watcher filters.
+    '$route.query': {
+      deep: true,
+      handler(q) {
+        this.filters.name = q.name || "";
+        this.filters.city = q.city || "";
+      }
+    },
     // ✅ Sync filters → URL query params (shareable + SEO)
     filters: {
       deep: true,
       handler(val) {
         const query = {};
+        if (val.name)             query.name     = val.name;
         if (val.sport)            query.sport    = val.sport;
         if (val.city)             query.city     = val.city;
         if (val.booking.length)   query.booking  = val.booking;
@@ -449,8 +460,9 @@ export default {
       this.loading = true;
       try {
         const params = {
-          sport:    this.filters.sport,
-          city:     this.filters.city,
+          name:     this.filters.name || undefined,
+          sport:    this.filters.sport || undefined,
+          city:     this.filters.city || undefined,
           radius:   this.filters.radius,
           booking:  this.filters.booking,
           date:     this.filters.byDate ? this.filters.date : undefined,

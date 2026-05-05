@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { prisma } from "@/infra/db/prisma";
 import { notifyNewBooking } from "@/infra/realtime/socket";
 import { eventEmitter } from "@/lib/events";
+import { createNotification } from "@/modules/user/notification.service";
 
 const VNP_TMN_CODE = process.env.VNP_TMN_CODE || "";
 const VNP_HASH_SECRET = process.env.VNP_HASH_SECRET || "";
@@ -256,6 +257,22 @@ async function handleSuccessfulPayment(bookingId: string, transactionRef: string
       include: { items: { include: { timeSlot: { include: { court: true } } } } },
     });
   });
+
+  // Notify booker (in-app notification tab) after successful payment
+  if (updatedBooking) {
+    const courtNames = updatedBooking.items
+      ?.map((i) => i.timeSlot?.court?.name)
+      .filter(Boolean) as string[] | undefined;
+    const courtsText = courtNames && courtNames.length ? ` (${[...new Set(courtNames)].join(", ")})` : "";
+
+    await createNotification({
+      userId: updatedBooking.userId,
+      type: "PAYMENT_SUCCESS",
+      title: "Thanh toán thành công",
+      body: `Đơn #${updatedBooking.bookingCode} đã được xác nhận${courtsText}.`,
+      bookingId: updatedBooking.id,
+    });
+  }
 
   if (updatedBooking?.clubId) {
     notifyNewBooking(updatedBooking.clubId, {

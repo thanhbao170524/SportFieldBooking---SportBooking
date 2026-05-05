@@ -3,7 +3,7 @@
     <div class="page-header custom-header">
       <div class="header-left">
          <div class="page-title">Dashboard <span class="count">Tổng quan hệ thống</span></div>
-         <div class="page-subtitle">Chào mừng trở lại, Super Admin — Cập nhật lần cuối: {{ currentTime }}</div>
+         <div class="page-subtitle">Chào mừng trở lại, Admin — Cập nhật lần cuối: {{ currentTime }}</div>
       </div>
       
       <div class="header-actions">

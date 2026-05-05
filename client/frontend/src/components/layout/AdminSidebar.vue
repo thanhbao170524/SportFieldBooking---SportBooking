@@ -84,7 +84,7 @@
       <div class="user-card" @click="handleLogout">
         <div class="user-avatar"><User :size="16" stroke-width="2.5" /></div>
         <div class="user-info">
-          <div class="user-name">Super Admin</div>
+          <div class="user-name">Admin</div>
           <div class="user-role">Quản trị viên hệ thống</div>
         </div>
         <LogOut :size="14" class="logout-icon" />

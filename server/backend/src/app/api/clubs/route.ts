@@ -11,6 +11,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
 
     const filters = {
+      name: searchParams.get("name") || undefined,
       sport: searchParams.get("sport") || undefined,
       city: searchParams.get("city") || undefined,
       district: searchParams.get("district") || undefined,

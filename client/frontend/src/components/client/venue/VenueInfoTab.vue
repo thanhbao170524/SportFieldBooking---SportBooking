@@ -4,7 +4,7 @@
       <h4 class="fw-black mb-3">Giới thiệu về {{ venue.name }}</h4>
       <p class="text-muted" style="line-height:1.8">{{ venue.description }}</p>
 
-      <!-- GALLERY -->
+      <!-- GALLERY (CLB) -->
       <div v-if="venueImages.length" class="vdp-gallery mt-4 mb-2">
         <div class="d-flex align-items-center justify-content-between mb-3">
           <h5 class="fw-bold mb-0">Hình ảnh sân</h5>
@@ -30,6 +30,37 @@
         <div class="d-flex gap-2 pb-1" style="overflow-x:auto;scrollbar-width:thin;scrollbar-color:#e2e8f0 transparent;">
           <div v-for="(img,i) in venueImages" :key="i" class="vdp-gal-thumb flex-shrink-0 overflow-hidden" :class="{'vdp-gal-thumb--active':i===galleryIndex}" @click="galleryIndex=i">
             <img :src="img.url" :alt="img.caption" style="width:100%;height:100%;object-fit:cover;display:block;"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ảnh từng sân -->
+      <div v-if="courtsWithImages.length" class="vdp-court-photos mt-4 mb-2">
+        <h5 class="fw-bold mb-3">Hình ảnh các sân</h5>
+        <div v-for="court in courtsWithImages" :key="court.id" class="vdp-court-photo-block mb-4 pb-4 border-bottom border-light-subtle">
+          <div class="d-flex align-items-center justify-content-between gap-3 mb-2 flex-wrap">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <span class="fw-bold">{{ court.name }}</span>
+              <span v-if="court.sportType" class="badge bg-secondary bg-opacity-10 text-muted fw-bold" style="font-size:10px">{{ formatSport(court.sportType) }}</span>
+              <span class="text-muted small fw-semibold" v-if="court.images?.length">({{ court.images.length }} ảnh)</span>
+            </div>
+            <button
+              v-if="(court.images?.length || 0) > 3"
+              type="button"
+              class="btn btn-sm btn-outline-success fw-bold"
+              style="border-radius: 10px;"
+              @click="openCourtGallery(court)"
+            >
+              Xem tất cả
+            </button>
+          </div>
+          <div class="row g-2">
+            <div v-for="(img, idx) in (court.images || []).slice(0,3)" :key="court.id + '-' + idx" class="col-6 col-md-4">
+              <div class="ratio ratio-4x3 rounded-3 overflow-hidden border shadow-sm bg-light">
+                <img :src="img.url" :alt="img.caption || court.name" class="w-100 h-100" style="object-fit:cover" loading="lazy" />
+              </div>
+              <div v-if="img.caption" class="small text-muted mt-1 text-truncate">{{ img.caption }}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -78,6 +109,62 @@
       </div>
     </div>
   </div>
+
+  <!-- MODAL: Court images -->
+  <transition name="fade">
+    <div
+      v-if="courtGallery.show"
+      class="vdp-court-modal"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="`Ảnh sân ${courtGallery.courtName}`"
+      @click.self="closeCourtGallery"
+    >
+      <div class="vdp-court-modal__content">
+        <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+          <div class="fw-black">{{ courtGallery.courtName }}</div>
+          <button type="button" class="btn btn-sm btn-light border" @click="closeCourtGallery" aria-label="Đóng">×</button>
+        </div>
+
+        <div class="vdp-court-modal__viewer position-relative overflow-hidden rounded-4 border bg-dark">
+          <transition name="gfade" mode="out-in">
+            <img
+              :key="courtGallery.index"
+              :src="courtGallery.images[courtGallery.index]?.url"
+              :alt="courtGallery.images[courtGallery.index]?.caption || courtGallery.courtName"
+              class="w-100 h-100"
+              style="object-fit:contain; max-height: 70vh;"
+            />
+          </transition>
+
+          <button class="vdp-court-modal__nav vdp-court-modal__nav--prev" type="button" @click="prevCourtImage" aria-label="Ảnh trước">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <button class="vdp-court-modal__nav vdp-court-modal__nav--next" type="button" @click="nextCourtImage" aria-label="Ảnh tiếp theo">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+
+          <div class="vdp-court-modal__counter">
+            {{ courtGallery.index + 1 }} / {{ courtGallery.images.length }}
+          </div>
+        </div>
+
+        <div v-if="courtGallery.images.length > 1" class="d-flex gap-2 mt-3 pb-1" style="overflow-x:auto;scrollbar-width:thin;scrollbar-color:#e2e8f0 transparent;">
+          <button
+            v-for="(img, i) in courtGallery.images"
+            :key="`thumb-${i}`"
+            type="button"
+            class="vdp-court-modal__thumb flex-shrink-0 p-0 border-0 bg-transparent"
+            :style="i === courtGallery.index ? 'outline: 3px solid #22c55e; border-radius: 10px;' : 'outline: none;'"
+            @click="courtGallery.index = i"
+            :aria-label="`Xem ảnh ${i + 1}`"
+          >
+            <img :src="img.url" :alt="img.caption || courtGallery.courtName" style="width:92px;height:64px;object-fit:cover;border-radius:10px;border:1px solid #e2e8f0;display:block" />
+          </button>
+        </div>
+      </div>
+    </div>
+  </transition>
 </template>
 
 <script>
@@ -95,13 +182,120 @@ export default {
   },
   data() {
     return {
-      galleryIndex: 0
+      galleryIndex: 0,
+      courtGallery: {
+        show: false,
+        courtName: '',
+        images: [],
+        index: 0
+      }
+    }
+  },
+  computed: {
+    courtsWithImages() {
+      const courts = this.venue?.courts || [];
+      return courts.filter(c => Array.isArray(c.images) && c.images.length > 0);
     }
   },
   methods: {
+    formatSport(type) {
+      if (!type) return '';
+      const m = {
+        FOOTBALL: 'Bóng đá',
+        BADMINTON: 'Cầu lông',
+        TENNIS: 'Tennis',
+        PICKLEBALL: 'Pickleball',
+        BASKETBALL: 'Bóng rổ',
+        VOLLEYBALL: 'Bóng chuyền',
+        OTHER: 'Khác'
+      };
+      return m[String(type).toUpperCase()] || type;
+    },
     formatPrice(v) { return new Intl.NumberFormat('vi-VN',{maximumFractionDigits:0}).format(v); },
     prevImage() { this.galleryIndex=(this.galleryIndex-1+this.venueImages.length)%this.venueImages.length; },
-    nextImage() { this.galleryIndex=(this.galleryIndex+1)%this.venueImages.length; }
+    nextImage() { this.galleryIndex=(this.galleryIndex+1)%this.venueImages.length; },
+
+    openCourtGallery(court) {
+      const imgs = Array.isArray(court?.images) ? court.images : [];
+      if (!imgs.length) return;
+      this.courtGallery = {
+        show: true,
+        courtName: court.name || 'Sân',
+        images: imgs,
+        index: 0
+      };
+    },
+    closeCourtGallery() {
+      this.courtGallery.show = false;
+    },
+    prevCourtImage() {
+      const n = this.courtGallery.images.length;
+      if (!n) return;
+      this.courtGallery.index = (this.courtGallery.index - 1 + n) % n;
+    },
+    nextCourtImage() {
+      const n = this.courtGallery.images.length;
+      if (!n) return;
+      this.courtGallery.index = (this.courtGallery.index + 1) % n;
+    }
   }
 }
 </script>
+
+<style scoped>
+.vdp-court-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(6px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+.vdp-court-modal__content {
+  width: min(980px, 100%);
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 25px 70px rgba(0,0,0,0.35);
+}
+.vdp-court-modal__viewer {
+  min-height: 320px;
+}
+.vdp-court-modal__nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.35);
+  background: rgba(0,0,0,0.35);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.vdp-court-modal__nav:hover { background: rgba(0,0,0,0.55); }
+.vdp-court-modal__nav--prev { left: 12px; }
+.vdp-court-modal__nav--next { right: 12px; }
+.vdp-court-modal__counter {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  background: rgba(0,0,0,0.45);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 10px;
+  border-radius: 999px;
+}
+
+.fade-enter-active, .fade-leave-active { transition: opacity .18s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
+.gfade-enter-active, .gfade-leave-active { transition: opacity .22s ease; }
+.gfade-enter-from, .gfade-leave-to { opacity: 0; }
+</style>

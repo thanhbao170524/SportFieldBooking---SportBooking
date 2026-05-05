@@ -544,6 +544,8 @@ model OwnerProfile {
   kycReviewedAt      DateTime?
   kycReviewedBy      String?
   kycNote            String?
+  /// Cấu hình thông báo cho Owner (bật/tắt theo loại)
+  notificationSettings Json?
   /// Đã đóng modal giới thiệu phí duy trì (không chọn gói)
   billingIntroDismissedAt DateTime?
   /// Gói Subscription đã chọn: starter | growth | pro (snapshot cho billing sau này)

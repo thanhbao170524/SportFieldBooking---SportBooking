@@ -157,6 +157,30 @@ export async function updateOwnerProfile(
   return { ...user, name: user.fullName };
 }
 
+/**
+ * Lưu cấu hình thông báo của Owner (từ trang Settings).
+ */
+export async function updateOwnerNotificationSettings(
+  userId: string,
+  notificationSettings: unknown
+) {
+  const safe =
+    notificationSettings && typeof notificationSettings === "object" && !Array.isArray(notificationSettings)
+      ? notificationSettings
+      : {};
+
+  return prisma.ownerProfile.upsert({
+    where: { userId },
+    create: {
+      userId,
+      notificationSettings: safe,
+    },
+    update: {
+      notificationSettings: safe,
+    },
+  });
+}
+
 export type BillingIntroInput =
   | { action: "dismiss" }
   | { action: "subscribe"; planKey: string; addons?: string[] };

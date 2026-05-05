@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { updateOwnerBankInfo, updateOwnerProfile } from "@/modules/admin/owner.service";
+import { updateOwnerBankInfo, updateOwnerNotificationSettings, updateOwnerProfile } from "@/modules/admin/owner.service";
 import { getAuthUser, requireRole } from "@/middleware/auth.middleware";
 import { successResponse, errorResponse, serverErrorResponse } from "@/lib/response";
 import { prisma } from "@/infra/db/prisma";
@@ -50,7 +50,7 @@ export async function PATCH(req: NextRequest) {
     if (roleError) return roleError;
 
     const body = await req.json();
-    const { fullName, phone, bio, bankName, bankAccountNumber, bankAccountName } = body;
+    const { fullName, phone, bio, bankName, bankAccountNumber, bankAccountName, notificationSettings } = body;
 
     const results: Record<string, unknown> = {};
 
@@ -72,6 +72,12 @@ export async function PATCH(req: NextRequest) {
         bankAccountName,
       });
       results.bankInfo = updatedBank;
+    }
+
+    // Cập nhật cấu hình thông báo (Owner)
+    if (notificationSettings !== undefined) {
+      const updated = await updateOwnerNotificationSettings(user.userId, notificationSettings);
+      results.notificationSettings = updated.notificationSettings;
     }
 
     if (Object.keys(results).length === 0) {

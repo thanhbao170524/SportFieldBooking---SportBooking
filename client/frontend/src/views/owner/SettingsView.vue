@@ -668,6 +668,17 @@ export default {
               this.billing.subscriptionAddons = [];
             }
           } else this.billing.subscriptionAddons = [];
+
+          // Load tùy chọn thông báo (nếu có lưu trong DB)
+          const ns = data.ownerProfile.notificationSettings;
+          if (ns && typeof ns === 'object') {
+            this.notifications = {
+              ...this.notifications,
+              ...(ns.newBooking !== undefined ? { newBooking: !!ns.newBooking } : {}),
+              ...(ns.cancelBooking !== undefined ? { cancelBooking: !!ns.cancelBooking } : {}),
+              ...(ns.weeklyReport !== undefined ? { weeklyReport: !!ns.weeklyReport } : {}),
+            };
+          }
         }
 
         // Cập nhật localStorage để đồng bộ Layout & Badge
@@ -789,6 +800,14 @@ export default {
             bankName: this.payment.bankName,
             bankAccountNumber: this.payment.accountNumber,
             bankAccountName: this.payment.accountName,
+          };
+        } else if (this.currentTab === 'notifications') {
+          payload = {
+            notificationSettings: {
+              newBooking: !!this.notifications.newBooking,
+              cancelBooking: !!this.notifications.cancelBooking,
+              weeklyReport: !!this.notifications.weeklyReport,
+            },
           };
         } else {
           alert('Thay đổi đã được lưu!');
