@@ -69,6 +69,9 @@
             <span class="material-icons">{{ getPostTypeIcon(post.type) }}</span>
             {{ getPostTypeLabel(post.type) }}
           </div>
+          <div class="post-status" :class="String(post.status || '').toLowerCase()">
+            {{ getPostStatusLabel(post.status) }}
+          </div>
           <div class="post-actions">
             <button type="button" class="btn-more btn-share" title="Copy link chia sẻ" @click="copyShareLink(post)">
               <span class="material-icons">share</span>
@@ -252,6 +255,14 @@ export default {
     await this.fetchClubs();
   },
   methods: {
+    getPostStatusLabel(status) {
+      const s = String(status || '');
+      if (s === 'PENDING') return 'Chờ duyệt';
+      if (s === 'ACTIVE') return 'Đang hiển thị';
+      if (s === 'HIDDEN') return 'Đã ẩn';
+      if (s === 'EXPIRED') return 'Hết hạn';
+      return s || '—';
+    },
     async fetchClubs() {
       try {
         const res = await dashboardService.getClubs();
@@ -510,6 +521,22 @@ select { flex: 1; border: none; background: transparent; font-family: inherit; f
 .post-type-badge.TEAM_MATCHING { background: #f5f3ff; color: #6d28d9; }
 .post-type-badge.ANNOUNCEMENT { background: #eff6ff; color: #1d4ed8; }
 .post-type-badge .material-icons { font-size: 16px; }
+
+.post-status {
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+}
+.post-status.pending { background: #fffbeb; border-color: #fcd34d; color: #b45309; }
+.post-status.active { background: #ecfdf5; border-color: #6ee7b7; color: #059669; }
+.post-status.hidden { background: #f1f5f9; border-color: #cbd5e1; color: #475569; }
+.post-status.expired { background: #f8fafc; border-color: #e2e8f0; color: #94a3b8; }
 
 .btn-more { width: 36px; height: 36px; border-radius: 12px; border: none; background: #f8fafc; color: #94a3b8; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
 .btn-more:hover { background: #fef2f2; color: #ef4444; }

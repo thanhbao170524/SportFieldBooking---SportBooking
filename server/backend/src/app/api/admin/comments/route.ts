@@ -1,5 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/infra/db/prisma";
+import { getAuthUser, requireRole } from "@/middleware/auth.middleware";
+import { serverErrorResponse, successResponse } from "@/lib/response";
 
 interface CommentItem {
   id: string;
@@ -15,8 +17,13 @@ interface CommentItem {
   };
 }
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
+    const { user, error } = await getAuthUser(req);
+    if (error) return error;
+    const roleError = requireRole(user, ["ADMIN"]);
+    if (roleError) return roleError;
+
     const comments: CommentItem[] = await prisma.comment.findMany({
       include: {
         user: {
@@ -35,11 +42,8 @@ export async function GET(): Promise<NextResponse> {
       orderBy: { createdAt: "desc" }
     });
 
-    return NextResponse.json({
-      message: "Lấy comments thành công",
-      data: comments
-    });
+    return successResponse("Lấy comments thành công", comments);
   } catch (error) {
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    return serverErrorResponse(error);
   }
 }

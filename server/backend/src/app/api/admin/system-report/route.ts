@@ -1,5 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/infra/db/prisma";
+import { getAuthUser, requireRole } from "@/middleware/auth.middleware";
+import { serverErrorResponse, successResponse } from "@/lib/response";
 
 interface SystemReport {
   totalUsers: number;
@@ -9,8 +11,13 @@ interface SystemReport {
   inactiveClubs: number;
 }
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
+    const { user, error } = await getAuthUser(req);
+    if (error) return error;
+    const roleError = requireRole(user, ["ADMIN"]);
+    if (roleError) return roleError;
+
     const [
       totalUsers,
       totalBookings,
@@ -35,11 +42,8 @@ export async function GET(): Promise<NextResponse> {
       inactiveClubs
     };
 
-    return NextResponse.json({
-      message: "System report",
-      data: report
-    });
-  } catch {
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    return successResponse("System report", report);
+  } catch (e) {
+    return serverErrorResponse(e);
   }
 }

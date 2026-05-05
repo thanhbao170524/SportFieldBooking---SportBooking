@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRevenueStatsAdmin } from "@/modules/admin/admin.service";
 import { successResponse, serverErrorResponse } from "@/lib/response";
+import { getAuthUser, requireRole } from "@/middleware/auth.middleware";
 
 interface RevenueStats {
   totalRevenue: number;
@@ -9,6 +10,11 @@ interface RevenueStats {
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
+    const { user, error } = await getAuthUser(req);
+    if (error) return error;
+    const roleError = requireRole(user, ["ADMIN"]);
+    if (roleError) return roleError;
+
     const { searchParams } = new URL(req.url);
 
     const startDate = searchParams.get("startDate") ?? undefined;

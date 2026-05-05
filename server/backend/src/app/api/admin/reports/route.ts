@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllReportsAdmin } from "@/modules/admin/admin.service";
 import { successResponse, serverErrorResponse } from "@/lib/response";
+import { getAuthUser, requireRole } from "@/middleware/auth.middleware";
 
 interface ReportItem {
   id: string;
@@ -15,6 +16,11 @@ interface ReportItem {
 
 export async function GET(_: NextRequest): Promise<NextResponse> {
   try {
+    const { user, error } = await getAuthUser(_);
+    if (error) return error;
+    const roleError = requireRole(user, ["ADMIN"]);
+    if (roleError) return roleError;
+
     const reports: ReportItem[] = await getAllReportsAdmin();
 
     return successResponse(

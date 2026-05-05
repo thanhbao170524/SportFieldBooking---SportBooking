@@ -93,6 +93,7 @@ export async function createPost(
       clubId,
       slug,
       type: data.type,
+      status: "PENDING",
       title: data.title.trim(),
       content: data.content.trim(),
       imageUrl: data.imageUrl?.trim() || undefined,
@@ -102,21 +103,8 @@ export async function createPost(
     },
   });
 
-  let notificationsSent = 0;
-  try {
-    const { notified } = await notifyPlayersAboutOwnerPost({
-      clubId: club.id,
-      clubName: club.name,
-      postType: data.type,
-      title: data.title,
-      content: data.content,
-    });
-    notificationsSent = notified;
-  } catch (err) {
-    console.error("notifyPlayersAboutOwnerPost failed:", err);
-  }
-
-  return { post, notificationsSent };
+  // NOTE: Thông báo chỉ được gửi sau khi Admin duyệt bài đăng.
+  return { post, notificationsSent: 0 };
 }
 
 export async function updatePost(
@@ -231,10 +219,15 @@ export async function getPosts(filters: {
   const usePaging = limit > 0;
 
   const where: Prisma.PostWhereInput = {
-    status: "ACTIVE",
+    deletedAt: null,
     ...(filters.clubId && { clubId: filters.clubId }),
     ...(filters.type && { type: filters.type }),
-    OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }],
+    ...(filters.isUser
+      ? {
+          status: "ACTIVE",
+          OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }],
+        }
+      : {}),
   };
 
   const includeClub = {
