@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/infra/db/prisma";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export async function GET(
@@ -10,8 +10,9 @@ export async function GET(
   { params }: Params
 ): Promise<NextResponse> {
   try {
+    const { id } = await params;
     const post = await prisma.post.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         club: {
           select: {

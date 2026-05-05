@@ -3,11 +3,12 @@ import { togglePostStatus } from "@/modules/admin/admin.service";
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const body = await req.json();
+  const { id } = await params;
 
-  const data = await togglePostStatus(params.id, body.status);
+  const data = await togglePostStatus(id, body.status);
 
   return NextResponse.json({ data });
 }
