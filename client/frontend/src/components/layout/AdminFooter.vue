@@ -3,9 +3,9 @@
         <div class="footer-container">
             <!-- Logo / Giới thiệu -->
             <div class="footer-col">
-                <h3>EasyShop</h3>
+                <h3>Sport Bookings</h3>
                 <p class="text-white">
-                    Nền tảng mua sắm trực tuyến uy tín, mang đến trải nghiệm
+                    Nền tảng đặt sân thể thao trực tuyến uy tín, mang đến trải nghiệm
                     nhanh chóng – an toàn – tiện lợi cho khách hàng.
                 </p>
             </div>
@@ -14,10 +14,10 @@
             <div class="footer-col">
                 <h4>Liên kết</h4>
                 <ul>
-                    <li><a href="#">Trang chủ</a></li>
-                    <li><a href="#">Sản phẩm</a></li>
-                    <li><a href="#">Giới thiệu</a></li>
-                    <li><a href="#">Liên hệ</a></li>
+                    <li><a href="/">Trang chủ</a></li>
+                    <li><a href="/booking">Đặt sân</a></li>
+                    <li><a href="/about">Giới thiệu</a></li>
+                    <li><a href="/about">Liên hệ</a></li>
                 </ul>
             </div>
 
@@ -25,23 +25,23 @@
             <div class="footer-col">
                 <h4>Hỗ trợ khách hàng</h4>
                 <ul>
-                    <li><a href="#">Hướng dẫn mua hàng</a></li>
-                    <li><a href="#">Chính sách đổi trả</a></li>
-                    <li><a href="#">Chính sách bảo mật</a></li>
+                    <li><a href="/about">Hướng dẫn mua hàng</a></li>
+                    <li><a href="/about">Chính sách đổi trả</a></li>
+                    <li><a href="/about">Chính sách bảo mật</a></li>
                 </ul>
             </div>
 
             <!-- Liên hệ -->
             <div class="footer-col">
                 <h4>Liên hệ</h4>
-                <p class="text-white">Email: support@easyshop.vn</p>
-                <p class="text-white">Hotline: 0123 456 789</p>
-                <p class="text-white">Địa chỉ: TP. Hồ Chí Minh</p>
+                <p class="text-white">Email: vidinhnguyen04@gmail.com</p>
+                <p class="text-white">Hotline: 0867859719</p>
+                <p class="text-white">Địa chỉ: Phường Cẩm Lệ, TP. Đà Nẵng</p>
             </div>
         </div>
 
         <div class="footer-bottom">
-            © 2025 EasyShop. All rights reserved.
+            © 2026 Sport Bookings. All rights reserved.
         </div>
     </footer>
 </template>

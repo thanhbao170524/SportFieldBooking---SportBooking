@@ -1179,10 +1179,12 @@ export default {
       this.bookingSuccess = true;
       try {
         const verifyRes = await bookingService.verifyStripeSession(q.session_id);
-        if (verifyRes?.data?.bookingId) {
-          this.bookingCode = verifyRes.data.bookingId;
-          this.loadBookingFromServer(verifyRes.data.bookingId);
-          this.startStatusPolling(verifyRes.data.bookingId);
+        const bCode = verifyRes?.data?.bookingCode || verifyRes?.data?.bookingId;
+        if (bCode) {
+          this.bookingCode = bCode;
+          this.paymentConfirmed = true; // Mark as confirmed immediately
+          this.loadBookingFromServer(bCode);
+          this.startStatusPolling(bCode);
         }
       } catch (err) {
         console.error("Stripe verify error:", err);

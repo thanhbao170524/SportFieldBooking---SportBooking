@@ -135,7 +135,7 @@ export async function processStripeWebhook(rawBody: string, signature: string): 
 /**
  * Verify a Stripe Checkout Session by session_id (called from frontend after redirect)
  */
-export async function verifyStripeSession(sessionId: string): Promise<{ success: boolean; bookingId?: string }> {
+export async function verifyStripeSession(sessionId: string): Promise<{ success: boolean; bookingId?: string; bookingCode?: string }> {
   const stripe = getStripe();
 
   const session = await stripe.checkout.sessions.retrieve(sessionId);
@@ -145,16 +145,26 @@ export async function verifyStripeSession(sessionId: string): Promise<{ success:
     return { success: false };
   }
 
-  if (session.payment_status === "paid") {
-    // Check if already processed
-    const payment = await prisma.payment.findUnique({ where: { bookingId } });
-    if (payment && payment.status !== "CONFIRMED") {
-      await handleSuccessfulPayment(bookingId, session.payment_intent as string);
-    }
-    return { success: true, bookingId };
+  // Get the actual booking to find the bookingCode
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: { id: true, bookingCode: true, status: true }
+  });
+
+  if (!booking) {
+    return { success: false };
   }
 
-  return { success: false, bookingId };
+  if (session.payment_status === "paid") {
+    // Check if already processed
+    const payment = await prisma.payment.findUnique({ where: { bookingId: booking.id } });
+    if (payment && payment.status !== "CONFIRMED") {
+      await handleSuccessfulPayment(booking.id, session.payment_intent as string);
+    }
+    return { success: true, bookingId: booking.id, bookingCode: booking.bookingCode };
+  }
+
+  return { success: false, bookingId: booking.id, bookingCode: booking.bookingCode };
 }
 
 // ─────────────────────────────────────────────────────────

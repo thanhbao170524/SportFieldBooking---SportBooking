@@ -4,7 +4,7 @@
       <div class="promo-content">
         <header class="promo-header">
           <h2 id="promo-heading" class="promo-title">
-            PLAYFINDER <br />
+            SPORTS BOOKING <br />
             <span class="highlight">MOBILE APP</span>
           </h2>
         </header>

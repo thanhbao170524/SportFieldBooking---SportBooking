@@ -545,7 +545,7 @@ export async function getBookingByClubId(clubId: string, ownerId: string, date?:
     include: {
       user: { select: { fullName: true, phone: true, email: true } },
       club: { select: { id: true, name: true, address: true, slug: true } },
-      items: { include: { timeSlot: { include: { court: { select: { id: true, name: true, clubId: true } } } } } },
+      items: { include: { timeSlot: { include: { court: { select: { id: true, name: true, clubId: true, deletedAt: true } } } } } },
       payment: true,
     },
     orderBy: { createdAt: "desc" },

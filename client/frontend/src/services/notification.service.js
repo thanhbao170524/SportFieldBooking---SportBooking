@@ -21,6 +21,6 @@ export const notificationService = {
    * @param {string} id - Notification ID
    */
   deleteNotification(id) {
-    return api.delete(`/notifications/${id}`);
+    return api.delete('/notifications', { params: { id } });
   }
 };

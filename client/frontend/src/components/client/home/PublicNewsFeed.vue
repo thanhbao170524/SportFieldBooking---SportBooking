@@ -69,8 +69,8 @@
       </div>
 
       <div class="actions-bottom">
-        <router-link to="/booking" class="btn-view-all">
-          Xem tất cả sân
+        <router-link to="/friend" class="btn-view-all">
+          Tìm bạn ngay
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <line x1="5" y1="12" x2="19" y2="12"></line>
             <polyline points="12 5 19 12 12 19"></polyline>

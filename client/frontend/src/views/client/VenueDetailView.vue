@@ -263,7 +263,9 @@
                 <div class="row g-2">
                   <div v-for="svc in services" :key="svc.id" class="col-12 col-md-6">
                     <div :class="['vdp-svc-card d-flex align-items-center gap-3 p-3 rounded-3 border-2 border', isServiceSelected(svc.id)?'border-success bg-success-subtle':'border-light-subtle bg-white']" style="cursor:pointer" @click="toggleService(svc.id)">
-                      <div :class="['p-2 rounded-2 d-flex', isServiceSelected(svc.id)?'bg-success text-white':'bg-success-subtle text-success']" v-html="svc.icon"></div>
+                      <div :class="['p-2 rounded-2 d-flex align-items-center justify-content-center', isServiceSelected(svc.id)?'bg-success text-white':'bg-success-subtle text-success']">
+                        <span class="material-icons" style="font-size: 20px;">{{ svc.icon }}</span>
+                      </div>
                       <div class="flex-grow-1">
                         <div class="fw-bold small text-dark">{{ svc.name }}</div>
                         <div v-if="svc.price > 0" class="text-success fw-bold" style="font-size:12px">+{{ formatPrice(svc.price) }} đ</div>

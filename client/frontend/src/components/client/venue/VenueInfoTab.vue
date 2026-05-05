@@ -43,7 +43,9 @@
       <h5 class="fw-bold mt-4 mb-3">Tiện ích sân</h5>
       <div class="row g-2">
         <div v-for="a in venue.amenities" :key="a.id" class="col-6 d-flex align-items-center gap-2">
-          <div class="bg-success-subtle text-success rounded-circle d-flex align-items-center justify-content-center" style="width:26px;height:26px;flex-shrink:0"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="bg-success-subtle text-success rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width:30px;height:30px;flex-shrink:0">
+            <span class="material-icons" style="font-size: 16px;">{{ a.icon || 'done' }}</span>
+          </div>
           <span class="small">{{ a.name }}</span>
           <span v-if="a.price > 0" class="badge rounded-pill bg-success-subtle text-success border border-success-subtle" style="font-size:10px">{{ formatPrice(a.price) }}</span>
           <span v-else class="text-muted" style="font-size:10px; font-style: italic;">Miễn phí</span>

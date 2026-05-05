@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div class="courtmate-container">
+    <div class="courtmate-container" :class="{ 'is-open': isOpen }">
     <!-- Floating Trigger -->
     <div v-if="!isOpen" class="trigger-stack">
       <Transition name="nudge-fade">

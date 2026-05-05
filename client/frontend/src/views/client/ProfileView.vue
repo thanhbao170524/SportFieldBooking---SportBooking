@@ -649,7 +649,7 @@ export default {
       this.loadingNotifications = true;
       try {
         const res = await notificationService.getMyNotifications();
-        this.notifications = res.data || [];
+        this.notifications = res.data.data || [];
       } catch (e) {
         toast.error("Lỗi khi tải thông báo");
       } finally {
@@ -681,9 +681,14 @@ export default {
     },
     getNotiIcon(type) {
       switch (type) {
-        case 'BOOKING': return 'event_available';
-        case 'PAYMENT': return 'payments';
-        case 'MATCH': return 'sports_soccer';
+        case 'BOOKING_CONFIRMED': return 'event_available';
+        case 'BOOKING_CANCELLED': return 'event_busy';
+        case 'BOOKING_REMINDER': return 'notification_important';
+        case 'PAYMENT_SUCCESS': return 'payments';
+        case 'PAYMENT_FAILED': return 'money_off';
+        case 'PROMOTION': return 'local_offer';
+        case 'SYSTEM': return 'admin_panel_settings';
+        case 'NEWS_FEED': return 'campaign';
         default: return 'notifications';
       }
     },
