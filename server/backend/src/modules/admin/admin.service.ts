@@ -1,6 +1,7 @@
 import { prisma } from "@/infra/db/prisma";
 import { ApprovalStatus, CourtStatus, PostStatus } from "@/generated/prisma";
 import { notifyNewBooking } from "@/infra/realtime/socket";
+import { notifyPlayersAboutOwnerPost } from "@/modules/user/notification.service";
 
 /**
  * Lấy danh sách tất cả các câu lạc bộ và sân chi tiết (Dành cho Admin)
@@ -314,6 +315,76 @@ export async function deletePostAdmin(postId: string) {
     where: { id: postId },
     data: { deletedAt: new Date() }
   });
+}
+
+/**
+ * Duyệt bài đăng của chủ sân: chuyển PENDING -> ACTIVE và gửi thông báo cho người chơi.
+ */
+export async function approveOwnerPostAdmin(postId: string, adminId: string) {
+  const post = await prisma.post.findFirst({
+    where: { id: postId, deletedAt: null },
+    include: { club: { select: { id: true, name: true } } },
+  });
+  if (!post) throw new Error("POST_NOT_FOUND");
+
+  const updated = await prisma.post.update({
+    where: { id: postId },
+    data: { status: "ACTIVE" },
+  });
+
+  // Audit
+  await prisma.auditLog.create({
+    data: {
+      userId: adminId,
+      action: "APPROVE_POST",
+      entity: "Post",
+      entityId: postId,
+      details: { from: post.status, to: "ACTIVE" },
+    },
+  });
+
+  // Notify players (best-effort)
+  try {
+    await notifyPlayersAboutOwnerPost({
+      clubId: post.clubId,
+      clubName: post.club?.name || "Câu lạc bộ",
+      postType: post.type,
+      title: post.title,
+      content: post.content,
+    });
+  } catch (err) {
+    console.error("notifyPlayersAboutOwnerPost failed:", err);
+  }
+
+  return updated;
+}
+
+/**
+ * Từ chối bài đăng: chuyển về HIDDEN (không hiển thị public).
+ */
+export async function rejectOwnerPostAdmin(postId: string, adminId: string, note?: string) {
+  const post = await prisma.post.findFirst({
+    where: { id: postId, deletedAt: null },
+    select: { id: true, status: true, clubId: true },
+  });
+  if (!post) throw new Error("POST_NOT_FOUND");
+
+  const updated = await prisma.post.update({
+    where: { id: postId },
+    data: { status: "HIDDEN" },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId: adminId,
+      action: "REJECT_POST",
+      entity: "Post",
+      entityId: postId,
+      details: { from: post.status, to: "HIDDEN", note: note || null },
+    },
+  });
+
+  return updated;
 }
 
 /* =====================================================

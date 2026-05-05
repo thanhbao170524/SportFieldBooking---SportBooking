@@ -182,6 +182,36 @@ const routes = [
     meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN"] },
   },
   {
+    path: "/admin/posts",
+    name: "admin-posts",
+    component: () => import("../views/admin/views/PostsManagementView.vue"),
+    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN"] },
+  },
+  {
+    path: "/admin/community",
+    name: "admin-community",
+    component: () => import("../views/admin/views/CommunityManagementView.vue"),
+    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN"] },
+  },
+  {
+    path: "/admin/news",
+    name: "admin-news",
+    component: () => import("../views/admin/views/ReportsManagementView.vue"),
+    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN"] },
+  },
+  {
+    path: "/admin/violations",
+    name: "admin-violations",
+    component: () => import("../views/admin/views/CommunityManagementView.vue"),
+    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN"] },
+  },
+  {
+    path: "/admin/settings",
+    name: "admin-settings",
+    component: () => import("../views/admin/views/PermissionsManagementView.vue"),
+    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN"] },
+  },
+  {
     path: "/admin/permissions",
     name: "admin-permissions",
     component: () => import("../views/admin/views/PermissionsManagementView.vue"),

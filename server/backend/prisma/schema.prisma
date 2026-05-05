@@ -732,6 +732,7 @@ enum PostType {
 }
 
 enum PostStatus {
+  PENDING
   ACTIVE
   HIDDEN
   EXPIRED
