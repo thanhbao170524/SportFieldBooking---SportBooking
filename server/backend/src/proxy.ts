@@ -6,6 +6,7 @@ const ALLOWED_ORIGINS = [
   "http://localhost:3001",
   "http://127.0.0.1:5173",
   "https://gr111-frontend.vercel.app",
+  "https://sports-booking-gr111.onrender.com",
   process.env.FRONTEND_URL,
   process.env.NEXT_PUBLIC_APP_URL,
 ].filter(Boolean) as string[];

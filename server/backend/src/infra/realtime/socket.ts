@@ -12,7 +12,13 @@ const NOTIFICATION_EXPIRE = 24 * 60 * 60;
 export const initSocket = (server: HTTPServer) => {
   io = new SocketIOServer(server, {
     cors: {
-      origin: env.NEXT_PUBLIC_APP_URL || "http://localhost:5173",
+      origin: [
+        env.NEXT_PUBLIC_APP_URL,
+        "https://sports-booking-gr111.onrender.com",
+        "https://gr111-frontend.vercel.app",
+        "http://localhost:5173",
+        "http://localhost:3000",
+      ],
       credentials: true,
       methods: ["GET", "POST"],
     },
