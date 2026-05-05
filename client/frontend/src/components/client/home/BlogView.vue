@@ -22,7 +22,7 @@
                     <circle cx="12" cy="12" r="10" stroke="#4ade80" stroke-width="2.5"/>
                     <path d="M8 12l3 3 5-5" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
                   </svg>
-                  <span>Playfinder</span>
+                  <span>Sports Booking</span>
                 </div>
                 <strong>Live Calendar</strong>
               </div>

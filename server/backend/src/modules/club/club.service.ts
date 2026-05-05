@@ -55,6 +55,7 @@ export async function getClubBySlug(slug: string) {
     where: { slug, deletedAt: null },
     include: {
       courts: {
+        where: { deletedAt: null },
         include: {
           images: true,
           pricings: true
@@ -178,6 +179,7 @@ export async function searchClubs(filters: SearchClubFilters) {
     where,
     include: {
       courts: {
+        where: { deletedAt: null },
         include: {
           pricings: true,
           images: true,
@@ -281,6 +283,7 @@ export async function getClubById(id: string, ownerId: string) {
     where: { id, ownerId, deletedAt: null },
     include: {
       courts: {
+        where: { deletedAt: null },
         include: {
           images: true,
           pricings: true
@@ -304,7 +307,10 @@ export async function getClubsByOwner(ownerId: string) {
   return prisma.club.findMany({
     where: { ownerId, deletedAt: null },
     include: {
-      courts: { select: { id: true, name: true, clubId: true, sportType: true } },
+      courts: { 
+        where: { deletedAt: null },
+        select: { id: true, name: true, clubId: true, sportType: true } 
+      },
       openingHours: true,
       images: true
     },

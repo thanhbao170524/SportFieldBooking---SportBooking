@@ -2,6 +2,8 @@ import { eventEmitter } from "@/lib/events";
 import { notifyNewBooking, notifyBookingStatusChanged } from "@/infra/realtime/socket";
 import { sendBookingConfirmationEmail, sendBookingWaitingPaymentEmail } from "@/infra/mail/mailer";
 import { prisma } from "@/infra/db/prisma";
+import { createNotification } from "@/modules/user/notification.service";
+import { updateClubCustomerStats } from "@/modules/crm/club-customer.service";
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   BANK_TRANSFER: 'Chuyển khoản ngân hàng',
@@ -36,6 +38,7 @@ export const initBookingListeners = () => {
       const fullBooking = await prisma.booking.findUnique({
         where: { id: booking.id },
         include: {
+          user: { select: { email: true } },
           club: { select: { name: true } },
           items: {
             include: {
@@ -56,7 +59,10 @@ export const initBookingListeners = () => {
         }
       });
 
-      if (fullBooking && fullBooking.bookerEmail) {
+      const recipientEmail = fullBooking?.bookerEmail || fullBooking?.user?.email;
+
+      if (fullBooking && recipientEmail) {
+        console.log(`📧 Preparing email for booking ${fullBooking.bookingCode} to ${recipientEmail}`);
         const courtNames = [...new Set(
           fullBooking.items.map(item => item.timeSlot.court.name)
         )].join(', ');
@@ -72,8 +78,8 @@ export const initBookingListeners = () => {
 
         const emailData = {
           bookingId: fullBooking.id,
-          bookerName: fullBooking.bookerName,
-          bookerEmail: fullBooking.bookerEmail,
+          bookerName: fullBooking.bookerName || 'Khách hàng',
+          bookerEmail: recipientEmail,
           bookingCode: fullBooking.bookingCode,
           clubName: fullBooking.club?.name || 'N/A',
           courtName: courtNames,
@@ -88,16 +94,43 @@ export const initBookingListeners = () => {
           transferContent: fullBooking.payment?.transferContent || fullBooking.bookingCode,
         };
 
-        // Nếu là chuyển khoản, gửi hướng dẫn thanh toán. Nếu là tiền mặt, gửi xác nhận đặt chỗ.
+        // Nếu là chuyển khoản, gửi hướng dẫn thanh toán.
         if (fullBooking.payment?.method === 'BANK_TRANSFER') {
+           console.log(`⏳ Sending waiting payment email to ${recipientEmail}`);
            await sendBookingWaitingPaymentEmail(emailData);
-        } else if (fullBooking.payment?.method === 'CASH') {
-           // Tiền mặt có thể gửi ngay email đặt chỗ thành công (vì không online)
+        } else {
+           // Với các phương thức khác (CASH, VNPAY, MOMO, CREDIT_CARD), gửi email xác nhận đã nhận đơn
+           console.log(`✅ Sending booking confirmation/received email to ${recipientEmail}`);
            await sendBookingConfirmationEmail(emailData);
+        }
+      } else {
+        console.warn(`⚠️ Could not send email for booking ${booking.id}: fullBooking or recipientEmail missing.`, { 
+          hasFullBooking: !!fullBooking, 
+          bookerEmail: fullBooking?.bookerEmail,
+          userEmail: fullBooking?.user?.email 
+        });
+      }
+      if (fullBooking) {
+        // 3. Create DB Notification for user
+        await createNotification({
+          userId: fullBooking.userId,
+          type: "BOOKING_REMINDER",
+          title: "Đang chờ thanh toán",
+          body: `Bạn có đơn đặt sân mới tại ${fullBooking.club?.name || 'N/A'}. Vui lòng thanh toán để hoàn tất.`,
+          bookingId: fullBooking.id
+        });
+
+        // 4. Update CRM Statistics if already confirmed (manual booking)
+        if (fullBooking.status === 'CONFIRMED' && fullBooking.clubId) {
+          await updateClubCustomerStats(
+            fullBooking.clubId,
+            fullBooking.userId,
+            Number(fullBooking.finalAmount)
+          );
         }
       }
     } catch (error) {
-      console.error('⚠️ Lỗi khi gửi email khởi tạo booking:', error);
+      console.error('⚠️ Lỗi khi gửi email/notification khởi tạo booking:', error);
     }
   });
 
@@ -123,12 +156,28 @@ export const initBookingListeners = () => {
       });
     }
 
-    // 3. Nếu trạng thái là CONFIRMED (thanh toán thành công) → Gửi email hóa đơn
+    // 3. Nếu trạng thái là CONFIRMED (thanh toán thành công) → Gửi email hóa đơn & DB Notification & Update CRM Stats
     if (booking?.status === 'CONFIRMED') {
       try {
         await sendInvoice(booking.id);
+        await createNotification({
+          userId: booking.userId,
+          type: "BOOKING_CONFIRMED",
+          title: "Đặt sân thành công",
+          body: `Đơn đặt sân ${booking.bookingCode} của bạn đã được xác nhận thành công.`,
+          bookingId: booking.id
+        });
+
+        // Update CRM Statistics
+        if (booking.clubId) {
+          await updateClubCustomerStats(
+            booking.clubId,
+            booking.userId,
+            Number(booking.finalAmount)
+          );
+        }
       } catch (err) {
-        console.error('⚠️ Lỗi khi gửi hóa đơn thanh toán:', err);
+        console.error('⚠️ Lỗi khi gửi hóa đơn/notification/CRM update:', err);
       }
     }
   });
@@ -154,6 +203,7 @@ async function sendInvoice(bookingId: string) {
   const fullBooking = await prisma.booking.findUnique({
     where: { id: bookingId },
     include: {
+      user: { select: { email: true } },
       club: { select: { name: true } },
       items: {
         include: {
@@ -166,7 +216,10 @@ async function sendInvoice(bookingId: string) {
     }
   });
 
-  if (fullBooking && fullBooking.bookerEmail) {
+  const recipientEmail = fullBooking?.bookerEmail || fullBooking?.user?.email;
+
+  if (fullBooking && recipientEmail) {
+    console.log(`📧 Sending invoice for booking ${fullBooking.bookingCode} to ${recipientEmail}`);
     const courtNames = [...new Set(
       fullBooking.items.map(item => item.timeSlot.court.name)
     )].join(', ');
@@ -182,8 +235,8 @@ async function sendInvoice(bookingId: string) {
 
     await sendBookingConfirmationEmail({
       bookingId: fullBooking.id,
-      bookerName: fullBooking.bookerName,
-      bookerEmail: fullBooking.bookerEmail,
+      bookerName: fullBooking.bookerName || 'Khách hàng',
+      bookerEmail: recipientEmail,
       bookingCode: fullBooking.bookingCode,
       clubName: fullBooking.club?.name || 'N/A',
       courtName: courtNames,

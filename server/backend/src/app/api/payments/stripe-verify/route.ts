@@ -17,7 +17,10 @@ export async function GET(req: NextRequest) {
     const result = await verifyStripeSession(sessionId);
 
     if (result.success) {
-      return successResponse("Thanh toán thẻ quốc tế thành công!", { bookingId: result.bookingId });
+      return successResponse("Thanh toán thẻ quốc tế thành công!", { 
+        bookingId: result.bookingId,
+        bookingCode: result.bookingCode
+      });
     }
 
     return errorResponse("Thanh toán chưa hoàn tất hoặc đã bị hủy.", 400);

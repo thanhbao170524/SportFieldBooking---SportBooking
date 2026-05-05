@@ -4,7 +4,7 @@
       <div class="promo-content">
         <header class="promo-header">
           <h2 id="promo-heading" class="promo-title">
-            PLAYFINDER <br />
+            SPORTS BOOKING <br />
             <span class="highlight">MOBILE APP</span>
           </h2>
         </header>
@@ -48,7 +48,7 @@
 
       <div class="promo-mockup">
         <div class="mockup-wrapper">
-          <img src="/chat-bot.png" alt="Playfinder Mobile App Mockups" class="mockup-img" />
+          <img src="/bot.png" alt="Playfinder Mobile App Mockups" class="mockup-img" />
         </div>
       </div>
     </div>

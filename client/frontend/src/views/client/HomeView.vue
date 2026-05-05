@@ -93,29 +93,8 @@
         </div>
       </section>
 
-      <!-- ── Mobile App Promotion ── -->
-      <MobileAppPromo />
-
       <!-- ── Community News Feed ── -->
       <PublicNewsFeed />
-
-      <!-- ── Cities ── -->
-      <section
-        id="cities"
-        aria-labelledby="cities-heading"
-        class="section-wrapper"
-      >
-        <CitiesView heading-id="cities-heading" />
-      </section>
-   
-       <!-- ── Services ── -->
-      <section
-        id="services"
-        aria-labelledby="services-heading"
-        class="section-wrapper"
-      >
-        <ServicesView heading-id="services-heading" />
-      </section>
       <!-- ── Statistics ── -->
       <section
         id="statistics"
@@ -135,6 +114,23 @@
       >
         <BlogView heading-id="blog-heading" />
       </section>
+      <!-- ── Cities ── -->
+      <section
+        id="cities"
+        aria-labelledby="cities-heading"
+        class="section-wrapper"
+      >
+        <CitiesView heading-id="cities-heading" />
+      </section>
+   
+       <!-- ── Services ── -->
+      <section
+        id="services"
+        aria-labelledby="services-heading"
+        class="section-wrapper"
+      >
+        <ServicesView heading-id="services-heading" />
+      </section>
       <section
         id="venue-showcase"
         aria-labelledby="showcase-heading"
@@ -142,6 +138,10 @@
       >
         <VenueView heading-id="showcase-heading" />
       </section>
+
+            <!-- ── Mobile App Promotion ── -->
+      <!-- <MobileAppPromo /> -->
+
     </main>
   </div>
 </template>

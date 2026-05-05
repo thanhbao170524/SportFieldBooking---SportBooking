@@ -84,7 +84,7 @@ export default {
     const selectedRole = ref('ADMIN');
 
     const roles = [
-      { id: 'ADMIN', name: 'Super Admin', desc: 'Quyền quản trị tối cao' },
+      { id: 'ADMIN', name: 'Admin', desc: 'Quyền quản trị tối cao' },
       { id: 'MODERATOR', name: 'Moderator', desc: 'Điều hành viên nội dung' },
       { id: 'OWNER', name: 'Owner', desc: 'Chủ sở hữu cơ sở' },
       { id: 'USER', name: 'Customer', desc: 'Khách hàng sử dụng dịch vụ' }

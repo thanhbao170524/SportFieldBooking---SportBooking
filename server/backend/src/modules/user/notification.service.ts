@@ -117,6 +117,37 @@ export async function createNotification(data: {
 }
 
 /**
+ * Gửi thông báo hệ thống tới tất cả người dùng
+ */
+export async function notifyAllUsers(params: {
+  title: string;
+  body: string;
+}): Promise<{ notified: number }> {
+  const users = await prisma.user.findMany({
+    where: { isActive: true, deletedAt: null },
+    select: { id: true }
+  });
+
+  const userIds = users.map(u => u.id);
+  if (userIds.length === 0) return { notified: 0 };
+
+  const chunkSize = 200;
+  for (let i = 0; i < userIds.length; i += chunkSize) {
+    const slice = userIds.slice(i, i + chunkSize);
+    await prisma.notification.createMany({
+      data: slice.map(userId => ({
+        userId,
+        type: "SYSTEM",
+        title: params.title,
+        body: params.body
+      }))
+    });
+  }
+
+  return { notified: userIds.length };
+}
+
+/**
  * Lấy số lượng thông báo chưa đọc
  */
 export async function getUnreadCount(userId: string) {

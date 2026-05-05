@@ -511,7 +511,7 @@
 </template>
 
 <script>
-import axios from 'axios';
+import api from '@/api/axios';
 import { useOwnerTrial } from '@/composables/useOwnerTrial.js';
 import { clubService } from '@/services/club.service';
 import OwnerBillingIntroModal from '@/components/owner/OwnerBillingIntroModal.vue';
@@ -635,10 +635,7 @@ export default {
     // Load dữ liệu đầy đủ từ API khi vào trang
     async loadProfile() {
       try {
-        const token = localStorage.getItem('token');
-        const res = await axios.get('/api/owner/profile', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await api.get('/owner/profile');
         const data = res.data?.data || {};
         this.profile.fullName = data.name || data.fullName || this.profile.fullName;
         this.profile.phone = data.phone || '';
@@ -671,6 +668,17 @@ export default {
               this.billing.subscriptionAddons = [];
             }
           } else this.billing.subscriptionAddons = [];
+
+          // Load tùy chọn thông báo (nếu có lưu trong DB)
+          const ns = data.ownerProfile.notificationSettings;
+          if (ns && typeof ns === 'object') {
+            this.notifications = {
+              ...this.notifications,
+              ...(ns.newBooking !== undefined ? { newBooking: !!ns.newBooking } : {}),
+              ...(ns.cancelBooking !== undefined ? { cancelBooking: !!ns.cancelBooking } : {}),
+              ...(ns.weeklyReport !== undefined ? { weeklyReport: !!ns.weeklyReport } : {}),
+            };
+          }
         }
 
         // Cập nhật localStorage để đồng bộ Layout & Badge
@@ -779,7 +787,6 @@ export default {
     // Lưu thông tin cá nhân (tab profile) hoặc ngân hàng (tab payment)
     async saveChanges() {
       try {
-        const token = localStorage.getItem('token');
         let payload = {};
 
         if (this.currentTab === 'profile') {
@@ -794,14 +801,20 @@ export default {
             bankAccountNumber: this.payment.accountNumber,
             bankAccountName: this.payment.accountName,
           };
+        } else if (this.currentTab === 'notifications') {
+          payload = {
+            notificationSettings: {
+              newBooking: !!this.notifications.newBooking,
+              cancelBooking: !!this.notifications.cancelBooking,
+              weeklyReport: !!this.notifications.weeklyReport,
+            },
+          };
         } else {
           alert('Thay đổi đã được lưu!');
           return;
         }
 
-        await axios.patch('/api/owner/profile', payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await api.patch('/owner/profile', payload);
 
         if (this.currentTab === 'payment' && this.ownerClubs.length) {
           const tp = this.transferPayloadForClub();
@@ -834,12 +847,11 @@ export default {
         return;
       }
       try {
-        const token = localStorage.getItem('token');
-        await axios.patch('/api/auth/change-password', {
+        await api.patch('/auth/change-password', {
           oldPassword: this.security.oldPassword,
           newPassword: this.security.newPassword,
           confirmPassword: this.security.confirmPassword,
-        }, { headers: { Authorization: `Bearer ${token}` } });
+        });
         alert('✅ Đổi mật khẩu thành công!');
         this.security = { oldPassword: '', newPassword: '', confirmPassword: '' };
       } catch (err) {
@@ -854,8 +866,7 @@ export default {
       }
       this.isKycSubmitting = true;
       try {
-        const token = localStorage.getItem('token');
-        const res = await axios.post('/api/owner/onboarding', {
+        const res = await api.post('/owner/onboarding', {
           idCardNumber: this.kyc.idCardNumber,
           idCardFrontUrl: this.kyc.idCardFrontUrl || null,
           idCardBackUrl: this.kyc.idCardBackUrl || null,
@@ -864,7 +875,7 @@ export default {
           bankAccountName: this.kyc.bankAccountName,
           taxCode: this.kyc.taxCode || null,
           cancellationPolicy: this.kyc.cancellationPolicy || null,
-        }, { headers: { Authorization: `Bearer ${token}` } });
+        });
 
         // Cập nhật user trong localStorage
         const updatedUser = res.data?.data?.user;
@@ -944,10 +955,8 @@ export default {
       formData.append('type', type);
       if (entityId) formData.append('entityId', entityId);
 
-      const token = localStorage.getItem('token');
-      const res = await axios.post('/api/upload', formData, {
+      const res = await api.post('/upload', formData, {
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
         },
       });

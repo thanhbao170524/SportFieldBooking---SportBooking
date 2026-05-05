@@ -24,7 +24,7 @@
       <!-- TABS -->
       <ul class="nav vdp-tabs mb-0">
         <li v-for="t in tabs" :key="t.id" class="nav-item">
-          <button :class="['nav-link vdp-tab', {active: activeTab===t.id}]" @click="activeTab=t.id">
+          <button :class="['nav-link vdp-tab', {active: activeTab===t.id}]" @click="setActiveTab(t.id)">
             <span v-html="t.icon"></span>{{ t.label }}
           </button>
         </li>
@@ -263,7 +263,9 @@
                 <div class="row g-2">
                   <div v-for="svc in services" :key="svc.id" class="col-12 col-md-6">
                     <div :class="['vdp-svc-card d-flex align-items-center gap-3 p-3 rounded-3 border-2 border', isServiceSelected(svc.id)?'border-success bg-success-subtle':'border-light-subtle bg-white']" style="cursor:pointer" @click="toggleService(svc.id)">
-                      <div :class="['p-2 rounded-2 d-flex', isServiceSelected(svc.id)?'bg-success text-white':'bg-success-subtle text-success']" v-html="svc.icon"></div>
+                      <div :class="['p-2 rounded-2 d-flex align-items-center justify-content-center', isServiceSelected(svc.id)?'bg-success text-white':'bg-success-subtle text-success']">
+                        <span class="material-icons" style="font-size: 20px;">{{ svc.icon }}</span>
+                      </div>
                       <div class="flex-grow-1">
                         <div class="fw-bold small text-dark">{{ svc.name }}</div>
                         <div v-if="svc.price > 0" class="text-success fw-bold" style="font-size:12px">+{{ formatPrice(svc.price) }} đ</div>
@@ -417,14 +419,14 @@
         v-if="activeTab==='info'"
         :venue="venue" 
         :venue-images="venueImages"
-        @switch-to-booking="activeTab='booking'"
+        @switch-to-booking="setActiveTab('booking')"
       />
 
       <!-- REVIEW TAB -->
       <VenueReviewTab 
         v-if="activeTab==='review'"
         :club-id="clubId"
-        @switch-to-booking="activeTab='booking'"
+        @switch-to-booking="setActiveTab('booking')"
         @open-lightbox="({images, index}) => openLightbox(images, index)"
       />
 
@@ -560,6 +562,12 @@ export default {
   },
 
   watch: {
+    '$route.query.tab': {
+      immediate: true,
+      handler() {
+        this.applyTabFromRoute();
+      }
+    },
     dateOffset() {
       // Khi đổi ngày → fetch lại slots + reset selection
       const resetSlots = {};
@@ -651,6 +659,32 @@ export default {
   },
 
   methods: {
+    applyTabFromRoute() {
+      const raw = this.$route.query.tab;
+      const tab = Array.isArray(raw) ? raw[0] : raw;
+      if (!tab) {
+        this.activeTab = 'booking';
+        return;
+      }
+      const normalized = String(tab).toLowerCase();
+      if (normalized === 'info' || normalized === 'thong-tin' || normalized === 'thông tin') {
+        this.activeTab = 'info';
+      } else if (normalized === 'review' || normalized === 'danh-gia') {
+        this.activeTab = 'review';
+      } else if (normalized === 'booking' || normalized === 'dat-san') {
+        this.activeTab = 'booking';
+      }
+    },
+    setActiveTab(tabId) {
+      this.activeTab = tabId;
+      const q = { ...this.$route.query };
+      if (tabId === 'booking') {
+        delete q.tab;
+      } else {
+        q.tab = tabId;
+      }
+      this.$router.replace({ query: q }).catch(() => {});
+    },
     async fetchVenueData() {
       try {
         this.venueLoading = true;
@@ -674,7 +708,11 @@ export default {
               id: c.id, 
               name: c.name, 
               sportType: c.sportType,
-              basePrice: c.pricings?.[0]?.pricePerHour ? Number(c.pricings[0].pricePerHour) : 0
+              basePrice: c.pricings?.[0]?.pricePerHour ? Number(c.pricings[0].pricePerHour) : 0,
+              images: (c.images || []).map(img => ({
+                url: img.url,
+                caption: img.caption || c.name
+              }))
             })) || [],
             openingHours: apiClub.openingHours?.map(h => {
               const days = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];

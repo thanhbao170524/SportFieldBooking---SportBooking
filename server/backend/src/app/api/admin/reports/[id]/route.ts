@@ -3,9 +3,9 @@ import { handleReportAdmin } from "@/modules/admin/admin.service";
 import { successResponse, serverErrorResponse } from "@/lib/response";
 
 interface Params {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 interface Body {
@@ -18,8 +18,9 @@ export async function PATCH(
 ): Promise<NextResponse> {
   try {
     const body: Body = await req.json();
+    const { id } = await params;
 
-    const result = await handleReportAdmin(params.id, body.status);
+    const result = await handleReportAdmin(id, body.status);
 
     return successResponse("Xử lý report thành công", result);
   } catch (error: unknown) {

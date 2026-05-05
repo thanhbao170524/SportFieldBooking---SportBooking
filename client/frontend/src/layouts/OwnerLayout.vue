@@ -545,6 +545,14 @@ export default {
         return;
       }
 
+      if (data?.type === 'payment-confirmed') {
+        const bCode = data?.booking?.bookingCode || data?.booking?.id;
+        toast.success(`Đơn hàng #${bCode} đã thanh toán thành công (Stripe).`);
+        await this.refreshPendingTotals();
+        await this.refreshPendingQueueIfOpen();
+        return;
+      }
+
       if (data?.type === 'booking-cancelled') {
         toast.info('Một đơn đặt sân đã bị hủy.');
       } else {

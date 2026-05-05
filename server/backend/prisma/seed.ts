@@ -13,21 +13,25 @@ const sportImages = {
     "https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1200",
     "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?q=80&w=1200",
     "https://images.unsplash.com/photo-1517466787929-bc9028880944?q=80&w=1200",
+    "https://images.unsplash.com/photo-1431324155629-1a6eda1eedfa?q=80&w=1200",
   ],
   BADMINTON: [
     "https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=1200",
     "https://images.unsplash.com/photo-1521537634581-0dced2fee2ef?q=80&w=1200",
     "https://images.unsplash.com/photo-1613918108466-292b78a8ef95?q=80&w=1200",
+    "https://images.unsplash.com/photo-1599474924187-334a4ae5bd3c?q=80&w=1200",
   ],
   TENNIS: [
     "https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=1200",
     "https://images.unsplash.com/photo-1622279457486-62dcc4a4603b?q=80&w=1200",
     "https://images.unsplash.com/photo-1554068865-24cecd4e34b8?q=80&w=1200",
+    "https://images.unsplash.com/photo-1531315630201-bb15b9966a1c?q=80&w=1200",
   ],
   PICKLEBALL: [
     "https://images.unsplash.com/photo-1504450758481-7338eba7524a?q=80&w=1200",
     "https://images.unsplash.com/photo-1544919396-d130b0d39b34?q=80&w=1200",
     "https://images.unsplash.com/photo-1519766428956-61327914a1c2?q=80&w=1200",
+    "https://images.unsplash.com/photo-1592709823125-a191f07a2a5e?q=80&w=1200",
   ]
 };
 
@@ -60,8 +64,8 @@ async function main() {
   // 2. Create Amenities
   console.log("➕ Creating amenities...");
   const wifi = await prisma.amenity.create({ data: { name: "WiFi", icon: "wifi" } });
-  const parking = await prisma.amenity.create({ data: { name: "Bãi xe", icon: "car" } });
-  const canteen = await prisma.amenity.create({ data: { name: "Căng tin", icon: "utensils" } });
+  const parking = await prisma.amenity.create({ data: { name: "Bãi xe", icon: "local_parking" } });
+  const canteen = await prisma.amenity.create({ data: { name: "Căng tin", icon: "restaurant" } });
   const shower = await prisma.amenity.create({ data: { name: "Phòng tắm", icon: "shower" } });
 
   // 3. Create Users

@@ -28,9 +28,14 @@
         <span class="promo-eyebrow">Đối tác mới</span>
         <h2 class="promo-title">{{ venue.name }}</h2>
         <p class="promo-sub">{{ venue.address }}</p>
-        <router-link :to="`/venue/${venue.slug || venue.id}`" class="promo-cta">
-          Khám phá ngay →
-        </router-link>
+        <div class="promo-cta-row">
+          <router-link :to="venueDetailBookingRoute" class="promo-cta">
+            Khám phá ngay →
+          </router-link>
+          <router-link :to="venueDetailInfoRoute" class="promo-cta promo-cta--outline">
+            Xem chi tiết
+          </router-link>
+        </div>
       </div>
     </div>
 
@@ -171,12 +176,20 @@
 
         <!-- CTA -->
         <router-link
-          :to="`/venue/${venue.slug || venue.id}`"
+          :to="venueDetailBookingRoute"
           class="cta-btn"
-          :aria-label="venue.hasOnlineBooking ? `Đặt sân ${venue.name} ngay` : `Xem chi tiết ${venue.name}`"
+          :aria-label="venue.hasOnlineBooking ? `Đặt sân ${venue.name} ngay` : `Xem sân ${venue.name}`"
         >
           <svg v-if="venue.hasOnlineBooking" viewBox="0 0 24 24" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          {{ venue.hasOnlineBooking ? 'ĐẶT SÂN NGAY' : 'XEM CHI TIẾT' }}
+          {{ venue.hasOnlineBooking ? 'ĐẶT SÂN NGAY' : 'ĐẶT / XEM SÂN' }}
+        </router-link>
+
+        <router-link
+          :to="venueDetailInfoRoute"
+          class="detail-btn"
+          :aria-label="`Xem thông tin chi tiết ${venue.name}`"
+        >
+          XEM CHI TIẾT
         </router-link>
 
         <!-- Location Button -->
@@ -221,6 +234,14 @@ export default {
   },
 
   computed: {
+    venueDetailBookingRoute() {
+      const id = this.venue.slug || this.venue.id;
+      return { name: "venue-detail", params: { id } };
+    },
+    venueDetailInfoRoute() {
+      const id = this.venue.slug || this.venue.id;
+      return { name: "venue-detail", params: { id }, query: { tab: "info" } };
+    },
     hasFreeParking() {
       if (this.venue.freeParking) return true;
       if (Array.isArray(this.venue.amenities)) {
@@ -516,6 +537,7 @@ export default {
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
@@ -735,9 +757,9 @@ export default {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  background: transparent;
+  background: #fff;
   color: var(--muted);
-  border: 1.5px solid var(--border);
+  border: none;
   border-radius: 10px;
   padding: 10px 14px;
   font-family: "Barlow Condensed", sans-serif;
@@ -746,6 +768,7 @@ export default {
   letter-spacing: 0.06em;
   text-decoration: none;
   transition: all 0.2s ease;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
 }
 
 .loc-btn svg {
@@ -759,12 +782,38 @@ export default {
 .loc-btn:hover {
   background: #f8fafc;
   color: var(--text);
-  border-color: #9ca3af;
   transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
 }
 
 .loc-btn:hover svg {
   stroke: var(--green);
+}
+
+/* Secondary: view venue info tab */
+.venue-card .detail-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: #fff;
+  color: var(--muted);
+  border: none;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
+}
+.venue-card .detail-btn:hover {
+  background: #f8fafc;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
 }
 
 /* ══ PROMO CARD ══ */
@@ -784,13 +833,28 @@ export default {
 .promo-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--green); }
 .promo-title { font-family: "Barlow Condensed", sans-serif; font-size: 1.4rem; font-weight: 900; color: #fff; margin: 0; }
 .promo-sub { font-size: 12px; color: rgba(255,255,255,.75); margin: 0; }
+.promo-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  align-self: flex-start;
+}
 .promo-cta {
   display: inline-block; background: var(--green); color: #fff;
   border-radius: 7px; padding: 8px 18px; font-weight: 700;
-  font-size: 12px; text-decoration: none; align-self: flex-start;
-  margin-top: 4px; transition: background .2s;
+  font-size: 12px; text-decoration: none;
+  transition: background .2s;
 }
 .promo-cta:hover { background: var(--green-dark); }
+.promo-cta--outline {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.5);
+  color: #fff;
+}
+.promo-cta--outline:hover {
+  background: rgba(255,255,255,0.25);
+}
 
 /* ── Responsive ── */
 @media (max-width: 640px) {

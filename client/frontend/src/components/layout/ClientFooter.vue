@@ -40,7 +40,7 @@
             <div class="heading-underline"></div>
             <p class="footer-subtext">Tìm kiếm những gì bạn cần trong nháy mắt</p>
             <ul class="footer-links">
-              <li><router-link to="/">Playfinder</router-link></li>
+              <li><router-link to="/">Sports Booking</router-link></li>
               <li><router-link to="/about">Giới thiệu</router-link></li>
               <li><router-link to="/posts">Tin tức</router-link></li>
               <li><router-link to="/app">Ứng dụng</router-link></li>
@@ -59,9 +59,9 @@
               <li><router-link to="/search?city=Da+Nang">Đà Nẵng</router-link></li>
               <li><router-link to="/search?city=Hanoi">Hà Nội</router-link></li>
               <li><router-link to="/search?city=Ho+Chi+Minh">TP. Hồ Chí Minh</router-link></li>
-              <li><router-link to="/search?city=Can+Tho">Cần Thơ</router-link></li>
-              <li><router-link to="/search?city=Hai+Phong">Hải Phòng</router-link></li>
-              <li><router-link to="/search?city=Hue">Huế</router-link></li>
+              <li><router-link to="/search?city=Can+Tho">Dăk Lăk</router-link></li>
+              <li><router-link to="/search?city=Hai+Phong">Huế</router-link></li>
+              <li><router-link to="/search?city=Hue">Hải Phòng</router-link></li>
               <li><router-link to="/search?city=Da+Lat">Đà Lạt</router-link></li>
             </ul>
           </div>
@@ -75,8 +75,8 @@
                 <p>Đưa sân của bạn lên nền tảng đặt sân hàng đầu giúp hàng nghìn người tìm thấy nơi chơi thể thao. Chúng tôi sẽ giúp bạn lấp đầy thời gian trống và tiếp cận đối tượng khách hàng mới.</p>
               </div>
               <div class="featured-item">
-                <a href="#" class="featured-link">Quản lý đặt sân với Bookteq</a>
-                <p>Bookteq là phần mềm đặt chỗ hoàn chỉnh dành cho các đơn vị vận hành. Quản lý đặt sân theo thời gian thực, thanh toán và khách hàng với dịch vụ hàng đầu của chúng tôi.</p>
+                <a href="#" class="featured-link">Quản lý đặt sân với chúng tôi</a>
+                <p>Là phần mềm đặt chỗ hoàn chỉnh dành cho các đơn vị vận hành. Quản lý đặt sân theo thời gian thực, thanh toán và khách hàng với dịch vụ hàng đầu của chúng tôi.</p>
               </div>
             </div>
           </div>

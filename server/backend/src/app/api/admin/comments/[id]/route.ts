@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/infra/db/prisma";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export async function DELETE(
@@ -10,8 +10,9 @@ export async function DELETE(
   { params }: Params
 ): Promise<NextResponse> {
   try {
+    const { id } = await params;
     await prisma.comment.delete({
-      where: { id: params.id }
+      where: { id }
     });
 
     return NextResponse.json({

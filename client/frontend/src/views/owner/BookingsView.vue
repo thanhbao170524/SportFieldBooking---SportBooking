@@ -603,7 +603,7 @@ export default {
                 id: booking.id,
                 clubId: booking.clubId,
                 courtId: item.timeSlot.courtId,
-                courtName: item.timeSlot.court.name,
+                courtName: item.timeSlot.court.name + (item.timeSlot.court.deletedAt ? ' (Đã xóa)' : ''),
                 customerName: booking.bookerName || booking.user?.fullName || 'Khách vãng lai',
                 phone: booking.bookerPhone || booking.user?.phone || 'N/A',
                 startTime: formatTime(start),

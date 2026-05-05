@@ -8,7 +8,7 @@ import { initBookingListeners } from "./src/modules/booking/booking.listener";
 import { initSlotListeners } from "./src/modules/slot/slot.listener";
 
 const dev = process.env.NODE_ENV !== "production";
-const hostname = "localhost";
+const hostname = "0.0.0.0";
 const port = env.PORT;
 
 // Initialize Next.js app

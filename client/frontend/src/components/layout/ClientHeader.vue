@@ -91,27 +91,30 @@
     <transition name="search-dropdown">
       <div v-if="isInternalSearchActive" class="client-search-overlay" @click.stop @mousedown.stop>
         <div class="search-bar-container">
-          <p class="search-hint">Choose a sport and search by location or venue</p>
+          <p class="search-hint">
+            Chọn môn thể thao (tuỳ chọn), nhập tên sân và chọn tỉnh/thành để tìm kiếm nhanh.
+          </p>
           <div class="search-inputs">
-            <!-- Sport Select -->
+            <!-- Sport select -->
             <div class="search-field search-field--select">
               <div class="search-field__icon">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="12" cy="12" r="10"/><path d="M12 2a15 15 0 0 1 0 20M2 12h20M12 2a15 15 0 0 0 0 20"/>
                 </svg>
               </div>
-              <select v-model="selectedSportSearch" class="search-input--hidden" @click.stop>
-                <option value="Basketball">Basketball</option>
-                <option value="Football">Bóng đá</option>
-                <option value="Badminton">Cầu lông</option>
-                <option value="Tennis">Tennis</option>
+              <select v-model="selectedSport" class="search-input--hidden" @click.stop>
+                <option value="">Tất cả môn</option>
+                <option value="football">Bóng đá</option>
+                <option value="badminton">Cầu lông</option>
+                <option value="tennis">Tennis</option>
+                <option value="basketball">Bóng rổ</option>
               </select>
               <div class="search-chevron">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
               </div>
             </div>
 
-            <!-- Location Input -->
+            <!-- Venue name input -->
             <div class="search-field search-field--input">
               <div class="search-field__icon">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -119,22 +122,35 @@
                 </svg>
               </div>
               <input 
-                v-model="locationSearch" 
+                v-model="searchName" 
                 type="text" 
-                placeholder="Insert a location or a venue" 
+                placeholder="Nhập tên sân bạn muốn tìm…" 
                 class="search-text-input"
                 @click.stop
               />
-              <button class="search-locate-btn" @click.stop>
+            </div>
+
+            <!-- Province Select -->
+            <div class="search-field search-field--select">
+              <div class="search-field__icon">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
                 </svg>
-              </button>
+              </div>
+              <select v-model="selectedProvince" class="search-input--hidden" @click.stop>
+                <option value="">Tất cả tỉnh/thành</option>
+                <option v-for="p in provinces" :key="p.value" :value="p.value">
+                  {{ p.label }}
+                </option>
+              </select>
+              <div class="search-chevron">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+              </div>
             </div>
 
             <!-- CTA Button -->
-            <button class="search-cta-btn" @click.stop="handleSearch">
-              <span class="cta-accent">FIND</span> VENUE
+            <button type="button" class="search-cta-btn" @click.stop="handleSearch">
+              <span class="cta-accent">TÌM</span> SÂN
             </button>
           </div>
         </div>
@@ -194,7 +210,6 @@
 <script>
 import { RouterLink } from 'vue-router';
 
-
 export default {
   name: "ClientHeader",
   components: {
@@ -203,8 +218,16 @@ export default {
     return {
       isMenuOpen: false,
       isInternalSearchActive: false,
-      selectedSportSearch: "Basketball",
-      locationSearch: ""
+      searchName: "",
+      selectedSport: "",
+      selectedProvince: "",
+      provinces: [
+        { value: "Hà Nội", label: "Hà Nội" },
+        { value: "Hồ Chí Minh", label: "TP. Hồ Chí Minh" },
+        { value: "Đà Nẵng", label: "Đà Nẵng" },
+        { value: "Hải Phòng", label: "Hải Phòng" },
+        { value: "Cần Thơ", label: "Cần Thơ" }
+      ]
     };
   },
   computed: {
@@ -241,14 +264,13 @@ export default {
       this.isInternalSearchActive = false;
     },
     handleSearch() {
-      console.log("handleSearch triggered for:", this.selectedSportSearch, this.locationSearch);
-      
       const queryParams = {};
-      if (this.selectedSportSearch) queryParams.sport = this.selectedSportSearch;
-      if (this.locationSearch) queryParams.city = this.locationSearch;
-      
+      if (this.selectedSport) queryParams.sport = this.selectedSport;
+      if (this.searchName.trim()) queryParams.name = this.searchName.trim();
+      if (this.selectedProvince) queryParams.city = this.selectedProvince;
+
       this.$router.push({ path: '/booking', query: queryParams });
-      
+
       this.closeSearch();
     },
     handleLogout() {
