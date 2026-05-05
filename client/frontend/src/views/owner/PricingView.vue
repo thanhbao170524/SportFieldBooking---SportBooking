@@ -283,7 +283,7 @@
 </template>
 
 <script>
-import axios from 'axios';
+import api from '@/api/axios';
 
 export default {
   name: 'OwnerPricingView',
@@ -339,10 +339,7 @@ export default {
     async loadCourts() {
       this.loadingCourts = true;
       try {
-        const token = localStorage.getItem('token');
-        const res = await axios.get('/api/owner/courts', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await api.get('/owner/courts');
         this.courts = res.data?.data || [];
         if (this.courts.length > 0) {
           this.selectedCourtId = this.courts[0].id;
@@ -372,32 +369,30 @@ export default {
       if (!confirmed) return;
 
       this.isCopyingAll = true;
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
       let successCount = 0;
       let errorCount = 0;
 
       for (const court of otherCourts) {
         try {
           // 1. Fetch existing pricings for target court
-          const res = await axios.get(`/api/owner/courts/${court.id}/pricing`, { headers });
+          const res = await api.get(`/owner/courts/${court.id}/pricing`);
           const existingRegular = res.data?.data?.regularPricings || [];
 
           // 2. Delete all existing regular pricings to avoid OVERLAP
           for (const ep of existingRegular) {
-            await axios.delete(`/api/owner/courts/${court.id}/pricing?type=regular&id=${ep.id}`, { headers });
+            await api.delete(`/owner/courts/${court.id}/pricing?type=regular&id=${ep.id}`);
           }
 
           // 3. Create new pricings from source
           for (const p of this.regularPricings) {
-            await axios.post(`/api/owner/courts/${court.id}/pricing`, {
+            await api.post(`/owner/courts/${court.id}/pricing`, {
               id: null,
               startTime: this.formatTimeRaw(p.startTime) + ':00',
               endTime: this.formatTimeRaw(p.endTime) + ':00',
               pricePerHour: Number(p.pricePerHour),
               dayOfWeek: p.dayOfWeek,
               label: p.label || ''
-            }, { headers });
+            });
           }
           successCount++;
         } catch (e) {
@@ -420,10 +415,7 @@ export default {
     async loadPricing() {
       if (!this.selectedCourtId) return;
       try {
-        const token = localStorage.getItem('token');
-        const res = await axios.get(`/api/owner/courts/${this.selectedCourtId}/pricing`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await api.get(`/owner/courts/${this.selectedCourtId}/pricing`);
         const data = res.data?.data || {};
         this.regularPricings = data.regularPricings || [];
         this.specialPricings = data.specialPricings || [];
@@ -517,7 +509,6 @@ export default {
 
       this.isSaving = true;
       try {
-        const token = localStorage.getItem('token');
         const isSpecial = this.modalType === 'special';
         
         const payload = {
@@ -537,9 +528,7 @@ export default {
         }
 
         const method = isSpecial ? 'put' : 'post';
-        await axios[method](`/api/owner/courts/${this.selectedCourtId}/pricing`, payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await api[method](`/owner/courts/${this.selectedCourtId}/pricing`, payload);
 
         this.showModal = false;
         this.loadPricing();
@@ -566,10 +555,7 @@ export default {
       
       this.isDeleting = true;
       try {
-        const token = localStorage.getItem('token');
-        await axios.delete(`/api/owner/courts/${this.selectedCourtId}/pricing?type=${type}&id=${id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await api.delete(`/owner/courts/${this.selectedCourtId}/pricing?type=${type}&id=${id}`);
         
         this.confirmDelete.show = false;
         this.loadPricing();

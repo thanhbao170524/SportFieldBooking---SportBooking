@@ -114,7 +114,7 @@
 </template>
 
 <script>
-import axios from 'axios';
+import api from '@/api/axios';
 
 export default {
   name: 'OwnerOnboardingView',
@@ -164,9 +164,8 @@ export default {
       if (!this.validateStep()) return;
       this.isSubmitting = true;
       try {
-        const token = localStorage.getItem('token');
-        const res = await axios.post(
-          '/api/owner/onboarding',
+        const res = await api.post(
+          '/owner/onboarding',
           {
             idCardNumber: this.form.idNumber,
             idCardFrontUrl: this.form.idCardFrontUrl || null,
@@ -175,8 +174,7 @@ export default {
             bankName: this.form.bankName,
             bankAccountNumber: this.form.bankAccountNumber,
             bankAccountName: this.form.bankAccountName,
-          },
-          { headers: { Authorization: `Bearer ${token}` } }
+          }
         );
 
         // Cập nhật thông tin user trong localStorage với isVerified mới = true
