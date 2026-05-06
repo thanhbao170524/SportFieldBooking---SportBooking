@@ -1055,6 +1055,8 @@ export default {
 .s-wrap input{flex:1;border:none;background:transparent;font-family:inherit;font-size:15px;color:#1e293b;}
 .sport-sel{flex:1;min-width:180px;}
 .sport-sel select{flex:1;border:none;background:transparent;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;}
+.status-sel{flex:1;min-width:180px;}
+.status-sel select{flex:1;border:none;background:transparent;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;}
 
 .f-item:focus-within{background:#fff;box-shadow:inset 0 0 0 2px #10b981;}
 

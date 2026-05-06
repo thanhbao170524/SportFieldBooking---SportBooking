@@ -3,7 +3,6 @@
     <div class="view-header">
       <div class="header-info">
         <h1 class="view-title">Quản lý thanh toán</h1>
-        <p class="view-subtitle">Cấu hình chuyển khoản hiển thị cho khách và bật/tắt thanh toán thẻ Stripe.</p>
       </div>
       <div class="header-actions">
         <button class="btn-outline" @click="refreshAll" :disabled="saving">
@@ -46,20 +45,15 @@
     <div v-if="activeTab === 'config'" class="tab-pane fade-in">
       <div class="pane-header">
         <h3>Phương thức thanh toán</h3>
-        <p>Phần này điều khiển những gì khách hàng nhìn thấy trên trang Checkout.</p>
       </div>
 
       <div class="config-grid">
         <div class="card config-card">
           <div class="card-top">
             <div class="card-top-left">
-              <h4 class="payment-section-title">
+              <h5 class="payment-section-title">
                 <span class="material-icons">credit_card</span> Thẻ quốc tế (Stripe)
-              </h4>
-              <p class="transfer-intro">
-                Kết nối Stripe để <strong>nhận tiền thẻ</strong> trực tiếp từ khách hàng.
-                <span class="muted">Hệ thống sẽ mở trang Stripe để bạn hoàn tất xác minh và thiết lập nhận tiền.</span>
-              </p>
+              </h5>
             </div>
             <div class="card-top-right">
               <span class="status-pill" :class="stripeEnabled ? 'ok' : 'off'">
@@ -88,7 +82,7 @@
                 </span>
               </div>
               <div v-else class="muted">
-                Bạn có thể bật sau — khi chưa kết nối, phương thức thẻ sẽ không hiển thị ở Checkout.
+                Chưa kết nối thì thanh toán thẻ sẽ không hiển thị ở Checkout.
               </div>
             </div>
           </div>
@@ -99,7 +93,6 @@
               <div class="form-group full-width">
                 <label>Connected Account ID (thủ công)</label>
                 <input type="text" v-model="stripeConnectAccountId" placeholder="acct_..." />
-                <span class="hint">Chỉ dùng cho dev/test. Dạng <code>acct_...</code> (Stripe Connect).</span>
                 <span v-if="stripeConnectAccountId && !String(stripeConnectAccountId).trim().startsWith('acct_')" class="error-text">
                   ID không hợp lệ. Ví dụ đúng: <code>acct_123...</code>
                 </span>
@@ -111,13 +104,10 @@
         <div class="card config-card">
           <div class="card-top">
             <div class="card-top-left">
-              <h4 class="payment-section-title">
-                <span class="material-icons">payments</span> Chuyển khoản hiển thị cho khách
-              </h4>
-              <p class="transfer-intro">
-                Thiết lập thông tin chuyển khoản để khách có thể <strong>tự chuyển tiền</strong> và tải lên minh chứng (nếu bạn sử dụng hình thức này).
-                <span class="muted">Gợi ý: điền đủ ngân hàng, số tài khoản và chủ tài khoản để hiển thị đầy đủ trên Checkout.</span>
-              </p>
+              <h5 class="payment-section-title">
+                <span class="material-icons">payments</span>
+                Thiết lập ngân hàng / số tài khoản / chủ tài khoản cho Checkout.
+              </h5>
             </div>
             <div class="card-top-right">
               <span class="muted">{{ ownerClubs.length }} CLB</span>
@@ -144,9 +134,7 @@
                 <input type="checkbox" v-model="applyTransferToAllClubs" />
                 <span>Áp dụng thông tin CK này cho <strong>tất cả</strong> câu lạc bộ khi lưu</span>
               </label>
-              <p v-if="applyTransferToAllClubs" class="transfer-hint">
-                Mọi CLB sẽ dùng chung ngân hàng, STK, chủ TK và ảnh QR như ô bên dưới (ghi đè cấu hình hiện có).
-              </p>
+          <p v-if="applyTransferToAllClubs" class="transfer-hint">Sẽ ghi đè cấu hình chuyển khoản của các CLB khác.</p>
             </div>
 
             <div class="form-grid">
@@ -210,7 +198,7 @@
     <div v-else class="tab-pane fade-in card">
       <div class="pane-header">
         <h3>Danh sách thanh toán</h3>
-        <p>Lọc theo phương thức, trạng thái và khoảng thời gian.</p>
+        <p>Lọc theo phương thức, trạng thái và thời gian.</p>
       </div>
 
       <div class="summary-row">
@@ -245,8 +233,6 @@
           <select v-model="filters.method">
             <option value="">Tất cả</option>
             <option value="CREDIT_CARD">Thẻ (Stripe)</option>
-            <option value="VNPAY">VNPay</option>
-            <option value="MOMO">MoMo</option>
             <option value="BANK_TRANSFER">Chuyển khoản</option>
             <option value="CASH">Tiền mặt</option>
           </select>
@@ -770,10 +756,14 @@ code { background: #f1f5f9; padding: 2px 6px; border-radius: 8px; }
 .filter { display: flex; flex-direction: column; gap: 6px; min-width: 160px; }
 .filter.grow { flex: 1; min-width: 260px; }
 .filter.actions { flex-direction: row; align-items: flex-end; gap: 10px; }
+
+/* Payments list: force light theme (avoid global dark overrides) */
+.tab-pane.card { background: #fff !important; color: #0f172a !important; }
 .table-wrap { margin-top: 14px; overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 14px; }
-.pay-table { width: 100%; border-collapse: collapse; background: #fff; }
-.pay-table th, .pay-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+.pay-table { width: 100%; border-collapse: collapse; background: #fff !important; color: #0f172a !important; }
+.pay-table th, .pay-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; color: #0f172a !important; }
 .pay-table th { background: #f8fafc; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; }
+.pay-table tbody tr:hover { background: #f8fafc; }
 .right { text-align: right; }
 .strong { font-weight: 900; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 12px; }

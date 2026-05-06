@@ -192,6 +192,7 @@
                     <th>Khách hàng</th>
                     <th>Sân</th>
                     <th>Thời gian</th>
+                    <th>Đặt lúc</th>
                     <th>Tổng tiền</th>
                     <th>Trạng thái</th>
                     <th class="text-end">Hành động</th>
@@ -214,6 +215,11 @@
                       <div class="time-cell-p">
                         <p class="t-main-p">{{ booking.startTime }} - {{ booking.endTime }}</p>
                         <p class="t-sub-p">{{ booking.date }}</p>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="time-cell-p">
+                        <p class="t-main-p">{{ formatDateTime(booking.placedAt) }}</p>
                       </div>
                     </td>
                     <td><span class="amount-p">{{ formatCurrency(booking.amount) }}</span></td>
@@ -246,137 +252,13 @@
       </div>
     </div>
 
-    <!-- DETAIL MODAL -->
-    <transition name="modal-fade">
-      <div v-if="detailBooking" class="modal-overlay-p" @click.self="detailBooking = null">
-        <div class="modal-card-p wide">
-          <div class="modal-card__header-p">
-            <div class="d-flex align-items-center gap-3">
-              <div class="modal-icon-p"><span class="material-icons">receipt_long</span></div>
-              <div>
-                <h2 class="modal-title-p">Chi tiết Đơn hàng</h2>
-                <span class="modal-booking-code">Mã đơn: #{{ detailBooking.id }} ({{ detailBooking.bookingCode }})</span>
-              </div>
-            </div>
-            <button class="modal-close-btn-p" @click="detailBooking = null">
-              <span class="material-icons">close</span>
-            </button>
-          </div>
-          
-          <div class="modal-card__body-p">
-            <div class="row g-4">
-              <!-- Left: Info -->
-              <div class="col-md-7">
-                <div class="detail-section-p">
-                  <h4 class="section-title-p">Thông tin khách hàng</h4>
-                  <div class="customer-info-card mb-4">
-                    <div class="d-flex align-items-center gap-3">
-                      <div class="u-avatar-large">{{ (detailBooking.bookerName || 'K').charAt(0) }}</div>
-                      <div>
-                        <div class="cust-name">{{ detailBooking.bookerName || detailBooking.user?.fullName || 'Khách vãng lai' }}</div>
-                        <div class="cust-meta">
-                          <span class="material-icons">phone</span> {{ detailBooking.bookerPhone || detailBooking.user?.phone || 'N/A' }}
-                        </div>
-                        <div class="cust-meta">
-                          <span class="material-icons">email</span> {{ detailBooking.bookerEmail || detailBooking.user?.email || 'N/A' }}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <h4 class="section-title-p">Sân & Thời gian</h4>
-                  <div class="venue-detail-card-p mb-4">
-                    <div v-for="item in detailBooking.items" :key="item.id" class="slot-item-p">
-                      <div class="slot-info">
-                        <span class="court-name-modal">{{ item.timeSlot.court.name }}</span>
-                        <span class="slot-time-modal">{{ formatSlotTime(item.timeSlot) }}</span>
-                      </div>
-                      <div class="slot-price-modal">{{ formatCurrency(item.price) }}</div>
-                    </div>
-                  </div>
-
-                  <div v-if="detailBooking.note" class="note-section-p">
-                    <h4 class="section-title-p">Ghi chú</h4>
-                    <div class="note-box-p">{{ detailBooking.note }}</div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Right: Payment -->
-              <div class="col-md-5">
-                <div class="detail-section-p">
-                  <h4 class="section-title-p">Thanh toán & Trạng thái</h4>
-                  <div class="booking-status-card mb-4">
-                     <div class="status-row">
-                       <span class="label">Trạng thái đơn:</span>
-                       <span :class="['status-pill-p', detailBooking.status.toLowerCase()]">{{ getStatusLabel(detailBooking.status) }}</span>
-                     </div>
-                     <div class="status-row mt-3">
-                       <span class="label">Hình thức:</span>
-                       <span class="value">{{ payLabel(detailBooking.payment?.method) }}</span>
-                     </div>
-                  </div>
-
-                  <div class="payment-summary-card-p">
-                    <div class="summary-line-p">
-                      <span>Tạm tính</span>
-                      <span>{{ formatCurrency(detailBooking.totalAmount) }}</span>
-                    </div>
-                    <div v-if="detailBooking.discountAmount > 0" class="summary-line-p discount">
-                      <span>Giảm giá</span>
-                      <span>-{{ formatCurrency(detailBooking.discountAmount) }}</span>
-                    </div>
-                    <div class="summary-line-p total mt-3 pt-3">
-                      <span>Tổng cộng</span>
-                      <span class="total-val">{{ formatCurrency(detailBooking.finalAmount) }}</span>
-                    </div>
-                  </div>
-
-                  <!-- Payment Proof mapping if exists -->
-                  <div v-if="detailBooking.payment?.proofImageUrl" class="proof-section mt-4">
-                    <h4 class="section-title-p">Minh chứng thanh toán</h4>
-                    <div class="proof-card-p" @click="openImage(detailBooking.payment.proofImageUrl)">
-                      <img :src="detailBooking.payment.proofImageUrl" alt="Proof" />
-                      <div class="proof-overlay-p">
-                        <span class="material-icons">zoom_in</span>
-                        <span>Xem ảnh lớn</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div class="modal-card__footer-p">
-            <div class="d-flex gap-2">
-              <button 
-                v-if="detailBooking.status === 'PENDING' || detailBooking.status === 'WAITING_PAYMENT'" 
-                class="btn-premium btn-premium--emerald shadow-emerald flex-grow-1"
-                @click="handleConfirmPayment(detailBooking.id)"
-              >
-                Xác nhận đã nhận tiền
-              </button>
-              <button 
-                v-if="detailBooking.status === 'CONFIRMED'" 
-                class="btn-premium btn-premium--dark flex-grow-1"
-                @click="handleCompleteBooking(detailBooking.id)"
-              >
-                Đánh dấu đã hoàn thành
-              </button>
-              <button 
-                v-if="['PENDING', 'WAITING_PAYMENT', 'CONFIRMED'].includes(detailBooking.status)" 
-                class="btn-premium btn-premium--light text-danger"
-                @click="handleCancelBooking(detailBooking.id)"
-              >
-                Hủy đơn
-              </button>
-              <button class="btn-premium btn-premium--light" @click="detailBooking = null">Đóng</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </transition>
+    <BookingDetailModal
+      :booking="detailBooking"
+      @close="detailBooking = null"
+      @confirm-payment="handleConfirmPayment"
+      @complete="handleCompleteBooking"
+      @cancel="handleCancelBooking"
+    />
 
     <!-- MANUAL BOOKING MODAL -->
     <ManualBookingModal 
@@ -398,12 +280,14 @@ import { formatYmdVietnam } from '@/utils/dateInput';
 import { bookingService } from '@/services/booking.service';
 import { dashboardService } from '@/services/dashboard.service';
 import ManualBookingModal from './components/ManualBookingModal.vue';
+import BookingDetailModal from '@/components/owner/bookings/BookingDetailModal.vue';
 import { toast } from 'vue3-toastify';
 
 export default {
   name: 'OwnerBookingsView',
   components: {
-    ManualBookingModal
+    ManualBookingModal,
+    BookingDetailModal,
   },
   data() {
     return {
@@ -631,6 +515,7 @@ export default {
                 startTime: formatTime(start),
                 endTime: formatTime(end),
                 date: start.toLocaleDateString('vi-VN'),
+                placedAt: booking.createdAt || booking.updatedAt || null,
                 amount: Number(item.price),
                 status: booking.status,
                 originalBooking: booking
@@ -697,6 +582,18 @@ export default {
       const start = new Date(slot.startTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
       const end = new Date(slot.endTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
       return `${start} – ${end}`;
+    },
+    formatDateTime(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return '—';
+      return d.toLocaleString('vi-VN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
     },
     prevDay() {
       const d = new Date(this.currentDate);
@@ -968,13 +865,14 @@ export default {
 .b-time-p { font-size: 10px; font-weight: 600; margin: 1px 0 0 0; opacity: 0.8; }
 
 /* ── LIST VIEW ── */
-.list-card-p { background: white; border-radius: 28px; border: 1px solid #edf2f7; padding: 24px; }
-.premium-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.list-card-p { background: #fff !important; color: #0f172a !important; border-radius: 28px; border: 1px solid #edf2f7; padding: 24px; }
+.premium-table { width: 100%; border-collapse: separate; border-spacing: 0; background: #fff !important; color: #0f172a !important; }
 .premium-table th {
   padding: 12px 16px; font-size: 10px; font-weight: 800; text-transform: uppercase; color: #94a3b8;
   letter-spacing: .05em; border-bottom: 2px solid #f1f5f9;
 }
-.premium-table td { padding: 16px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+.premium-table td { padding: 16px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; color: #0f172a !important; }
+.premium-table tbody tr:hover { background: #f8fafc; }
 .order-id-p { font-family: monospace; font-weight: 700; color: #94a3b8; font-size: 12px; }
 .user-cell-p { display: flex; align-items: center; gap: 12px; }
 .u-avatar-p { width: 32px; height: 32px; border-radius: 10px; background: #f1f5f9; color: #10b981; display: flex; align-items: center; justify-content: center; font-weight: 800; }

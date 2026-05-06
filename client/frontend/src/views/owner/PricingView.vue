@@ -10,7 +10,7 @@
         <select v-model="selectedCourtId" @change="loadPricing" class="court-select">
           <option value="" disabled>-- Lựa chọn sân --</option>
           <option v-for="c in courts" :key="c.id" :value="c.id">
-            {{ c.pricingCount === 0 ? '⚠️ ' : '✅ ' }}{{ c.name }} ({{ c.clubName }})
+            {{ c.pricingCount === 0 ? '⚠️ ' : '' }}{{ c.name }} ({{ c.clubName }})
           </option>
         </select>
         <span v-if="selectedCourt && selectedCourt.pricingCount === 0" class="no-pricing-tag">
