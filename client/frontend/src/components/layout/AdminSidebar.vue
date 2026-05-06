@@ -52,9 +52,6 @@
       <router-link to="/admin/posts" class="nav-item" active-class="active">
         <span class="nav-icon"><FileText :size="16" /></span> Bài đăng
       </router-link>
-      <router-link to="/admin/news" class="nav-item" active-class="active">
-        <span class="nav-icon"><Newspaper :size="16" /></span> Bảng tin
-      </router-link>
       <router-link to="/admin/community" class="nav-item" active-class="active">
         <span class="nav-icon"><MessageSquare :size="16" /></span> Cộng đồng
       </router-link>

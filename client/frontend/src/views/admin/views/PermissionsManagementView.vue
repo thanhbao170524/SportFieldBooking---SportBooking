@@ -16,6 +16,9 @@
       </div>
     </div>
 
+    <div v-if="loading" class="loading-hint">Đang tải cấu hình phân quyền...</div>
+    <div v-else-if="lastSavedAt" class="saved-hint">Lần lưu gần nhất: {{ new Date(lastSavedAt).toLocaleString('vi-VN') }}</div>
+
     <div class="permissions-layout mt-6">
       <!-- Role Sidebar -->
       <div class="role-sidebar">
@@ -70,11 +73,12 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { 
   Key, Save, Shield, Users, Home, CircleDollarSign, 
   FileText, Settings, ShieldCheck, Lock
 } from 'lucide-vue-next';
+import { adminService } from '@/services/admin.service';
 
 export default {
   name: 'PermissionsManagementView',
@@ -82,6 +86,8 @@ export default {
   setup() {
     const isDirty = ref(false);
     const selectedRole = ref('ADMIN');
+    const loading = ref(false);
+    const lastSavedAt = ref(null);
 
     const roles = [
       { id: 'ADMIN', name: 'Admin', desc: 'Quyền quản trị tối cao' },
@@ -114,7 +120,8 @@ export default {
         icon: 'CircleDollarSign',
         permissions: [
           { id: 'view_finance', title: 'Xem doanh thu', desc: 'Truy cập các báo cáo tài chính hệ thống' },
-          { id: 'export_reports', title: 'Xuất dữ liệu', desc: 'Tải các tệp Excel báo cáo về máy' }
+          { id: 'view_stats', title: 'Xem thống kê', desc: 'Truy cập dashboard thống kê hệ thống' },
+          { id: 'export_reports', title: 'Xuất dữ liệu', desc: 'Tải PDF/Excel theo bộ lọc' }
         ]
       },
       {
@@ -123,6 +130,14 @@ export default {
         permissions: [
           { id: 'manage_settings', title: 'Cấu hình hệ thống', desc: 'Thay đổi các tham số kỹ thuật toàn cục' },
           { id: 'manage_perms', title: 'Quản lý phân quyền', desc: 'Thay đổi quyền hạn các vai trò khác' }
+        ]
+      },
+      {
+        name: 'Quản lý nội dung',
+        icon: 'FileText',
+        permissions: [
+          { id: 'moderate_posts', title: 'Kiểm duyệt bài đăng', desc: 'Duyệt/Từ chối/Ẩn bài đăng của chủ sân' },
+          { id: 'moderate_comments', title: 'Kiểm duyệt bình luận', desc: 'Ẩn/Xóa bình luận và xử lý report' }
         ]
       }
     ];
@@ -139,14 +154,58 @@ export default {
       return roles.find(r => r.id === selectedRole.value)?.name;
     });
 
-    const handleSaveChanges = () => {
-      alert("Đã lưu các thiết lập phân quyền mới cho hệ thống.");
-      isDirty.value = false;
+    const ensureMatrixShape = (matrix) => {
+      // đảm bảo đủ role keys + đủ permission keys để UI không lỗi v-model
+      const permIds = permissionCategories.flatMap((c) => c.permissions.map((p) => p.id));
+      const next = {};
+      for (const r of roles) {
+        const src = matrix?.[r.id] || {};
+        next[r.id] = {};
+        for (const pid of permIds) next[r.id][pid] = !!src[pid];
+      }
+      // không cho khóa quyền quản lý phân quyền của ADMIN
+      next.ADMIN.manage_perms = true;
+      return next;
     };
+
+    const loadConfig = async () => {
+      loading.value = true;
+      try {
+        const res = await adminService.getPermissionsConfig();
+        const matrix = res.data?.data?.matrix;
+        rolePermissions.value = ensureMatrixShape(matrix);
+        lastSavedAt.value = res.data?.data?.updatedAt || null;
+        isDirty.value = false;
+      } catch (e) {
+        console.error(e);
+        alert(e?.response?.data?.message || 'Không tải được cấu hình phân quyền.');
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const handleSaveChanges = async () => {
+      loading.value = true;
+      try {
+        const payload = ensureMatrixShape(rolePermissions.value);
+        const res = await adminService.savePermissionsConfig(payload);
+        lastSavedAt.value = res.data?.data?.updatedAt || null;
+        rolePermissions.value = ensureMatrixShape(res.data?.data?.matrix);
+        isDirty.value = false;
+        alert('✅ Đã lưu phân quyền.');
+      } catch (e) {
+        alert(e?.response?.data?.message || 'Không lưu được phân quyền.');
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    onMounted(loadConfig);
 
     return { 
       isDirty, selectedRole, roles, permissionCategories, 
-      rolePermissions, currentRoleName, handleSaveChanges 
+      rolePermissions, currentRoleName, handleSaveChanges,
+      loading, lastSavedAt
     };
   }
 }
@@ -155,6 +214,8 @@ export default {
 <style scoped>
 .page-header { margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-start; }
 .title-icon { color: var(--accent); }
+
+.loading-hint, .saved-hint { font-size: 12px; color: var(--text-muted); margin-top: -8px; margin-bottom: 10px; }
 
 .btn-save { display: flex; align-items: center; gap: 10px; background: var(--accent); color: white; border: none; border-radius: 8px; padding: 0 16px; height: 38px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.3); }
 .btn-save:hover { filter: brightness(1.1); transform: translateY(-1px); }

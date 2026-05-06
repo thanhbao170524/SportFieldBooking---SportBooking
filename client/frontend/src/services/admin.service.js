@@ -182,4 +182,16 @@ export const adminService = {
     getStatsDashboard(params = {}) {
         return api.get('/admin/stats/dashboard', { params });
     },
+
+    // ==========================================
+    // Phân quyền (RBAC) - Admin
+    // ==========================================
+
+    getPermissionsConfig() {
+        return api.get('/admin/permissions');
+    },
+
+    savePermissionsConfig(matrix) {
+        return api.patch('/admin/permissions', { matrix });
+    },
 };

@@ -112,7 +112,7 @@ export default {
       { label: 'Người dùng', iconComponent: Users, value: '...', change: '0%', trend: 'up', bg: 'var(--accent-soft)', color: 'var(--accent)' },
       { label: 'Cơ sở hoạt động', iconComponent: MapPin, value: '...', change: '0%', trend: 'up', bg: 'var(--green-soft)', color: 'var(--green)' },
       { label: 'Lượt đặt (Lọc)', iconComponent: Calendar, value: '0', change: '0%', trend: 'up', bg: 'var(--orange-soft)', color: 'var(--orange)' },
-      { label: 'Doanh thu (Lọc)', iconComponent: CircleDollarSign, value: '₫0', change: '0%', trend: 'up', bg: 'var(--purple-soft)', color: 'var(--purple)' }
+      { label: 'Doanh thu admin (Phí nền tảng)', iconComponent: CircleDollarSign, value: '₫0', change: '0%', trend: 'up', bg: 'var(--purple-soft)', color: 'var(--purple)' }
     ]);
 
     const courtTypeData = ref([
@@ -161,7 +161,8 @@ export default {
         dashboardStats.value[0].value = (summary.totalUsers || 0).toString();
         dashboardStats.value[1].value = (summary.activeClubs || 0).toString();
         dashboardStats.value[2].value = (summary.todayBookings || 0).toString(); 
-        dashboardStats.value[3].value = `₫${(summary.totalRevenue || 0).toLocaleString('vi-VN')}`;
+        const commission = summary.platformCommission ?? Math.round((summary.totalRevenue || 0) * 0.1);
+        dashboardStats.value[3].value = `₫${Number(commission || 0).toLocaleString('vi-VN')}`;
 
         // Cập nhật dữ liệu biểu đồ (Charts)
         if (summary.monthlyStats && summary.monthlyStats.length > 0) {

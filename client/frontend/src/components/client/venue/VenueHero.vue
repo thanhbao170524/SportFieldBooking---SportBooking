@@ -9,7 +9,11 @@
           Quay lại danh sách
         </button>
       </div>
-      <span class="badge bg-success mb-2 shadow-sm">⚽ Bóng đá</span>
+      <div class="d-flex flex-wrap gap-2 mb-2">
+        <span v-for="type in uniqueSports" :key="type" class="badge bg-success shadow-sm d-flex align-items-center gap-1">
+          {{ getSportIcon(type) }} {{ translateSportType(type) }}
+        </span>
+      </div>
       <h1 class="fw-black text-white fs-2 mb-2">{{ venue.name }}</h1>
       <p class="text-white opacity-75 d-flex align-items-center gap-2 mb-3">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -38,12 +42,55 @@ export default {
     }
   },
   computed: {
+    uniqueSports() {
+      if (!this.venue.courts) return [];
+      const types = this.venue.courts.map(c => c.sportType);
+      return [...new Set(types)];
+    },
     statItems() {
+      const rating = Number(this.venue.rating || 0).toFixed(1);
+      const reviews = this.venue.reviewCount || 0;
+      
+      // Lấy giờ mở cửa từ ngày đầu tiên hoặc mặc định
+      let openHour = '05:00';
+      if (this.venue.openingHours && this.venue.openingHours.length > 0) {
+        const h = this.venue.openingHours[0];
+        if (!h.isClosed) {
+           openHour = h.open;
+        }
+      }
+
       return [
         { v: this.venue.courts?.length || 0, l: 'Sân' },
-        { v: '5.0 ★', l: 'Đánh giá' },
-        { v: '05:00', l: 'Mở cửa' }
+        { v: `${rating} ★`, l: `${reviews} đánh giá` },
+        { v: openHour, l: 'Mở cửa' }
       ]
+    }
+  },
+  methods: {
+    translateSportType(type) {
+      const labels = {
+        FOOTBALL: 'Bóng đá',
+        BADMINTON: 'Cầu lông',
+        TENNIS: 'Tennis',
+        PICKLEBALL: 'Pickleball',
+        BASKETBALL: 'Bóng rổ',
+        VOLLEYBALL: 'Bóng chuyền',
+        OTHER: 'Khác'
+      };
+      return labels[type?.toUpperCase()] || type;
+    },
+    getSportIcon(type) {
+      const icons = {
+        FOOTBALL: '⚽',
+        BADMINTON: '🏸',
+        TENNIS: '🎾',
+        PICKLEBALL: '🏓',
+        BASKETBALL: '🏀',
+        VOLLEYBALL: '🏐',
+        OTHER: '🏟️'
+      };
+      return icons[type?.toUpperCase()] || '🏟️';
     }
   }
 }
