@@ -116,10 +116,10 @@
                <button class="btn-icon-p" @click="refreshData" :disabled="isLoading" title="Tải lại">
                   <span class="material-icons" :class="{ 'spin': isLoading }">refresh</span>
                </button>
-               <button class="btn-premium btn-premium--emerald shadow-emerald">
-                 <span class="material-icons">add_circle</span>
-                 <span>Đặt sân hộ</span>
-               </button>
+                <button class="btn-premium btn-premium--emerald shadow-emerald" @click="showManualBooking = true">
+                  <span class="material-icons">add_circle</span>
+                  <span>Đặt sân hộ</span>
+                </button>
             </div>
           </div>
         </div>
@@ -152,14 +152,14 @@
                     </div>
                     
                     <div class="slots-container-p">
-                      <div v-for="h in timeSlots" :key="h" class="slot-cell-p">
+                      <div v-for="h in timeSlots" :key="h" class="slot-cell-p" @click="handleSlotClick(court.id, h)">
                         <!-- Booking Entry (1 ô = 1 giờ; nhiều slot 30p liên tiếp gộp 1 khối) -->
                         <div 
                           v-if="getBookingForSlot(court.id, h)" 
                           class="booking-item-p" 
                           :class="getBookingForSlot(court.id, h).status"
                           :style="bookingCalendarBlockStyle(getBookingForSlot(court.id, h))"
-                          @click="openDetail(getBookingForSlot(court.id, h).originalBooking)"
+                          @click.stop="openDetail(getBookingForSlot(court.id, h).originalBooking)"
                         >
                           <div class="booking-inner-p">
                             <p class="b-name-p">{{ getBookingForSlot(court.id, h).customerName }}</p>
@@ -378,6 +378,18 @@
       </div>
     </transition>
 
+    <!-- MANUAL BOOKING MODAL -->
+    <ManualBookingModal 
+      :show="showManualBooking" 
+      :club-id="selectedClubId"
+      :courts="currentClubCourts"
+      :selected-date="currentDate"
+      :slot-duration="currentClubSlotDuration"
+      :prefill="prefillSlot"
+      @close="closeManualModal"
+      @success="refreshData"
+    />
+
   </div>
 </template>
 
@@ -385,10 +397,14 @@
 import { formatYmdVietnam } from '@/utils/dateInput';
 import { bookingService } from '@/services/booking.service';
 import { dashboardService } from '@/services/dashboard.service';
+import ManualBookingModal from './components/ManualBookingModal.vue';
 import { toast } from 'vue3-toastify';
 
 export default {
   name: 'OwnerBookingsView',
+  components: {
+    ManualBookingModal
+  },
   data() {
     return {
       currentView: 'calendar',
@@ -401,6 +417,8 @@ export default {
       fullBookingData: [], // Original structure from BE
       isLoading: false,
       detailBooking: null,
+      showManualBooking: false,
+      prefillSlot: null,
     }
   },
   computed: {
@@ -415,6 +433,10 @@ export default {
     currentClubCourts() {
       const club = this.clubs.find(c => c.id === this.selectedClubId);
       return club ? club.courts : [];
+    },
+    currentClubSlotDuration() {
+      const club = this.clubs.find(c => c.id === this.selectedClubId);
+      return club ? club.slotDuration : 60;
     },
     /** Lịch dạng bảng: mỗi hàng = đúng 1 giờ (không chia theo slotDuration 30p). */
     timeSlots() {
@@ -689,6 +711,15 @@ export default {
     refreshData() {
       this.fetchBookings();
     },
+    handleSlotClick(courtId, time) {
+      if (this.getBookingForSlot(courtId, time)) return;
+      this.showManualBooking = true;
+      // Trả về courtId và time để modal pre-fill
+      this.$nextTick(() => {
+        // Chúng ta cần truyền ref hoặc data cho modal qua props hoặc emit
+        this.prefillSlot = { courtId, time };
+      });
+    },
     openDetail(booking) {
       this.detailBooking = booking;
     },
@@ -734,6 +765,10 @@ export default {
       } catch (error) {
         toast.error("Cập nhật thất bại");
       }
+    },
+    closeManualModal() {
+      this.showManualBooking = false;
+      this.prefillSlot = null;
     },
     openImage(url) { window.open(url, '_blank'); }
   }
@@ -903,6 +938,11 @@ export default {
   position: relative;
   padding: 4px;
   overflow: visible;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.slot-cell-p:hover {
+  background-color: #f0fdf4;
 }
 .booking-item-p {
   position: absolute;
