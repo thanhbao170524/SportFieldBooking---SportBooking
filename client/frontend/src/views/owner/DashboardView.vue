@@ -32,6 +32,7 @@
       :new-booking-id="newBookingId"
       @date-change="onCalendarDateChange"
       @cell-click="onCalendarCellClick"
+      @block-click="openBookingDetail"
     />
 
     <div class="content-row">
@@ -68,6 +69,14 @@
       @submit="submitOfflineBooking"
     />
 
+    <BookingDetailModal
+      :booking="detailBooking"
+      @close="detailBooking = null"
+      @confirm-payment="confirmPaymentById"
+      @complete="completeBookingById"
+      @cancel="cancelBookingById"
+    />
+
   </div>
 </template>
 
@@ -83,6 +92,7 @@ import { clubService }    from '@/services/club.service';
 import { courtService }   from '@/services/court.service';
 import { bookingService } from '@/services/booking.service';
 import { toast }          from 'vue3-toastify';
+import BookingDetailModal from '@/components/owner/bookings/BookingDetailModal.vue';
 
 export default {
   name: 'OwnerDashboardView',
@@ -93,6 +103,7 @@ export default {
     CourtStatus,
     VisualCalendar,
     OfflineBookingModal,
+    BookingDetailModal,
   },
   data() {
     return {
@@ -115,6 +126,7 @@ export default {
       recentBookings: [],
       courts:         [],
       showOfflineModal: false,
+      detailBooking: null,
     };
   },
 
@@ -295,6 +307,63 @@ export default {
           this.$refs.offlineModal.form.date      = this.calendarDate;
         }
       });
+    },
+
+    openBookingDetail(booking) {
+      // booking is the original Booking object from API (same shape used in BookingsView modal)
+      if (!booking) return;
+      this.detailBooking = booking;
+    },
+
+    async confirmPaymentById(bookingId) {
+      if (!bookingId) return;
+      if (!confirm("Bạn có chắc chắn muốn xác nhận thanh toán?")) return;
+      try {
+        const res = await bookingService.confirmPayment(bookingId);
+        if (res?.success === false) {
+          toast.error(res?.message || "Xác nhận thanh toán thất bại");
+          return;
+        }
+        toast.success("Xác nhận thanh toán thành công");
+        this.detailBooking = null;
+        await this.refreshAllData();
+      } catch (e) {
+        toast.error(e?.response?.data?.message || "Xác nhận thanh toán thất bại");
+      }
+    },
+
+    async completeBookingById(bookingId) {
+      if (!bookingId) return;
+      if (!confirm("Khách đã chơi xong chưa?")) return;
+      try {
+        const res = await bookingService.updateStatus(bookingId, 'COMPLETED');
+        if (res?.success === false) {
+          toast.error(res?.message || "Cập nhật thất bại");
+          return;
+        }
+        toast.success("Đã hoàn thành lượt chơi");
+        this.detailBooking = null;
+        await this.refreshAllData();
+      } catch (e) {
+        toast.error(e?.response?.data?.message || "Cập nhật thất bại");
+      }
+    },
+
+    async cancelBookingById(bookingId) {
+      if (!bookingId) return;
+      if (!confirm("Bạn có chắc chắn muốn hủy đặt sân?")) return;
+      try {
+        const res = await bookingService.updateStatus(bookingId, 'CANCELLED');
+        if (res?.success === false) {
+          toast.error(res?.message || "Hủy đặt sân thất bại");
+          return;
+        }
+        toast.success("Hủy đặt sân thành công");
+        this.detailBooking = null;
+        await this.refreshAllData();
+      } catch (e) {
+        toast.error(e?.response?.data?.message || "Hủy đặt sân thất bại");
+      }
     },
 
     // ─────────────────────────────────────────────────────

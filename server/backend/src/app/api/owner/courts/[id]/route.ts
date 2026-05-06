@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { getAuthUser, requireRole } from "@/middleware/auth.middleware";
 import { updateCourt, deleteCourt } from "@/modules/club/court.service";
-import { successResponse, serverErrorResponse } from "@/lib/response";
+import { successResponse, errorResponse, serverErrorResponse } from "@/lib/response";
+import { updateCourtSchema } from "@/validations/court.schema";
 
 /**
  * PUT /api/owner/courts/[id]
@@ -17,7 +18,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (roleError) return roleError;
 
     const body = await req.json();
-    const court = await updateCourt(id, user.userId, body);
+    const parsed = updateCourtSchema.safeParse(body);
+    if (!parsed.success) {
+      return errorResponse(
+        "Dữ liệu sân không hợp lệ",
+        422,
+        parsed.error.flatten().fieldErrors as Record<string, string[]>
+      );
+    }
+
+    const court = await updateCourt(id, user.userId, parsed.data);
 
     return successResponse("Cập nhật thông tin sân thành công", court);
   } catch (error) {

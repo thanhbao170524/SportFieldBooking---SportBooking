@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/infra/db/prisma";
 import { getAuthUser, requireRole } from "@/middleware/auth.middleware";
 import { serverErrorResponse, successResponse } from "@/lib/response";
+import { FinanceService } from "@/modules/finance/finance.service";
 
 /**
  * GET /api/owner/finance
@@ -116,10 +117,10 @@ export async function GET(req: NextRequest) {
     });
     const avgRating = Number(ratingAgg._avg.rating || 0);
 
-    // Ví: tính dựa trên doanh thu trong kỳ (để khớp “theo kỳ”)
-    const grossWallet = totalRevenue;
-    const commission = Math.round(grossWallet * commissionRate);
-    const walletAvailable = Math.max(0, grossWallet - commission);
+    // Lấy dữ liệu Ví thực tế từ DB
+    const realWallet = await FinanceService.getOwnerWallet(user.userId);
+    const walletAvailable = Number(realWallet.balance);
+    const commissionRateFromProfile = 0.1; // Fallback or fetch from profile if needed
 
     // Need reconcile: bookings confirmed nhưng payment chưa confirmed (hoặc CASH)
     const needReconcile = bookingsInRange
@@ -179,20 +180,18 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // Recent transactions: map booking => tx
-    const recentTransactions = bookingsInRange.slice(0, 10).map((b) => {
-      const p = b.payment;
-      const dt = p?.confirmedAt || p?.paidAt || b.createdAt;
+    // Recent transactions: map real wallet transactions
+    const recentTransactions = realWallet.transactions.map((tx) => {
       return {
-        id: b.id,
-        orderId: b.bookingCode,
-        dateTime: dt,
-        type: "deposit",
-        typeLabel: "Thanh toán sân",
-        amount: Number(b.finalAmount || 0),
-        status: p?.status === "CONFIRMED" ? "success" : p?.status === "CANCELLED" ? "failed" : "pending",
-        statusLabel: p?.status === "CONFIRMED" ? "Thành công" : p?.status === "CANCELLED" ? "Thất bại" : "Đang xử lý",
-        method: p?.method || null
+        id: tx.id,
+        orderId: tx.bookingId || "N/A",
+        dateTime: tx.createdAt,
+        type: tx.type.toLowerCase(),
+        typeLabel: tx.type === "BOOKING_REVENUE" ? "Doanh thu" : tx.type === "COMMISSION_FEE" ? "Phí sàn" : tx.type === "WITHDRAWAL" ? "Rút tiền" : "Điều chỉnh",
+        amount: Number(tx.amount),
+        status: "success", // Wallet transactions are historical successes
+        statusLabel: "Thành công",
+        note: tx.note
       };
     });
 
@@ -239,8 +238,10 @@ export async function GET(req: NextRequest) {
         totalBookings,
         avgRating,
         walletAvailable,
+        totalEarned: Number(realWallet.totalEarned || 0),
+        totalWithdrawn: Number(realWallet.totalWithdrawn || 0),
         needReconcile,
-        commissionRate,
+        commissionRate: commissionRateFromProfile,
         period,
         start,
         end,

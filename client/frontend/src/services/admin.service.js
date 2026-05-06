@@ -194,4 +194,31 @@ export const adminService = {
     savePermissionsConfig(matrix) {
         return api.patch('/admin/permissions', { matrix });
     },
+
+    // ==========================================
+    // Quản lý Tài chính (Admin)
+    // ==========================================
+
+    /**
+     * Lấy danh sách toàn bộ thanh toán (payments) trong hệ thống
+     */
+    getAllPayments() {
+        return api.get('/admin/finance/payments');
+    },
+
+    /**
+     * Lấy danh sách yêu cầu rút tiền (payouts)
+     * @param {string} [status] - Lọc theo trạng thái PENDING, COMPLETED, etc.
+     */
+    getPayoutRequests(status) {
+        return api.get('/admin/finance/payouts', { params: { status } });
+    },
+
+    /**
+     * Xử lý yêu cầu rút tiền (Duyệt/Từ chối/Hoàn thành)
+     * @param {{ requestId: string, status: string, adminNote?: string }} payload 
+     */
+    processPayoutRequest(payload) {
+        return api.patch('/admin/finance/payouts', payload);
+    }
 };

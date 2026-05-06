@@ -12,7 +12,7 @@
     <meta itemprop="name"    :content="venue.name" />
     <meta itemprop="address" :content="venue.address" />
     <link itemprop="url"     :href="`/venue/${venue.slug || venue.id}`" />
-    <template v-if="venue.rating">
+    <template v-if="Number(venue.reviewCount || 0) > 0 && venue.rating">
       <span itemprop="aggregateRating" itemscope itemtype="https://schema.org/AggregateRating" class="sr-only">
         <meta itemprop="ratingValue"  :content="venue.rating" />
         <meta itemprop="reviewCount"  :content="venue.reviewCount" />
@@ -158,9 +158,13 @@
           <!-- Rating -->
           <span class="strip-item strip-item--rating">
             <svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="currentColor"/></svg>
-            {{ Number(venue.rating || 0).toFixed(1) }}
-            <small v-if="venue.reviewCount">({{ venue.reviewCount }})</small>
-            <small v-else>(0)</small>
+            <template v-if="Number(venue.reviewCount || 0) > 0">
+              {{ Number(venue.rating || 0).toFixed(1) }}
+              <small>({{ venue.reviewCount }})</small>
+            </template>
+            <template v-else>
+              Chưa có đánh giá
+            </template>
           </span>
         </div>
       </div>

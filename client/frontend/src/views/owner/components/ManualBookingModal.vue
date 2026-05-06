@@ -145,6 +145,9 @@
 import { bookingService } from '@/services/booking.service';
 import { toast } from 'vue3-toastify';
 
+const phoneVN = /^(0|\+84)[0-9]{9}$/;
+const timeHm = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
 export default {
   name: 'ManualBookingModal',
   props: {
@@ -219,11 +222,33 @@ export default {
     },
     addSlot() {
       if (!this.currentSlot.courtId || !this.currentSlot.time) return;
+      if (!this.selectedDate || isNaN(new Date(this.selectedDate).getTime())) {
+        toast.error("Ngày đặt sân không hợp lệ.");
+        return;
+      }
+      if (!timeHm.test(String(this.currentSlot.time))) {
+        toast.error("Giờ bắt đầu không hợp lệ (HH:mm).");
+        return;
+      }
+      const courtOk = Array.isArray(this.courts) && this.courts.some((c) => String(c.id) === String(this.currentSlot.courtId));
+      if (!courtOk) {
+        toast.error("Sân không hợp lệ.");
+        return;
+      }
       
       // Chuyển đổi time sang ISO date dựa trên selectedDate
       const [h, m] = this.currentSlot.time.split(':').map(Number);
       const startTime = new Date(this.selectedDate);
       startTime.setHours(h, m, 0, 0);
+
+      // Không cho đặt giờ trong quá khứ (chỉ khi ngày = hôm nay)
+      const now = new Date();
+      const todayYmd = now.toISOString().slice(0, 10);
+      const selYmd = new Date(this.selectedDate).toISOString().slice(0, 10);
+      if (selYmd === todayYmd && startTime.getTime() < now.getTime() - 60_000) {
+        toast.warning("Không thể chọn khung giờ trong quá khứ.");
+        return;
+      }
 
       // Kiểm tra trùng lặp trong list tạm
       const exists = this.form.slots.some(s => s.courtId === this.currentSlot.courtId && s.startTime === startTime.toISOString());
@@ -245,12 +270,56 @@ export default {
       this.form.slots.splice(idx, 1);
     },
     async submitManualBooking() {
-      if (this.form.slots.length === 0) return;
+      const name = String(this.form.bookerName || '').trim();
+      const phone = String(this.form.bookerPhone || '').trim();
+      const email = String(this.form.bookerEmail || '').trim();
+      const note = String(this.form.note || '');
+
+      if (!this.clubId) {
+        toast.error("Thiếu thông tin câu lạc bộ.");
+        return;
+      }
+      if (!name || name.length < 2) {
+        toast.error("Vui lòng nhập họ tên khách (tối thiểu 2 ký tự).");
+        return;
+      }
+      if (!phoneVN.test(phone)) {
+        toast.error("Số điện thoại không hợp lệ.");
+        return;
+      }
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        toast.error("Email không hợp lệ.");
+        return;
+      }
+      if (note && note.length > 500) {
+        toast.error("Ghi chú tối đa 500 ký tự.");
+        return;
+      }
+      if (!Array.isArray(this.form.slots) || this.form.slots.length === 0) {
+        toast.error("Vui lòng thêm ít nhất 1 khung giờ.");
+        return;
+      }
+
+      // Check duplicates by (courtId + startTime) just in case
+      const set = new Set();
+      for (const s of this.form.slots) {
+        const key = `${s.courtId}|${s.startTime}`;
+        if (set.has(key)) {
+          toast.error("Danh sách khung giờ bị trùng lặp.");
+          return;
+        }
+        set.add(key);
+      }
       
       this.isSubmitting = true;
       try {
         const payload = {
           ...this.form,
+          clubId: this.clubId,
+          bookerName: name,
+          bookerPhone: phone,
+          bookerEmail: email || null,
+          note: note || null,
           // Chỉ gửi data backend cần
           slots: this.form.slots.map(s => ({ courtId: s.courtId, startTime: s.startTime }))
         };

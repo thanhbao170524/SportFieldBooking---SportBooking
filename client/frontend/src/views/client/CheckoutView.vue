@@ -49,7 +49,7 @@
             <div :class="['chk-success__anim', { 'chk-success__anim--confirmed': paymentConfirmed }]">
               <div class="chk-success__ring"></div>
               <div class="chk-success__icon">
-                <svg v-if="paymentConfirmed || !['bank', 'momo'].includes(payMethod)" width="40" height="40"
+                <svg v-if="paymentConfirmed || payMethod !== 'bank'" width="40" height="40"
                   viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
@@ -61,7 +61,7 @@
             </div>
             <h2 class="fw-black mt-4 mb-1">
               <template v-if="paymentConfirmed">Thanh toán thành công! 🎉</template>
-              <template v-else-if="['bank', 'momo'].includes(payMethod)">Đang chờ admin kiểm tra! ⏳</template>
+              <template v-else-if="payMethod === 'bank'">Đang chờ admin kiểm tra! ⏳</template>
               <template v-else>Đặt sân thành công! 🎉</template>
             </h2>
             <p class="text-muted mb-4">
@@ -69,7 +69,7 @@
                 Thanh toán đã được xác nhận. Đơn đặt sân đã hoàn tất. Thông tin đã được gửi đến <strong>{{
                   bookingInfo.phone }}</strong>.
               </template>
-              <template v-else-if="['bank', 'momo'].includes(payMethod)">
+              <template v-else-if="payMethod === 'bank'">
                 Vui lòng chờ admin kiểm tra và xác nhận thanh toán. Chỉ khi thanh toán thành công, đơn đặt sân mới được
                 ghi nhận. Cập nhật sẽ được thông báo qua <strong>{{ bookingInfo.phone }}</strong>.
               </template>
@@ -111,7 +111,13 @@
                     <span class="fw-black text-success">{{ displayTransferContent || '—' }}</span></div>
                 </div>
                 <div v-if="bankTransferDisplay.qrUrl" class="text-center mt-3">
-                  <img :src="bankTransferDisplay.qrUrl" alt="QR chuyển khoản" class="img-fluid rounded border shadow-sm" style="max-width:220px" />
+                  <img
+                    :src="bankTransferDisplay.qrUrl"
+                    alt="QR chuyển khoản"
+                    class="img-fluid rounded border shadow-sm chk-qr-clickable"
+                    style="max-width:220px"
+                    @click="openQrPreview(bankTransferDisplay.qrUrl)"
+                  />
                 </div>
               </template>
             </div>
@@ -276,6 +282,19 @@
                           }} đ</div>
                       </div>
                     </div>
+
+    <!-- QR preview (lightbox) -->
+    <transition name="fade">
+      <div v-if="qrPreviewUrl" class="chk-qr-modal" @click.self="closeQrPreview">
+        <div class="chk-qr-modal__content">
+          <button type="button" class="chk-qr-modal__close" @click="closeQrPreview" aria-label="Close">
+            <span class="material-icons">close</span>
+          </button>
+          <img :src="qrPreviewUrl" alt="QR chuyển khoản" class="chk-qr-modal__img" />
+          <div class="chk-qr-modal__hint">Chạm để đóng</div>
+        </div>
+      </div>
+    </transition>
                   </div>
                 </template>
               </div>
@@ -372,7 +391,7 @@
               <div class="chk-pay-methods">
 
                 <!-- Chuyển khoản ngân hàng -->
-                <div :class="['chk-pay-method', { active: payMethod === 'bank' }]" @click="payMethod = 'bank'">
+                <div v-if="availableMethods.bank" :class="['chk-pay-method', { active: payMethod === 'bank' }]" @click="payMethod = 'bank'">
                   <div class="chk-pay-method__radio">
                     <div class="chk-radio-dot" v-if="payMethod === 'bank'"></div>
                   </div>
@@ -395,7 +414,15 @@
                     <div class="chk-bank-qr-wrap">
                       <div class="chk-bank-qr">
                         <template v-if="bankTransferDisplay.qrUrl">
-                          <img :src="bankTransferDisplay.qrUrl" alt="QR chuyển khoản" width="128" height="128" class="rounded border bg-white" style="object-fit:contain" />
+                          <img
+                            :src="bankTransferDisplay.qrUrl"
+                            alt="QR chuyển khoản"
+                            width="128"
+                            height="128"
+                            class="rounded border bg-white chk-qr-clickable"
+                            style="object-fit:contain"
+                            @click="openQrPreview(bankTransferDisplay.qrUrl)"
+                          />
                         </template>
                         <svg v-else viewBox="0 0 200 200" width="128" height="128" xmlns="http://www.w3.org/2000/svg">
                           <rect width="200" height="200" fill="white" />
@@ -511,121 +538,8 @@
                   </div>
                 </transition>
 
-                <!-- MoMo -->
-                <div :class="['chk-pay-method', { active: payMethod === 'momo' }]" @click="payMethod = 'momo'">
-                  <div class="chk-pay-method__radio">
-                    <div class="chk-radio-dot" v-if="payMethod === 'momo'"></div>
-                  </div>
-                  <div class="chk-pay-method__icon" style="background:#fdf2f8">
-                    <svg width="22" height="22" viewBox="0 0 24 24">
-                      <circle cx="12" cy="12" r="12" fill="#ae2070" /><text x="12" y="16.5" text-anchor="middle"
-                        fill="white" font-size="8" font-weight="bold" font-family="sans-serif">MoMo</text>
-                    </svg>
-                  </div>
-                  <div class="flex-grow-1">
-                    <div class="fw-bold small">Ví MoMo</div>
-                    <div class="text-muted" style="font-size:11px">Thanh toán qua ứng dụng MoMo</div>
-                  </div>
-                  <span class="chk-pay-badge chk-pay-badge--pink">Nhanh nhất</span>
-                </div>
-                <transition name="slide-down">
-                  <div v-if="payMethod === 'momo'" class="chk-pay-detail chk-pay-detail--momo">
-                    <div style="font-size:44px;line-height:1;margin-bottom:10px">📱</div>
-                    <p class="fw-bold mb-1">Thanh toán tự động qua MoMo</p>
-                    <p class="text-muted small mb-3">Bạn sẽ được chuyển đến ứng dụng MoMo để hoàn tất thanh toán an
-                      toàn.</p>
-                    <div class="chk-momo-amount">{{ formatPrice(bookingInfo.total) }} đ</div>
-                    <div class="chk-note chk-note--pink mt-3" style="border-color:#fbcfe8;background:#fff1f2">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#be185d" stroke-width="2">
-                        <circle cx="12" cy="12" r="10" />
-                        <polyline points="12 6 12 12 16 14" />
-                      </svg>
-                      Xác nhận tức thì sau khi thanh toán thành công.
-                    </div>
-                  </div>
-                </transition>
-
-                <!-- VNPAY -->
-                <div :class="['chk-pay-method', { active: payMethod === 'vnpay' }]" @click="payMethod = 'vnpay'">
-                  <div class="chk-pay-method__radio">
-                    <div class="chk-radio-dot" v-if="payMethod === 'vnpay'"></div>
-                  </div>
-                  <div class="chk-pay-method__icon" style="background:#fff7ed">
-                    <svg width="22" height="22" viewBox="0 0 24 24">
-                      <rect width="24" height="24" rx="6" fill="#e03131" /><text x="12" y="15.5" text-anchor="middle"
-                        fill="white" font-size="6.5" font-weight="bold" font-family="sans-serif">VNPay</text>
-                    </svg>
-                  </div>
-                  <div class="flex-grow-1">
-                    <div class="fw-bold small">VNPAY-QR</div>
-                    <div class="text-muted" style="font-size:11px">Quét mã qua app ngân hàng bất kỳ</div>
-                  </div>
-                </div>
-                <transition name="slide-down">
-                  <div v-if="payMethod === 'vnpay'" class="chk-pay-detail">
-                    <div class="d-flex align-items-center gap-4 flex-wrap">
-                      <div class="text-center flex-shrink-0">
-                        <svg viewBox="0 0 160 160" width="110" height="110" xmlns="http://www.w3.org/2000/svg">
-                          <rect width="160" height="160" fill="white" rx="8" />
-                          <rect x="8" y="8" width="48" height="48" rx="4" fill="none" stroke="#e03131"
-                            stroke-width="6" />
-                          <rect x="20" y="20" width="24" height="24" rx="2" fill="#e03131" />
-                          <rect x="104" y="8" width="48" height="48" rx="4" fill="none" stroke="#e03131"
-                            stroke-width="6" />
-                          <rect x="116" y="20" width="24" height="24" rx="2" fill="#e03131" />
-                          <rect x="8" y="104" width="48" height="48" rx="4" fill="none" stroke="#e03131"
-                            stroke-width="6" />
-                          <rect x="20" y="116" width="24" height="24" rx="2" fill="#e03131" />
-                          <rect x="72" y="8" width="8" height="8" fill="#e03131" />
-                          <rect x="84" y="8" width="8" height="8" fill="#e03131" />
-                          <rect x="72" y="20" width="8" height="8" fill="#e03131" />
-                          <rect x="72" y="72" width="8" height="8" fill="#e03131" />
-                          <rect x="84" y="72" width="8" height="8" fill="#e03131" />
-                          <rect x="96" y="72" width="8" height="8" fill="#e03131" />
-                          <rect x="108" y="72" width="8" height="8" fill="#e03131" />
-                          <rect x="120" y="72" width="8" height="8" fill="#e03131" />
-                          <rect x="144" y="72" width="8" height="8" fill="#e03131" />
-                          <rect x="72" y="84" width="8" height="8" fill="#e03131" />
-                          <rect x="96" y="84" width="8" height="8" fill="#e03131" />
-                          <rect x="72" y="96" width="8" height="8" fill="#e03131" />
-                          <rect x="84" y="96" width="8" height="8" fill="#e03131" />
-                          <rect x="96" y="96" width="8" height="8" fill="#e03131" />
-                          <rect x="120" y="96" width="8" height="8" fill="#e03131" />
-                          <rect x="72" y="108" width="8" height="8" fill="#e03131" />
-                          <rect x="108" y="108" width="8" height="8" fill="#e03131" />
-                          <rect x="72" y="120" width="8" height="8" fill="#e03131" />
-                          <rect x="120" y="120" width="8" height="8" fill="#e03131" />
-                          <rect x="72" y="132" width="8" height="8" fill="#e03131" />
-                          <rect x="96" y="132" width="8" height="8" fill="#e03131" />
-                          <rect x="72" y="144" width="8" height="8" fill="#e03131" />
-                          <rect x="84" y="144" width="8" height="8" fill="#e03131" />
-                        </svg>
-                        <div style="font-size:10px;color:#94a3b8;font-weight:600;margin-top:4px">Quét mã VNPAY-QR</div>
-                      </div>
-                      <div class="flex-grow-1">
-                        <p class="fw-bold small mb-2">Hướng dẫn thanh toán</p>
-                        <ol class="text-muted small ps-3 mb-0" style="line-height:2.1">
-                          <li>Mở app ngân hàng bất kỳ hỗ trợ VNPAY</li>
-                          <li>Chọn <strong>Quét mã QR</strong></li>
-                          <li>Quét mã và xác nhận số tiền</li>
-                          <li>Nhập mã PIN / xác thực sinh trắc học</li>
-                        </ol>
-                        <div class="chk-note chk-note--red mt-2">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <circle cx="12" cy="12" r="10" />
-                            <line x1="12" y1="8" x2="12" y2="12" />
-                            <line x1="12" y1="16" x2="12.01" y2="16" />
-                          </svg>
-                          Số tiền: <strong>{{ formatPrice(bookingInfo.total) }} đ</strong>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </transition>
-
                 <!-- Thẻ quốc tế (Stripe) -->
-                <div :class="['chk-pay-method', { active: payMethod === 'card' }]" @click="payMethod = 'card'">
+                <div v-if="availableMethods.card" :class="['chk-pay-method', { active: payMethod === 'card' }]" @click="payMethod = 'card'">
                   <div class="chk-pay-method__radio">
                     <div class="chk-radio-dot" v-if="payMethod === 'card'"></div>
                   </div>
@@ -867,9 +781,9 @@
               <p v-if="!agreed" class="text-center text-muted mt-2 mb-0" style="font-size:11px">Vui lòng đồng ý với điều
                 khoản
                 dịch vụ</p>
-              <p v-if="payMethod === 'card' && !isCardValid" class="text-center text-muted mt-2 mb-0"
-                style="font-size:11px">Vui
-                lòng điền đầy đủ thông tin thẻ</p>
+              <p v-if="payMethod === 'card'" class="text-center text-muted mt-2 mb-0" style="font-size:11px">
+                Bạn sẽ nhập thông tin thẻ ở trang thanh toán của Stripe.
+              </p>
               <p class="text-center text-muted mt-2 mb-0" style="font-size:11px">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2">
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -969,7 +883,11 @@ import { socketService } from '@/services/socket.service.js';
 import { voucherService } from '@/services/voucher.service.js';
 import LoadingView from "@/components/common/LoadingView.vue";
 import '@/assets/checkout.css';
+import '@/assets/checkout-qr-modal.css';
 import { toast } from 'vue3-toastify';
+
+const phoneVN = /^(0|\+84)[0-9]{9}$/;
+const voucherCodeRe = /^[A-Z0-9_-]{3,20}$/;
 
 export default {
   name: 'CheckoutView',
@@ -1022,6 +940,7 @@ export default {
       clubTransferProfile: null,
       /** Snapshot thanh toán sau khi tạo đơn / từ GET booking */
       serverPayment: null,
+      qrPreviewUrl: '',
     };
   },
 
@@ -1030,7 +949,9 @@ export default {
       try { return JSON.parse(this.bookingInfo.slots); } catch { return []; }
     },
     finalCalculatedTotal() {
-      return this.discount = this.bookingInfo.total;
+      const baseAmount = this.courtSubtotalAll() + this.serviceTotal;
+      const disc = Number(this.discount) || 0;
+      return Math.max(0, baseAmount - disc);
     },
 
     parsedServices() {
@@ -1078,6 +999,21 @@ export default {
       return mins >= 60
         ? `${Math.floor(mins / 60)} tiếng${mins % 60 ? ' ' + mins % 60 + 'p' : ''}`
         : `${mins} phút`;
+    },
+
+    availableMethods() {
+      // Ẩn phương thức nếu chủ sân chưa cấu hình
+      const c = this.clubTransferProfile || {};
+      const bankOk = !!(String(c.transferBankName || '').trim()
+        && String(c.transferAccountNumber || '').trim()
+        && String(c.transferBeneficiaryName || '').trim());
+      const cardOk = !!c.stripeCardEnabled;
+
+      return {
+        bank: bankOk,
+        card: cardOk,
+        cash: true,
+      };
     },
 
     bankTransferDisplay() {
@@ -1151,6 +1087,10 @@ export default {
 
     canSubmit() {
       if (!this.agreed) return false;
+      if (!this.availableMethods[this.payMethod]) return false;
+      if (this.finalCalculatedTotal <= 0) return false;
+      if (!this.bookingInfo.club_id) return false;
+      if (!this.parsedSlots.length) return false;
       return true;
     },
   },
@@ -1252,6 +1192,15 @@ export default {
   },
 
   methods: {
+    openQrPreview(url) {
+      if (!url) return;
+      this.qrPreviewUrl = url;
+      document.body.style.overflow = 'hidden';
+    },
+    closeQrPreview() {
+      this.qrPreviewUrl = '';
+      document.body.style.overflow = '';
+    },
     checkAuth() {
       const token = localStorage.getItem("token");
       if (!token) {
@@ -1272,10 +1221,18 @@ export default {
             transferAccountNumber: d.transferAccountNumber,
             transferBeneficiaryName: d.transferBeneficiaryName,
             transferQrImageUrl: d.transferQrImageUrl,
+            stripeCardEnabled: !!d.stripeCardEnabled,
             phone: d.phone,
             email: d.email,
             name: d.name,
           };
+
+          // Nếu phương thức đang chọn bị ẩn → chọn phương thức hợp lệ đầu tiên
+          const order = ['card', 'bank', 'cash'];
+          if (!this.availableMethods[this.payMethod]) {
+            const next = order.find((m) => this.availableMethods[m]);
+            if (next) this.payMethod = next;
+          }
         }
       } catch (e) {
         console.warn('fetchClubTransferProfile', e);
@@ -1344,33 +1301,81 @@ export default {
     },
 
     async handleCheckout() {
-      this.isProcessing = true;
       this.errorMessage = '';
+
+      // ── Frontend validations (high-signal) ─────────────────────
+      const name = String(this.bookingInfo.name || '').trim();
+      const phone = String(this.bookingInfo.phone || '').trim();
+      const email = String(this.bookingInfo.email || '').trim();
+      const slots = (() => {
+        try {
+          return typeof this.bookingInfo.booking_slots === 'string'
+            ? JSON.parse(this.bookingInfo.booking_slots)
+            : (this.bookingInfo.booking_slots || []);
+        } catch { return []; }
+      })();
+
+      if (!this.agreed) {
+        toast.error('Vui lòng đồng ý với điều khoản dịch vụ.');
+        return;
+      }
+      if (!this.availableMethods[this.payMethod]) {
+        toast.error('Phương thức thanh toán không khả dụng. Vui lòng chọn phương thức khác.');
+        return;
+      }
+      if (!this.bookingInfo.club_id) {
+        toast.error('Thiếu thông tin câu lạc bộ. Vui lòng quay lại chọn sân.');
+        return;
+      }
+      if (!Array.isArray(slots) || slots.length === 0) {
+        toast.error('Bạn chưa chọn khung giờ nào.');
+        return;
+      }
+      // Thanh toán thẻ dùng Stripe Checkout (hosted) nên không validate cardForm tại đây.
+      if (this.finalCalculatedTotal <= 0) {
+        toast.error('Tổng thanh toán không hợp lệ.');
+        return;
+      }
+      if (!name || name.length < 2) {
+        toast.error('Vui lòng nhập họ tên hợp lệ.');
+        return;
+      }
+      if (!phoneVN.test(phone)) {
+        toast.error('Số điện thoại không hợp lệ (VD: 0901234567 hoặc +84901234567).');
+        return;
+      }
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        toast.error('Email không hợp lệ.');
+        return;
+      }
+
+      // Validate slot payload shape
+      const badSlot = slots.find((s) => !s?.courtId || !s?.startTime);
+      if (badSlot) {
+        toast.error('Dữ liệu khung giờ không hợp lệ. Vui lòng chọn lại.');
+        return;
+      }
+
+      this.isProcessing = true;
 
       try {
         const paymentMap = {
           'bank': 'BANK_TRANSFER',
-          'momo': 'MOMO',
-          'vnpay': 'VNPAY',
           'card': 'CREDIT_CARD',
           'cash': 'CASH',
         };
 
         const payload = {
           clubId: this.bookingInfo.club_id,
-          slots: (() => {
-            try {
-              return typeof this.bookingInfo.booking_slots === 'string'
-                ? JSON.parse(this.bookingInfo.booking_slots)
-                : (this.bookingInfo.booking_slots || []);
-            } catch { return []; }
-          })(),
-          bookerName: this.bookingInfo.name,
-          bookerPhone: this.bookingInfo.phone,
-          bookerEmail: this.bookingInfo.email || undefined,
+          slots,
+          bookerName: name,
+          bookerPhone: phone,
+          bookerEmail: email || undefined,
           note: this.bookingInfo.note || undefined,
-          voucherCode: this.voucherInput.trim().toUpperCase() || undefined,
-          paymentMethod: paymentMap[this.payMethod] || 'VNPAY',
+          voucherCode: (this.voucherInput || '').trim()
+            ? String(this.voucherInput).trim().toUpperCase()
+            : undefined,
+          paymentMethod: paymentMap[this.payMethod] || 'BANK_TRANSFER',
           serviceIds: (() => {
             try {
               const svcs = typeof this.bookingInfo.services === 'string'
@@ -1380,6 +1385,11 @@ export default {
             } catch { return []; }
           })(),
         };
+
+        if (payload.voucherCode && !voucherCodeRe.test(payload.voucherCode)) {
+          toast.error('Mã giảm giá không hợp lệ.');
+          return;
+        }
 
         const res = await bookingService.createBooking(payload);
 
@@ -1427,6 +1437,13 @@ export default {
       this.voucherErrorMessage = '';
 
       const code = this.voucherInput.trim().toUpperCase();
+      if (!voucherCodeRe.test(code)) {
+        this.voucherError = true;
+        this.voucherErrorMessage = "Mã giảm giá không hợp lệ";
+        this.discount = 0;
+        this.bookingInfo.voucher_code = '';
+        return;
+      }
       const clubId = this.bookingInfo.club_id;
       const baseAmount = this.courtSubtotalAll() + this.serviceTotal;
       const courtIds = [...new Set((this.bookingInfo.courts || []).map((c) => c.id))];
@@ -1438,9 +1455,9 @@ export default {
           if (v.type === 'PERCENTAGE') {
             let disc = baseAmount * (v.value / 100);
             if (v.maxDiscountAmount && disc > v.maxDiscountAmount) disc = v.maxDiscountAmount;
-            this.discount = disc;
+            this.discount = Math.min(disc, baseAmount);
           } else {
-            this.discount = v.value;
+            this.discount = Math.min(Number(v.value) || 0, baseAmount);
           }
           this.bookingInfo.voucher_code = code;
           this.showVoucherInput = true;
@@ -1498,7 +1515,7 @@ export default {
           this.serverPayment = b.payment || null;
 
           // Map payment method cho hiển thị
-          const payMap = { BANK_TRANSFER: 'bank', MOMO: 'momo', VNPAY: 'vnpay', CREDIT_CARD: 'card', CASH: 'cash' };
+          const payMap = { BANK_TRANSFER: 'bank', CREDIT_CARD: 'card', CASH: 'cash' };
           this.payMethod = payMap[b.payment?.method] || 'bank';
 
           // Kiểm tra trạng thái đã xác nhận chưa
@@ -1571,8 +1588,15 @@ export default {
     handleFileUpload(e) {
       const file = e.target.files[0];
       if (!file) return;
+      const okTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      if (file.type && !okTypes.includes(file.type)) {
+        toast.error("Chỉ chấp nhận ảnh JPG/PNG/WEBP");
+        e.target.value = '';
+        return;
+      }
       if (file.size > 5 * 1024 * 1024) {
-        alert("File quá lớn! Vui lòng chọn ảnh < 5MB");
+        toast.error("File quá lớn! Vui lòng chọn ảnh < 5MB");
+        e.target.value = '';
         return;
       }
       this.proofFile = file;
