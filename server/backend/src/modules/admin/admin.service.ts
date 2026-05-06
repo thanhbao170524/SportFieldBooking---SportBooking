@@ -5,6 +5,131 @@ import { notifyPlayersAboutOwnerPost } from "@/modules/user/notification.service
 
 const DEFAULT_COMMISSION_RATE = 0.1; // 10% phí nền tảng (admin revenue)
 
+
+// PERMISSIONS
+export type PermissionKey =
+  | "view_users"
+  | "edit_users"
+  | "lock_users"
+  | "approve_clubs"
+  | "verify_kyc"
+  | "manage_courts"
+  | "view_finance"
+  | "export_reports"
+  | "manage_settings"
+  | "manage_perms"
+  | "moderate_posts"
+  | "moderate_comments"
+  | "view_stats";
+
+export type RoleKey = "ADMIN" | "MODERATOR" | "OWNER" | "USER";
+
+export type PermissionsMatrix = Record<RoleKey, Record<PermissionKey, boolean>>;
+
+const CONFIG_KEY = "RBAC_PERMISSIONS";
+
+export const DEFAULT_PERMISSIONS_MATRIX: PermissionsMatrix = {
+  ADMIN: {
+    view_users: true,
+    edit_users: true,
+    lock_users: true,
+    approve_clubs: true,
+    verify_kyc: true,
+    manage_courts: true,
+    view_finance: true,
+    export_reports: true,
+    manage_settings: true,
+    manage_perms: true,
+    moderate_posts: true,
+    moderate_comments: true,
+    view_stats: true,
+  },
+  MODERATOR: {
+    view_users: true,
+    edit_users: false,
+    lock_users: false,
+    approve_clubs: false,
+    verify_kyc: false,
+    manage_courts: false,
+    view_finance: false,
+    export_reports: false,
+    manage_settings: false,
+    manage_perms: false,
+    moderate_posts: true,
+    moderate_comments: true,
+    view_stats: true,
+  },
+  OWNER: {
+    view_users: false,
+    edit_users: false,
+    lock_users: false,
+    approve_clubs: false,
+    verify_kyc: false,
+    manage_courts: true,
+    view_finance: true,
+    export_reports: false,
+    manage_settings: false,
+    manage_perms: false,
+    moderate_posts: false,
+    moderate_comments: false,
+    view_stats: false,
+  },
+  USER: {
+    view_users: false,
+    edit_users: false,
+    lock_users: false,
+    approve_clubs: false,
+    verify_kyc: false,
+    manage_courts: false,
+    view_finance: false,
+    export_reports: false,
+    manage_settings: false,
+    manage_perms: false,
+    moderate_posts: false,
+    moderate_comments: false,
+    view_stats: false,
+  },
+};
+
+export async function getPermissionsAdmin(): Promise<PermissionsMatrix> {
+  const row = await prisma.systemConfig.findUnique({
+    where: { key: CONFIG_KEY },
+    select: { value: true },
+  });
+
+  if (!row?.value) {
+    return DEFAULT_PERMISSIONS_MATRIX;
+  }
+
+  try {
+    return JSON.parse(row.value) as PermissionsMatrix;
+  } catch {
+    return DEFAULT_PERMISSIONS_MATRIX;
+  }
+}
+
+export async function updatePermissionsAdmin(
+  matrix: PermissionsMatrix
+): Promise<PermissionsMatrix> {
+  matrix.ADMIN.manage_perms = true;
+
+  const serialized = JSON.stringify(matrix);
+
+  await prisma.systemConfig.upsert({
+    where: { key: CONFIG_KEY },
+    create: {
+      key: CONFIG_KEY,
+      value: serialized,
+      description: "RBAC permissions matrix",
+    },
+    update: {
+      value: serialized,
+    },
+  });
+
+  return matrix;
+}
+
 /**
  * Lấy danh sách tất cả các câu lạc bộ và sân chi tiết (Dành cho Admin)
  */
