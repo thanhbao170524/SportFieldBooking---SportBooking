@@ -20,6 +20,12 @@
           <span class="material-icons select-arrow">expand_more</span>
         </div>
       </div>
+      <div class="header-actions">
+        <button class="btn-add" @click="openCreateAmenity" :disabled="loadingAmenities || creatingAmenity">
+          <span class="material-icons">add</span>
+          Thêm dịch vụ/tiện ích
+        </button>
+      </div>
     </div>
 
     <!-- Main Content Area -->
@@ -97,6 +103,60 @@
         </div>
       </template>
     </div>
+
+    <!-- CREATE AMENITY MODAL -->
+    <transition name="modal-fade">
+      <div v-if="showCreateAmenity" class="modal-overlay" @click.self="closeCreateAmenity">
+        <div class="modal-card">
+          <div class="modal-header">
+            <div>
+              <h3 class="modal-title">Thêm dịch vụ/tiện ích</h3>
+              <p class="modal-sub">Tạo mới để áp dụng cho các câu lạc bộ.</p>
+            </div>
+            <button class="modal-close" @click="closeCreateAmenity" :disabled="creatingAmenity">
+              <span class="material-icons">close</span>
+            </button>
+          </div>
+
+          <div class="modal-body">
+            <div class="form-row">
+              <label class="form-label">Tên</label>
+              <input
+                v-model.trim="createAmenityForm.name"
+                type="text"
+                class="form-input"
+                placeholder="Ví dụ: Thuê bóng, Nước uống, Wifi..."
+                maxlength="60"
+                autocomplete="off"
+              />
+            </div>
+            <div class="form-row">
+              <label class="form-label">Icon (Material icon, tuỳ chọn)</label>
+              <input
+                v-model.trim="createAmenityForm.icon"
+                type="text"
+                class="form-input"
+                placeholder="Ví dụ: local_cafe, wifi, local_parking..."
+                maxlength="40"
+                autocomplete="off"
+              />
+              <p class="form-hint">
+                Bạn có thể xem danh sách icon tại <code>material-icons</code> đang dùng trong hệ thống.
+              </p>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn-sec" @click="closeCreateAmenity" :disabled="creatingAmenity">Hủy</button>
+            <button class="btn-primary" @click="submitCreateAmenity" :disabled="creatingAmenity">
+              <span v-if="creatingAmenity" class="spin"></span>
+              <span v-else class="material-icons">add_circle</span>
+              {{ creatingAmenity ? 'Đang tạo...' : 'Tạo mới' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -110,11 +170,18 @@ export default {
     return {
       clubs: [],
       selectedClubId: '',
+      originalClubId: '',
       amenities: [],
       originalAmenities: [],
       loadingClubs: false,
       loadingAmenities: false,
       saving: false,
+      showCreateAmenity: false,
+      creatingAmenity: false,
+      createAmenityForm: {
+        name: '',
+        icon: '',
+      },
     };
   },
   computed: {
@@ -139,6 +206,7 @@ export default {
           this.clubs = res.data.data || [];
           if (this.clubs.length > 0) {
             this.selectedClubId = this.clubs[0].id;
+            this.originalClubId = this.selectedClubId;
             await this.loadAmenities();
           }
         }
@@ -167,10 +235,11 @@ export default {
     onClubChange() {
       if (this.hasChanges) {
         if (!confirm('Bạn có thay đổi chưa lưu. Tiếp tục sẽ làm mất các thay đổi này?')) {
-          this.selectedClubId = this.originalClubId; // Cần lưu originalClubId
+          this.selectedClubId = this.originalClubId;
           return;
         }
       }
+      this.originalClubId = this.selectedClubId;
       this.loadAmenities();
     },
     toggleService(service) {
@@ -186,12 +255,21 @@ export default {
       if (!this.selectedClubId) return;
       this.saving = true;
       try {
+        // Validate prices (selected only)
+        const invalid = (this.amenities || [])
+          .filter(a => a.isSelected)
+          .find(a => a.price === null || a.price === undefined || isNaN(Number(a.price)) || Number(a.price) < 0);
+        if (invalid) {
+          toast.error(`Phí dịch vụ không hợp lệ: "${invalid.name}" (phải ≥ 0)`);
+          return;
+        }
+
         // Prepare payload: only send the items that are selected
         const payload = this.amenities
           .filter(a => a.isSelected)
           .map(a => ({
             amenityId: a.id,
-            price: a.price || 0
+            price: Number(a.price) || 0
           }));
 
         const res = await clubService.updateClubAmenities(this.selectedClubId, payload);
@@ -206,7 +284,51 @@ export default {
       } finally {
         this.saving = false;
       }
-    }
+    },
+
+    openCreateAmenity() {
+      this.createAmenityForm = { name: '', icon: '' };
+      this.showCreateAmenity = true;
+    },
+    closeCreateAmenity() {
+      if (this.creatingAmenity) return;
+      this.showCreateAmenity = false;
+    },
+    async submitCreateAmenity() {
+      if (this.creatingAmenity) return;
+
+      const name = (this.createAmenityForm.name || '').trim();
+      const icon = (this.createAmenityForm.icon || '').trim();
+
+      if (!name) {
+        toast.error('Vui lòng nhập tên dịch vụ/tiện ích');
+        return;
+      }
+      if (name.length < 2) {
+        toast.error('Tên dịch vụ/tiện ích phải có ít nhất 2 ký tự');
+        return;
+      }
+      if (icon && !/^[a-z0-9_]+$/i.test(icon)) {
+        toast.error('Icon chỉ nên chứa chữ/số và dấu gạch dưới (vd: local_cafe)');
+        return;
+      }
+
+      this.creatingAmenity = true;
+      try {
+        const res = await clubService.createAmenity({ name, icon: icon || undefined });
+        if (res.data?.success) {
+          toast.success('Đã thêm dịch vụ/tiện ích');
+          this.showCreateAmenity = false;
+          await this.loadAmenities();
+        } else {
+          toast.error(res.data?.message || 'Thêm mới thất bại');
+        }
+      } catch (err) {
+        toast.error(err?.response?.data?.message || 'Lỗi khi thêm mới');
+      } finally {
+        this.creatingAmenity = false;
+      }
+    },
   }
 };
 </script>
@@ -228,6 +350,153 @@ export default {
   margin-bottom: 32px;
   gap: 20px;
   flex-wrap: wrap;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  border-radius: 14px;
+  padding: 12px 16px;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  background: #0f172a;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+  transition: all 0.2s;
+}
+
+.btn-add:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.16);
+}
+
+.btn-add:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-add .material-icons {
+  font-size: 18px;
+}
+
+/* ── Modal ───────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(8px);
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-card {
+  width: 100%;
+  max-width: 560px;
+  background: #fff;
+  border-radius: 22px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.18);
+  overflow: hidden;
+}
+.modal-header {
+  padding: 18px 20px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.modal-title {
+  margin: 0;
+  font-weight: 900;
+  font-size: 18px;
+  color: #0f172a;
+}
+.modal-sub {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+}
+.modal-close {
+  border: none;
+  background: #f1f5f9;
+  color: #0f172a;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.modal-close:hover { background: #e2e8f0; }
+.modal-close:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.modal-body {
+  padding: 18px 20px;
+}
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.form-label {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+.form-input {
+  width: 100%;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-weight: 700;
+  font-size: 14px;
+  outline: none;
+  transition: 0.2s;
+}
+.form-input:focus {
+  border-color: #16a34a;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.1);
+}
+.form-hint {
+  margin: 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.modal-footer {
+  padding: 16px 20px;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.modal-fade-enter-active, .modal-fade-leave-active {
+  transition: opacity .2s ease;
+}
+.modal-fade-enter-from, .modal-fade-leave-to {
+  opacity: 0;
 }
 
 .vtitle {

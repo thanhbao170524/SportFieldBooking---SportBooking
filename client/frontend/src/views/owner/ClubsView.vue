@@ -577,6 +577,13 @@ import LocationPicker from '@/components/common/LocationPicker.vue';
 
 const MAX = 5 * 1024 * 1024;
 const TYPES = ['image/jpeg','image/png','image/webp'];
+const phoneVN = /^(0|\+84)[0-9]{9}$/;
+const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const timeHm = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const isUrl = (u) => {
+  if (!u) return true;
+  try { const x = new URL(u); return x.protocol === 'http:' || x.protocol === 'https:'; } catch { return false; }
+};
 const blank = () => ({
   name:'', city:'', district:'', ward:'', address:'', phone:'', email:'', description:'', coverImageUrl:'', images: [], newUrl: '', latitude: null, longitude: null,
   transferBankName:'', transferAccountNumber:'', transferBeneficiaryName:'', transferQrImageUrl:'',
@@ -651,6 +658,70 @@ export default {
     this.loadVnProvinces();
   },
   methods: {
+    validateClubForm(f, hours) {
+      const errs = [];
+      const name = String(f.name || '').trim();
+      if (name.length < 3) errs.push('Tên CLB phải có ít nhất 3 ký tự.');
+      if (name.length > 100) errs.push('Tên CLB tối đa 100 ký tự.');
+
+      const city = String(f.city || '').trim();
+      const district = String(f.district || '').trim();
+      const address = String(f.address || '').trim();
+      if (!city) errs.push('Vui lòng chọn Tỉnh/Thành phố.');
+      if (!district) errs.push('Vui lòng chọn Quận/Huyện.');
+      if (address.length < 5) errs.push('Địa chỉ phải có ít nhất 5 ký tự.');
+
+      const phone = String(f.phone || '').trim();
+      if (phone && !phoneVN.test(phone)) errs.push('Số điện thoại không hợp lệ (VD: 0901234567 hoặc +84901234567).');
+
+      const email = String(f.email || '').trim();
+      if (email && !emailRe.test(email)) errs.push('Email không hợp lệ.');
+
+      if (f.latitude !== null && f.latitude !== undefined && f.latitude !== '') {
+        const lat = Number(f.latitude);
+        if (!Number.isFinite(lat) || lat < -90 || lat > 90) errs.push('Vĩ độ (latitude) không hợp lệ.');
+      }
+      if (f.longitude !== null && f.longitude !== undefined && f.longitude !== '') {
+        const lng = Number(f.longitude);
+        if (!Number.isFinite(lng) || lng < -180 || lng > 180) errs.push('Kinh độ (longitude) không hợp lệ.');
+      }
+
+      if (f.coverImageUrl && !isUrl(f.coverImageUrl)) errs.push('URL ảnh bìa không hợp lệ.');
+      const badGallery = (f.images || []).find((u) => !isUrl(u));
+      if (badGallery) errs.push('Có ảnh URL không hợp lệ trong thư viện ảnh.');
+      if (f.transferQrImageUrl && !isUrl(f.transferQrImageUrl)) errs.push('URL ảnh QR không hợp lệ.');
+
+      // Transfer: if any filled, require all 3
+      const bank = String(f.transferBankName || '').trim();
+      const accNo = String(f.transferAccountNumber || '').trim();
+      const accName = String(f.transferBeneficiaryName || '').trim();
+      const anyTransfer = bank || accNo || accName;
+      if (anyTransfer && (!bank || !accNo || !accName)) {
+        errs.push('Thông tin chuyển khoản: vui lòng nhập đủ Ngân hàng / Số tài khoản / Chủ tài khoản.');
+      }
+      if (accNo && (accNo.length < 6 || accNo.length > 32)) {
+        errs.push('Số tài khoản nên từ 6 đến 32 ký tự.');
+      }
+
+      // Opening hours validation: at least one open day; open/close format; open < close
+      if (!Array.isArray(hours) || hours.length === 0) {
+        errs.push('Vui lòng thiết lập giờ mở cửa.');
+      } else {
+        const openDays = hours.filter((h) => !h.isClosed);
+        if (openDays.length === 0) errs.push('Giờ mở cửa: phải có ít nhất 1 ngày mở cửa.');
+        for (const h of openDays) {
+          if (!timeHm.test(String(h.openTime || '')) || !timeHm.test(String(h.closeTime || ''))) {
+            errs.push(`Giờ mở cửa (${h.label}): định dạng không hợp lệ (HH:mm).`);
+            continue;
+          }
+          if (String(h.openTime) >= String(h.closeTime)) {
+            errs.push(`Giờ mở cửa (${h.label}): giờ mở phải nhỏ hơn giờ đóng.`);
+          }
+        }
+      }
+
+      return errs;
+    },
     async loadVnProvinces() {
       this.vnProvincesLoading = true;
       this.vnProvincesErr = '';
@@ -876,7 +947,8 @@ export default {
     closeAdd() { this.showAdd = false; document.body.style.overflow = ''; },
     async submitAdd() {
       this.addSub = true;
-      if (!this.addForm.name || !this.addForm.city || !this.addForm.district || !this.addForm.address) return;
+      this.addErr = this.validateClubForm(this.addForm, this.addForm.openingHours);
+      if (this.addErr.length) return;
       this.addLoading = true; this.addErr = [];
       try {
         const r = await clubService.addClub(this.buildPayload(this.addForm));
@@ -965,7 +1037,8 @@ export default {
     closeEdit() { this.showEdit = false; document.body.style.overflow = ''; },
     async submitEdit() {
       this.editSub = true;
-      if (!this.editForm.name || !this.editForm.city || !this.editForm.district || !this.editForm.address) return;
+      this.editErr = this.validateClubForm(this.editForm, this.editForm.openingHours);
+      if (this.editErr.length) return;
       this.editLoading = true; this.editErr = []; this.editOk = false;
       try {
         const r = await clubService.editClub(this.editForm.id, this.buildPayload(this.editForm));

@@ -548,6 +548,17 @@ function freshAdd() {
   };
 }
 
+const timeHm = /^([01]\d|2[0-3]):([0-5]\d)$/;
+function toMin(hm) {
+  if (!hm || !timeHm.test(hm)) return null;
+  const [h, m] = hm.split(':').map(Number);
+  return h * 60 + m;
+}
+function isValidUrl(u) {
+  if (!u) return true;
+  try { new URL(u); return /^https?:/.test(u); } catch { return false; }
+}
+
 export default {
   name: 'OwnerCourtsView',
 
@@ -699,12 +710,69 @@ export default {
 
     async submitAdd() {
       this.addSubmitted = true;
-      if (!this.addForm.name || !this.addForm.sportType) return;
-      this.addLoading = true;
       this.addErrors = [];
+
+      const name = (this.addForm.name || '').trim();
+      if (!name) this.addErrors.push('Vui lòng nhập tên sân.');
+      else if (name.length > 100) this.addErrors.push('Tên sân tối đa 100 ký tự.');
+
+      if (!this.addForm.sportType) this.addErrors.push('Vui lòng chọn loại thể thao.');
+
+      if (this.addForm.capacity !== '' && this.addForm.capacity !== null && this.addForm.capacity !== undefined) {
+        const cap = Number(this.addForm.capacity);
+        if (!Number.isInteger(cap) || cap < 1) this.addErrors.push('Sức chứa phải là số nguyên ≥ 1.');
+      }
+
+      if (this.addForm.surface && String(this.addForm.surface).length > 100) {
+        this.addErrors.push('Mặt sân tối đa 100 ký tự.');
+      }
+      if (this.addForm.description && String(this.addForm.description).length > 1000) {
+        this.addErrors.push('Mô tả tối đa 1000 ký tự.');
+      }
+
+      const badUrl = (this.addForm.images || []).find((u) => !isValidUrl(u));
+      if (badUrl) this.addErrors.push('Có ảnh URL không hợp lệ trong bộ sưu tập ảnh.');
+
+      // Pricing validate
+      const pricings = Array.isArray(this.addForm.pricings) ? this.addForm.pricings : [];
+      if (pricings.length === 0) this.addErrors.push('Vui lòng thêm ít nhất 1 khung giá.');
+      const bucket = new Map(); // key dayOfWeek|null -> array ranges
+      for (const [idx, pr] of pricings.entries()) {
+        const s = String(pr.startTime || '');
+        const e = String(pr.endTime || '');
+        const sMin = toMin(s);
+        const eMin = toMin(e);
+        if (sMin === null) this.addErrors.push(`Khung giá ${idx + 1}: giờ bắt đầu không hợp lệ (HH:mm).`);
+        if (eMin === null) this.addErrors.push(`Khung giá ${idx + 1}: giờ kết thúc không hợp lệ (HH:mm).`);
+        if (sMin !== null && eMin !== null && sMin >= eMin) this.addErrors.push(`Khung giá ${idx + 1}: giờ bắt đầu phải nhỏ hơn giờ kết thúc.`);
+
+        const price = Number(pr.pricePerHour);
+        if (!Number.isFinite(price) || price <= 0) this.addErrors.push(`Khung giá ${idx + 1}: giá/giờ phải là số dương.`);
+
+        const dow = pr.dayOfWeek === undefined ? null : pr.dayOfWeek;
+        if (dow !== null && (!Number.isInteger(dow) || dow < 0 || dow > 6)) this.addErrors.push(`Khung giá ${idx + 1}: thứ không hợp lệ.`);
+
+        if (sMin !== null && eMin !== null) {
+          const key = String(dow);
+          if (!bucket.has(key)) bucket.set(key, []);
+          bucket.get(key).push({ sMin, eMin, idx: idx + 1 });
+        }
+      }
+      for (const ranges of bucket.values()) {
+        ranges.sort((a, b) => a.sMin - b.sMin);
+        for (let i = 1; i < ranges.length; i++) {
+          if (ranges[i].sMin < ranges[i - 1].eMin) {
+            this.addErrors.push(`Khung giá ${ranges[i - 1].idx} bị trùng thời gian với khung giá ${ranges[i].idx}.`);
+          }
+        }
+      }
+
+      if (this.addErrors.length) return;
+
+      this.addLoading = true;
       try {
         const p = { 
-          name: this.addForm.name.trim(), 
+          name, 
           sportType: this.addForm.sportType,
           images: this.addForm.images
         };
@@ -790,13 +858,70 @@ export default {
 
     async submitEdit() {
       this.editSubmitted = true;
-      if (!this.editForm.name || !this.editForm.sportType) return;
+      this.editErrors = [];
+
+      const name = (this.editForm.name || '').trim();
+      if (!name) this.editErrors.push('Vui lòng nhập tên sân.');
+      else if (name.length > 100) this.editErrors.push('Tên sân tối đa 100 ký tự.');
+
+      if (!this.editForm.sportType) this.editErrors.push('Vui lòng chọn loại thể thao.');
+
+      if (this.editForm.capacity !== '' && this.editForm.capacity !== null && this.editForm.capacity !== undefined) {
+        const cap = Number(this.editForm.capacity);
+        if (!Number.isInteger(cap) || cap < 1) this.editErrors.push('Sức chứa phải là số nguyên ≥ 1.');
+      }
+
+      if (this.editForm.surface && String(this.editForm.surface).length > 100) {
+        this.editErrors.push('Mặt sân tối đa 100 ký tự.');
+      }
+      if (this.editForm.description && String(this.editForm.description).length > 1000) {
+        this.editErrors.push('Mô tả tối đa 1000 ký tự.');
+      }
+
+      const badUrl = (this.editForm.images || []).find((u) => !isValidUrl(u));
+      if (badUrl) this.editErrors.push('Có ảnh URL không hợp lệ trong bộ sưu tập ảnh.');
+
+      // Pricing validate
+      const pricings = Array.isArray(this.editForm.pricings) ? this.editForm.pricings : [];
+      if (pricings.length === 0) this.editErrors.push('Vui lòng thêm ít nhất 1 khung giá.');
+      const bucket = new Map();
+      for (const [idx, pr] of pricings.entries()) {
+        const s = String(pr.startTime || '');
+        const e = String(pr.endTime || '');
+        const sMin = toMin(s);
+        const eMin = toMin(e);
+        if (sMin === null) this.editErrors.push(`Khung giá ${idx + 1}: giờ bắt đầu không hợp lệ (HH:mm).`);
+        if (eMin === null) this.editErrors.push(`Khung giá ${idx + 1}: giờ kết thúc không hợp lệ (HH:mm).`);
+        if (sMin !== null && eMin !== null && sMin >= eMin) this.editErrors.push(`Khung giá ${idx + 1}: giờ bắt đầu phải nhỏ hơn giờ kết thúc.`);
+
+        const price = Number(pr.pricePerHour);
+        if (!Number.isFinite(price) || price <= 0) this.editErrors.push(`Khung giá ${idx + 1}: giá/giờ phải là số dương.`);
+
+        const dow = pr.dayOfWeek === undefined ? null : pr.dayOfWeek;
+        if (dow !== null && (!Number.isInteger(dow) || dow < 0 || dow > 6)) this.editErrors.push(`Khung giá ${idx + 1}: thứ không hợp lệ.`);
+
+        if (sMin !== null && eMin !== null) {
+          const key = String(dow);
+          if (!bucket.has(key)) bucket.set(key, []);
+          bucket.get(key).push({ sMin, eMin, idx: idx + 1 });
+        }
+      }
+      for (const ranges of bucket.values()) {
+        ranges.sort((a, b) => a.sMin - b.sMin);
+        for (let i = 1; i < ranges.length; i++) {
+          if (ranges[i].sMin < ranges[i - 1].eMin) {
+            this.editErrors.push(`Khung giá ${ranges[i - 1].idx} bị trùng thời gian với khung giá ${ranges[i].idx}.`);
+          }
+        }
+      }
+
+      if (this.editErrors.length) return;
+
       this.editLoading = true;
-      this.editErrors  = [];
       this.editSuccess = false;
       try {
         const p = { 
-          name: this.editForm.name.trim(), 
+          name, 
           sportType: this.editForm.sportType,
           images: this.editForm.images
         };
@@ -930,6 +1055,8 @@ export default {
 .s-wrap input{flex:1;border:none;background:transparent;font-family:inherit;font-size:15px;color:#1e293b;}
 .sport-sel{flex:1;min-width:180px;}
 .sport-sel select{flex:1;border:none;background:transparent;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;}
+.status-sel{flex:1;min-width:180px;}
+.status-sel select{flex:1;border:none;background:transparent;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;}
 
 .f-item:focus-within{background:#fff;box-shadow:inset 0 0 0 2px #10b981;}
 

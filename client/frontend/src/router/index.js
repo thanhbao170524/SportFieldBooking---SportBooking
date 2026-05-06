@@ -176,6 +176,12 @@ const routes = [
     meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN"] },
   },
   {
+    path: "/admin/finance",
+    name: "admin-finance",
+    component: () => import("../views/admin/views/FinanceManagementView.vue"),
+    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN"] },
+  },
+  {
     path: "/admin/reports",
     name: "admin-reports",
     component: () => import("../views/admin/views/ReportsManagementView.vue"),
@@ -303,6 +309,12 @@ const routes = [
     path: "/owner/settings",
     name: "owner-settings",
     component: () => import("../views/owner/SettingsView.vue"),
+    meta: { layout: "owner", requiresAuth: true, roles: ["OWNER"] },
+  },
+  {
+    path: "/owner/payments",
+    name: "owner-payments",
+    component: () => import("../views/owner/PaymentManagementView.vue"),
     meta: { layout: "owner", requiresAuth: true, roles: ["OWNER"] },
   },
   // Redirect missing routes to Home to avoid console warnings

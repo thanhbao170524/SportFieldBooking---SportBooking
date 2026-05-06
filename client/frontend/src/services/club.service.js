@@ -72,6 +72,9 @@ export const clubService = {
     updateClubAmenities(clubId, amenities) {
         return api.post(`/owner/clubs/${clubId}/amenities`, { amenities });
     },
+    createAmenity(payload) {
+        return api.post('/owner/amenities', payload);
+    },
 
     // ── Slots ──────────────────────────────────────────────────
     getSlotsByClub(slug, date) {

@@ -54,6 +54,13 @@ export async function getClubBySlug(slug: string) {
   const club = await prisma.club.findFirst({
     where: { slug, deletedAt: null },
     include: {
+      owner: {
+        select: {
+          ownerProfile: {
+            select: { stripeConnectAccountId: true },
+          },
+        },
+      },
       courts: {
         where: { deletedAt: null },
         include: {
@@ -80,10 +87,14 @@ export async function getClubBySlug(slug: string) {
     _count: { _all: true }
   });
 
+  const stripeCardEnabled = !!club.owner?.ownerProfile?.stripeConnectAccountId;
+
   return {
     ...club,
     rating: reviews._avg.rating || 0,
-    reviewCount: reviews._count._all || 0
+    reviewCount: reviews._count._all || 0,
+    // Chỉ trả boolean, không lộ Stripe account id public
+    stripeCardEnabled,
   };
 }
 

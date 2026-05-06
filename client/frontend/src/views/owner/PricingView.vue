@@ -10,7 +10,7 @@
         <select v-model="selectedCourtId" @change="loadPricing" class="court-select">
           <option value="" disabled>-- Lựa chọn sân --</option>
           <option v-for="c in courts" :key="c.id" :value="c.id">
-            {{ c.pricingCount === 0 ? '⚠️ ' : '✅ ' }}{{ c.name }} ({{ c.clubName }})
+            {{ c.pricingCount === 0 ? '⚠️ ' : '' }}{{ c.name }} ({{ c.clubName }})
           </option>
         </select>
         <span v-if="selectedCourt && selectedCourt.pricingCount === 0" class="no-pricing-tag">
@@ -284,6 +284,15 @@
 
 <script>
 import api from '@/api/axios';
+import { toast } from 'vue3-toastify';
+
+const timeHm = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const ymd = /^\d{4}-\d{2}-\d{2}$/;
+const toMin = (hm) => {
+  if (!hm || !timeHm.test(String(hm))) return null;
+  const [h, m] = String(hm).split(':').map(Number);
+  return h * 60 + m;
+};
 
 export default {
   name: 'OwnerPricingView',
@@ -496,15 +505,41 @@ export default {
     async handleSave() {
       if (!this.selectedCourtId) return;
       
-      // Validate time
-      if (this.form.startTime >= this.form.endTime) {
-         this.timeError = true;
-         return;
+      // Validate time + required
+      if (!timeHm.test(this.form.startTime) || !timeHm.test(this.form.endTime)) {
+        this.timeError = true;
+        toast.error("Giờ bắt đầu/kết thúc không hợp lệ (HH:mm).");
+        return;
+      }
+      if (toMin(this.form.startTime) >= toMin(this.form.endTime)) {
+        this.timeError = true;
+        toast.error("Giờ kết thúc phải sau giờ bắt đầu.");
+        return;
       }
       this.timeError = false;
 
       if (this.checkOverlap()) {
+        toast.error("Khung giờ bị trùng với cấu hình đã có.");
         return;
+      }
+
+      const price = Number(this.form.pricePerHour);
+      if (!Number.isFinite(price) || price <= 0) {
+        toast.error("Giá / giờ phải là số dương.");
+        return;
+      }
+
+      if (this.modalType === 'special') {
+        if (!this.form.specificDate || !ymd.test(String(this.form.specificDate))) {
+          toast.error("Vui lòng chọn ngày áp dụng hợp lệ.");
+          return;
+        }
+      } else {
+        const dow = this.form.dayOfWeek;
+        if (!(dow === null || (Number.isInteger(Number(dow)) && Number(dow) >= 0 && Number(dow) <= 6))) {
+          toast.error("Thứ trong tuần không hợp lệ.");
+          return;
+        }
       }
 
       this.isSaving = true;
@@ -515,7 +550,7 @@ export default {
           id: this.form.id, // Giữ ID để Backend biết là Update hay Create
           startTime: this.form.startTime + ":00",
           endTime: this.form.endTime + ":00",
-          pricePerHour: Number(this.form.pricePerHour) || 0,
+          pricePerHour: price,
         };
 
         if (isSpecial) {
@@ -535,7 +570,7 @@ export default {
       } catch (e) {
         // Hiển thị lỗi từ Backend (Ví dụ: "OVERLAP_PRICING...")
         const msg = e.response?.data?.message || 'Có lỗi xảy ra khi lưu bảng giá';
-        alert(msg);
+        toast.error(msg);
       } finally {
         this.isSaving = false;
       }
@@ -561,7 +596,7 @@ export default {
         this.loadPricing();
       } catch (e) {
         console.error('Delete error:', e);
-        alert('Không thể xóa bảng giá. Vui lòng thử lại sau.');
+        toast.error('Không thể xóa bảng giá. Vui lòng thử lại sau.');
       } finally {
         this.isDeleting = false;
       }

@@ -47,16 +47,32 @@ async function createStripeCheckoutSession(bookingId: string, amount: number): P
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
     include: {
-      club: { select: { name: true } },
+      club: { select: { name: true, owner: { select: { ownerProfile: true } } } },
       items: { include: { timeSlot: { include: { court: { select: { name: true } } } } } },
     },
   });
+  if (!booking) throw new Error("BOOKING_NOT_FOUND");
 
   const clubName = booking?.club?.name || "Sports Field";
   const courtNames = booking?.items?.map(i => i.timeSlot.court.name).filter(Boolean) || [];
   const description = courtNames.length > 0
     ? `Đặt sân: ${courtNames.join(", ")} tại ${clubName}`
     : `Đặt sân tại ${clubName}`;
+
+  // Owner must have Stripe Connect account to receive funds directly
+  const ownerProfile = booking.club?.owner?.ownerProfile;
+  const destination = ownerProfile?.stripeConnectAccountId || "";
+  if (!destination) {
+    throw new Error("OWNER_STRIPE_CONNECT_NOT_SET");
+  }
+  const platformAcct = String(process.env.STRIPE_PLATFORM_ACCOUNT_ID || "").trim();
+  if (platformAcct && destination === platformAcct) {
+    throw new Error("OWNER_STRIPE_CONNECT_INVALID");
+  }
+
+  const finalAmount = Math.round(Number(amount));
+  const commissionRate = Number(ownerProfile?.commissionRate || 10.0);
+  const fee = Math.max(0, Math.round((finalAmount * commissionRate) / 100));
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
@@ -69,7 +85,7 @@ async function createStripeCheckoutSession(bookingId: string, amount: number): P
             name: `Đặt sân - ${clubName}`,
             description,
           },
-          unit_amount: Math.round(amount), // VND doesn't use decimal subunits
+          unit_amount: finalAmount, // VND doesn't use decimal subunits
         },
         quantity: 1,
       },
@@ -78,6 +94,10 @@ async function createStripeCheckoutSession(bookingId: string, amount: number): P
     cancel_url: `${frontendUrl}/checkout?cancelled=1`,
     metadata: {
       bookingId,
+    },
+    payment_intent_data: {
+      application_fee_amount: fee,
+      transfer_data: { destination },
     },
     expires_at: Math.floor(Date.now() / 1000) + 1800, // 30 minutes from now
   });
@@ -239,9 +259,13 @@ export async function processPaymentWebhook(vnp_Params: Record<string, string>) 
 // ─────────────────────────────────────────────────────────
 async function handleSuccessfulPayment(bookingId: string, transactionRef: string) {
   const updatedBooking = await prisma.$transaction(async (tx) => {
-    const payment = await tx.payment.findUnique({ where: { bookingId } });
+    const payment = await tx.payment.findUnique({ 
+      where: { bookingId },
+      include: { booking: { include: { club: { include: { owner: { include: { ownerProfile: true } } } } } } }
+    });
     if (!payment || payment.status === "CONFIRMED") return null;
 
+    // 1. Update Payment & Booking status
     await tx.payment.update({
       where: { bookingId },
       data: {
@@ -251,11 +275,16 @@ async function handleSuccessfulPayment(bookingId: string, transactionRef: string
       },
     });
 
-    return await tx.booking.update({
+    const booking = await tx.booking.update({
       where: { id: bookingId },
       data: { status: "CONFIRMED" },
       include: { items: { include: { timeSlot: { include: { court: true } } } } },
     });
+
+    // NOTE: Ví chủ sân đã bị loại khỏi luồng thẻ quốc tế.
+    // Stripe Connect sẽ chuyển tiền trực tiếp cho chủ sân và thu application fee cho sàn.
+
+    return booking;
   });
 
   // Notify booker (in-app notification tab) after successful payment

@@ -3,8 +3,8 @@
     <!-- Header: Page Title & Actions -->
     <div class="view-header">
       <div class="header-info">
-        <h1 class="view-title">Thống kê và quản lí thanh toán</h1>
-        <p class="view-subtitle">Báo cáo doanh thu, lợi nhuận và quản lý dòng tiền của bạn.</p>
+        <h1 class="view-title">Thống kê</h1>
+        <p class="view-subtitle">Báo cáo doanh thu và hiệu quả hoạt động theo kỳ.</p>
       </div>
       <div class="header-actions">
         <div class="period-switch">
@@ -25,18 +25,8 @@
       </div>
     </div>
 
-    <!-- Tabs -->
-    <div class="finance-tabs">
-      <button class="finance-tab" :class="{ active: activeTab === 'stats' }" @click="activeTab = 'stats'">
-        Thống kê
-      </button>
-      <button class="finance-tab" :class="{ active: activeTab === 'payments' }" @click="activeTab = 'payments'">
-        Quản lí thanh toán
-      </button>
-    </div>
-
-    <!-- Stats Row: Quick Numbers (only on Stats tab) -->
-    <div v-if="activeTab === 'stats'" class="stats-row">
+    <!-- Stats Row: Quick Numbers -->
+    <div class="stats-row">
       <div v-for="(stat, i) in summaryStats" :key="stat.label" class="fin-stat-card" :style="`--delay: ${i * 80}ms`">
         <div class="f-stat-icon" :class="stat.color">
           <span class="material-icons">{{ stat.icon }}</span>
@@ -53,8 +43,8 @@
       </div>
     </div>
 
-    <!-- Tab: Statistics -->
-    <div v-if="activeTab === 'stats'" class="finance-grid">
+    <!-- Statistics -->
+    <div class="finance-grid">
       <div class="grid-left">
         <div class="card chart-card">
           <div class="card-header">
@@ -107,92 +97,12 @@
         </div>
       </div>
     </div>
-
-    <!-- Tab: Payment management -->
-    <div v-else class="finance-grid">
-      <div class="grid-left">
-        <div class="card table-card">
-          <div class="card-header">
-            <h3 class="card-title">Lịch sử giao dịch mới nhất</h3>
-            <router-link to="#" class="view-all">Xem tất cả</router-link>
-          </div>
-          <div class="table-wrap">
-            <table class="fin-table">
-              <thead>
-                <tr>
-                  <th>Thời gian</th>
-                  <th>Mã đơn</th>
-                  <th>Loại</th>
-                  <th>Số tiền</th>
-                  <th>Trạng thái</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="tx in recentTransactions" :key="tx.id">
-                  <td class="tx-time">
-                    <p class="t-main">{{ tx.date }}</p>
-                    <p class="t-sub">{{ tx.time }}</p>
-                  </td>
-                  <td><span class="tx-id">#{{ tx.orderId }}</span></td>
-                  <td>
-                    <div class="tx-type">
-                      <span class="material-icons type-icon" :class="tx.type">
-                        {{ tx.type === 'deposit' ? 'add_circle' : 'account_balance_wallet' }}
-                      </span>
-                      <span>{{ tx.typeLabel }}</span>
-                    </div>
-                  </td>
-                  <td class="tx-amount" :class="tx.type">
-                    {{ tx.type === 'deposit' ? '+' : '-' }}{{ formatCurrency(tx.amount) }}
-                  </td>
-                  <td>
-                    <span class="status-pill" :class="tx.status">
-                      <span class="status-dot"></span>
-                      {{ tx.statusLabel }}
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <div class="grid-right">
-        <div class="wallet-card">
-          <div class="wallet-bg-elements">
-            <div class="circle c-1"></div>
-            <div class="circle c-2"></div>
-          </div>
-          <div class="wallet-content">
-            <div class="wallet-header">
-              <span class="material-icons">account_balance_wallet</span>
-              <p>Số dư khả dụng</p>
-            </div>
-            <h2 class="wallet-balance">{{ formatCurrency(wallet.net) }}</h2>
-            <div class="wallet-details">
-              <div class="detail-item">
-                <p>Khấu trừ hoa hồng ({{ Math.round(commissionRate * 100) }}%)</p>
-                <span>-{{ formatCurrency(wallet.commission) }}</span>
-              </div>
-              <div class="detail-item total">
-                <p>Thực nhận</p>
-                <span>{{ formatCurrency(wallet.net) }}</span>
-              </div>
-            </div>
-            <button class="payout-btn">
-              <span>Yêu cầu rút tiền</span>
-              <span class="material-icons">arrow_forward</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
 <script>
 import { ownerFinanceService } from '@/services/ownerFinance.service';
+
 export default {
   name: 'OwnerFinanceView',
   data() {
@@ -204,19 +114,11 @@ export default {
       anchorDate: '',
       lastUpdatedAt: null,
       refreshTimer: null,
-      activeTab: 'stats',
 
       summaryStats: [],
       chartData: [],
-      recentTransactions: [],
       clubBreakdown: [],
       topCourts: [],
-
-      wallet: {
-        gross: 0,
-        commission: 0,
-        net: 0
-      }
     }
   },
   async mounted() {
@@ -227,7 +129,9 @@ export default {
     const dd = String(now.getDate()).padStart(2, '0');
     this.anchorDate = `${yyyy}-${mm}-${dd}`;
 
-    await this.fetchFinance();
+    await Promise.all([
+      this.fetchFinance()
+    ]);
 
     // Auto refresh each 1 hour
     this.refreshTimer = setInterval(() => {
@@ -317,12 +221,6 @@ export default {
           }
         ];
 
-        // Wallet (gross/commission/net) dùng doanh thu theo kỳ
-        const gross = Number(data.summary?.totalRevenue ?? 0);
-        const commission = Math.round(gross * this.commissionRate);
-        const net = Math.max(0, gross - commission);
-        this.wallet = { gross, commission, net };
-
         // Chart: convert to % bars
         const series = Array.isArray(data.chart) ? data.chart : [];
         const maxVal = Math.max(
@@ -343,20 +241,6 @@ export default {
           };
         });
 
-        // Transactions
-        const tx = Array.isArray(data.recentTransactions) ? data.recentTransactions : [];
-        this.recentTransactions = tx.map((t) => ({
-          id: t.id,
-          orderId: t.orderId,
-          date: this.fmtRelativeDate(t.dateTime),
-          time: this.fmtTime(t.dateTime),
-          type: t.type,
-          typeLabel: t.typeLabel,
-          amount: Number(t.amount || 0),
-          status: t.status,
-          statusLabel: t.statusLabel
-        }));
-
         // Breakdown + Top courts
         this.clubBreakdown = Array.isArray(data.breakdownByClub) ? data.breakdownByClub : [];
         this.topCourts = Array.isArray(data.topCourts) ? data.topCourts : [];
@@ -367,6 +251,9 @@ export default {
       } finally {
         this.loading = false;
       }
+    },
+    async fetchBankInfo() {
+      // Payout/withdraw UI removed
     }
   }
 }
@@ -467,30 +354,6 @@ export default {
   gap: 20px;
 }
 
-.finance-tabs {
-  display: flex;
-  gap: 10px;
-  background: #ffffff;
-  border: 1px solid #eaecf2;
-  padding: 8px;
-  border-radius: 16px;
-}
-.finance-tab {
-  flex: 1;
-  border: none;
-  background: transparent;
-  padding: 12px 14px;
-  border-radius: 12px;
-  cursor: pointer;
-  font-weight: 900;
-  letter-spacing: 0.6px;
-  font-family: 'Barlow Condensed', sans-serif;
-  text-transform: uppercase;
-  color: #64748b;
-  transition: all 0.2s ease;
-}
-.finance-tab:hover { background: #f8fafc; color: #16a34a; }
-.finance-tab.active { background: #16a34a; color: #fff; box-shadow: 0 8px 20px rgba(22,163,74,0.18); }
 
 .fin-stat-card {
   background: white;
@@ -650,24 +513,6 @@ export default {
 .detail-item { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; color: rgba(255,255,255,0.6); }
 .detail-item.total { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1); color: white; font-weight: 800; font-size: 16px; font-family: 'Barlow Condensed', sans-serif; }
 
-.payout-btn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  background: white;
-  color: #0f172a;
-  border: none;
-  padding: 14px;
-  border-radius: 14px;
-  font-weight: 800;
-  font-size: 15px;
-  cursor: pointer;
-  transition: transform 0.2s;
-}
-
-.payout-btn:hover { transform: scale(1.02); }
 
 /* ── Breakdown List ────────────────────────────────────────── */
 .breakdown-list { display: flex; flex-direction: column; gap: 20px; }
