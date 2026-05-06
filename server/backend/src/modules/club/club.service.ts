@@ -51,7 +51,7 @@ export async function getNearbyClubs(lat: number, lng: number, radiusKm: number 
  * Lấy chi tiết câu lạc bộ kèm các sân (courts)
  */
 export async function getClubBySlug(slug: string) {
-  return prisma.club.findFirst({
+  const club = await prisma.club.findFirst({
     where: { slug, deletedAt: null },
     include: {
       courts: {
@@ -70,7 +70,23 @@ export async function getClubBySlug(slug: string) {
       }
     }
   });
+
+  if (!club) return null;
+
+  // Tính rating trung bình và số lượng review
+  const reviews = await prisma.review.aggregate({
+    where: { clubId: club.id, isVisible: true, deletedAt: null },
+    _avg: { rating: true },
+    _count: { _all: true }
+  });
+
+  return {
+    ...club,
+    rating: reviews._avg.rating || 0,
+    reviewCount: reviews._count._all || 0
+  };
 }
+
 /**
  * Tìm kiếm câu lạc bộ nâng cao với các bộ lọc
  */
@@ -135,12 +151,10 @@ export async function searchClubs(filters: SearchClubFilters) {
   }
 
   // Lọc theo khoảng ngày (date)
-  // Chỉ lấy những CLB có sân có ít nhất 1 TimeSlot trạng thái AVAILABLE trong ngày đó
   if (date) {
     let gte = new Date(`${date}T00:00:00.000Z`);
     let lte = new Date(`${date}T23:59:59.999Z`);
 
-    // Nếu có chọn giờ cụ thể (HH:mm)
     if (startTime) {
       gte = new Date(`${date}T${startTime}:00.000Z`);
       lte = new Date(`${date}T${startTime}:59.999Z`);
@@ -163,7 +177,6 @@ export async function searchClubs(filters: SearchClubFilters) {
   // Lọc theo tiện ích (amenities)
   if (facility && facility.length > 0) {
     const facilityList = Array.isArray(facility) ? facility : [facility];
-    // Sử dụng logic AND: Club phải có TẤT CẢ các tiện ích được chọn
     where.AND = facilityList.map((fName: string) => ({
       amenities: {
         some: {
@@ -195,25 +208,40 @@ export async function searchClubs(filters: SearchClubFilters) {
       },
       openingHours: true,
       _count: {
-        select: { bookings: true }
+        select: { 
+          bookings: true,
+          favoredBy: true
+        }
       }
     },
     take: limit,
     orderBy: { createdAt: 'desc' }
   });
 
+  // Lấy list clubId để query rating một lượt (hiệu quả hơn query từng cái)
+  const clubIds = clubs.map(c => c.id);
+  const clubRatings = await prisma.review.groupBy({
+    by: ['clubId'],
+    where: { clubId: { in: clubIds }, isVisible: true, deletedAt: null },
+    _avg: { rating: true },
+    _count: { _all: true }
+  });
+
+  const ratingMap = new Map(clubRatings.map(r => [r.clubId, { 
+    avg: r._avg.rating || 0, 
+    count: r._count._all || 0 
+  }]));
+
   const processedClubs = clubs.map((club) => {
-    // Tính giá thấp nhất (minPrice) từ tất cả các sân của CLB
     let currentMinPrice = null;
     const allPricings = club.courts.flatMap((c) => c.pricings);
     if (allPricings.length > 0) {
       currentMinPrice = Math.min(...allPricings.map((p) => Number(p.pricePerHour)));
     }
 
-    // Tính khoảng cách nếu có lat/lng
     let distance = null;
     if (lat && lng && club.latitude && club.longitude) {
-      const R = 6371; // Bán kính trái đất (km)
+      const R = 6371; 
       const dLat = (club.latitude - lat) * Math.PI / 180;
       const dLon = (club.longitude - lng) * Math.PI / 180;
       const a = 
@@ -229,8 +257,6 @@ export async function searchClubs(filters: SearchClubFilters) {
     const surface = firstCourt?.surface;
     const format = firstCourt?.indoorOutdoor === 'INDOOR' ? 'Trong nhà' : (firstCourt?.indoorOutdoor === 'OUTDOOR' ? 'Ngoài trời' : firstCourt?.indoorOutdoor);
 
-    // Extract hours from club openingHours (if searched or pre-populated)
-    // For searchClubs, we should include openingHours in the prisma query
     let openTime = "08:00";
     let closeTime = "22:00";
     if (club.openingHours && club.openingHours.length > 0) {
@@ -243,16 +269,18 @@ export async function searchClubs(filters: SearchClubFilters) {
       closeTime = formatTime(h.closeTime);
     }
 
+    const ratingInfo = ratingMap.get(club.id) || { avg: 0, count: 0 };
+
     return {
       ...club,
       minPrice: currentMinPrice,
       distance: distance ? parseFloat(distance.toFixed(2)) : null,
-      rating: 4.5 + (Math.random() * 0.5), // Mockup rating
-      reviewCount: (club._count?.bookings || 0) + 5,
+      rating: ratingInfo.avg,
+      reviewCount: ratingInfo.count,
       isPartner: true,
       hasOnlineBooking: club.courts.length > 0,
       sportTypes: sportTypes,
-      sportType: sportTypes[0], // Keep for backward compatibility
+      sportType: sportTypes[0],
       surface: surface,
       format: format,
       courtCount: club.courts.length,
@@ -267,7 +295,6 @@ export async function searchClubs(filters: SearchClubFilters) {
     };
   });
 
-  // Lọc theo minRating và distance (nếu có)
   return processedClubs.filter(club => {
     if (minRating && club.rating < minRating) return false;
     if (lat && lng && radiusKm && club.distance && club.distance > radiusKm) return false;

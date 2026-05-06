@@ -41,6 +41,8 @@ async function main() {
   // 1. Clean up existing data (Order matters)
   console.log("🗑 Cleaning up database...");
   await prisma.review.deleteMany();
+  await prisma.report.deleteMany();
+  await prisma.comment.deleteMany();
   await prisma.post.deleteMany();
   await prisma.voucher.deleteMany();
   await prisma.notification.deleteMany();
@@ -53,6 +55,9 @@ async function main() {
   await prisma.specialDatePricing.deleteMany();
   await prisma.courtImage.deleteMany();
   await prisma.court.deleteMany();
+  await prisma.visitLog.deleteMany();
+  await prisma.systemLog.deleteMany();
+  await prisma.auditLog.deleteMany();
   await prisma.clubAmenity.deleteMany();
   await prisma.amenity.deleteMany();
   await prisma.openingHour.deleteMany();
@@ -607,6 +612,57 @@ async function main() {
     await prisma.timeSlot.update({ where: { id: court2Slots[13].id }, data: { status: "BOOKED" } });
   }
 
+  // 8b. Seed historical slots + bookings for Stats dashboard (last 45 days)
+  console.log("📈 Seeding historical slots/bookings for stats...");
+  const statsCourts = [court1.id, court2.id];
+  const now = new Date();
+  const startSeed = new Date(now);
+  startSeed.setDate(startSeed.getDate() - 45);
+  startSeed.setHours(0, 0, 0, 0);
+
+  for (let d = new Date(startSeed); d <= now; d.setDate(d.getDate() + 1)) {
+    // create 4 slots/day/court (08-12)
+    for (const courtId of statsCourts) {
+      for (let hour = 8; hour < 12; hour++) {
+        const startTime = new Date(new Date(d).setHours(hour, 0, 0, 0));
+        const endTime = new Date(new Date(d).setHours(hour + 1, 0, 0, 0));
+
+        // TimeSlot has @@unique([courtId, startTime]) → upsert để tránh lỗi trùng seed
+        const slot = await prisma.timeSlot.upsert({
+          where: { courtId_startTime: { courtId, startTime } },
+          create: {
+            courtId,
+            startTime,
+            endTime,
+            status: "AVAILABLE",
+          },
+          update: {
+            endTime,
+          },
+        });
+
+        // book ~50% of slots to create fill-rate
+        const shouldBook = (hour + d.getDate()) % 2 === 0;
+        if (shouldBook) {
+          await prisma.booking.create({
+            data: {
+              userId: hour % 3 === 0 ? user2.id : user1.id,
+              clubId: courtId === court1.id ? club1.id : club2.id,
+              status: "CONFIRMED",
+              totalAmount: 200000,
+              finalAmount: 200000,
+              bookerName: "Seed Stats User",
+              bookerPhone: "0900000000",
+              createdAt: new Date(d),
+              items: { create: [{ timeSlotId: slot.id, price: 200000 }] },
+            },
+          });
+          await prisma.timeSlot.update({ where: { id: slot.id }, data: { status: "BOOKED" } });
+        }
+      }
+    }
+  }
+
   // 9. Seed Posts (News Feed)
   console.log("✍️ Seeding posts...");
   await prisma.post.createMany({
@@ -614,7 +670,87 @@ async function main() {
       { clubId: club1.id, slug: "giai-bong-da-tu-hung-thanh-da", title: "Giải bóng đá tứ hùng Thanh Đa", content: "Chào mừng các đội bóng tham gia giải đấu lớn nhất năm tại sân Thanh Đa Super.", type: "EVENT", status: "ACTIVE" },
       { clubId: club1.id, slug: "giam-gia-20-khung-gio-sang", title: "Giảm giá 20% khung giờ sáng", content: "Đồng giá chỉ 150k cho các khung giờ từ 6h-10h sáng các ngày trong tuần.", type: "DISCOUNT", status: "ACTIVE" },
       { clubId: club2.id, slug: "khai-truong-san-tham-vip-moi", title: "Khai trương sân thảm VIP mới", content: "Trải nghiệm sân thảm Yonex chuẩn quốc tế vừa được hoàn thiện tại Q7 Pro.", type: "ANNOUNCEMENT", status: "ACTIVE" },
-    ]
+      { clubId: club1.id, slug: "cho-duyet-khuyen-mai-cuoi-tuan", title: "Khuyến mãi cuối tuần (Chờ duyệt)", content: "Bài này dùng để test kiểm duyệt: admin duyệt thì mới hiển thị.", type: "DISCOUNT", status: "PENDING" as any },
+      { clubId: club2.id, slug: "bai-bi-an-vi-vi-pham", title: "Bài bị ẩn (đã bị từ chối)", content: "Bài bị ẩn để test trạng thái HIDDEN.", type: "ANNOUNCEMENT", status: "HIDDEN" },
+    ],
+  });
+
+  // Fetch posts back for linking comments/reports
+  const postList = await prisma.post.findMany({
+    where: { clubId: { in: [club1.id, club2.id] } },
+    orderBy: { createdAt: "asc" },
+  });
+  const pendingPost = postList.find((p) => p.status === ("PENDING" as any)) || postList[0];
+  const activePost = postList.find((p) => p.status === "ACTIVE") || postList[0];
+
+  // 9b. Seed Comments (moderation)
+  console.log("💬 Seeding comments...");
+  const c1 = await prisma.comment.create({
+    data: {
+      postId: activePost.id,
+      userId: user1.id,
+      content: "Bài hay quá! Cho mình hỏi lịch cụ thể như nào?",
+      isHidden: false,
+    },
+  });
+  await prisma.comment.create({
+    data: {
+      postId: activePost.id,
+      userId: user2.id,
+      content: "Comment tiêu cực để test ẩn/xóa.",
+      isHidden: true,
+    },
+  });
+
+  // 9c. Seed Reports (vi phạm)
+  console.log("🚨 Seeding reports...");
+  await prisma.report.createMany({
+    data: [
+      {
+        reporterId: user1.id,
+        targetId: pendingPost.id,
+        targetType: "POST",
+        reason: "Nội dung cần kiểm duyệt trước khi public.",
+        status: "PENDING",
+      },
+      {
+        reporterId: user2.id,
+        targetId: c1.id,
+        targetType: "POST",
+        reason: "Report mẫu để test trang quản lý report.",
+        status: "REVIEWED",
+      },
+    ],
+  });
+
+  // 9d. Seed audit logs for moderation actions
+  console.log("🧾 Seeding audit logs...");
+  await prisma.auditLog.createMany({
+    data: [
+      { userId: vidinhOwner.id, action: "SEED_NOTE", entity: "Seed", details: { note: "Seed run" } },
+    ],
+  });
+
+  // 9e. Seed Visit logs + System logs for admin stats/logs
+  console.log("🛰 Seeding visit logs and system logs...");
+  const visitRows = [];
+  for (let i = 0; i < 120; i++) {
+    const t = new Date(now.getTime() - i * 6 * 3600 * 1000);
+    visitRows.push({
+      userId: i % 3 === 0 ? user1.id : i % 5 === 0 ? user2.id : null,
+      path: i % 4 === 0 ? "/booking" : i % 4 === 1 ? "/venue/seed" : i % 4 === 2 ? "/blog" : "/profile",
+      ip: "127.0.0.1",
+      createdAt: t,
+    });
+  }
+  await prisma.visitLog.createMany({ data: visitRows });
+
+  await prisma.systemLog.createMany({
+    data: [
+      { level: "INFO", message: "Seed: system ok", context: { module: "seed" } },
+      { level: "WARN", message: "Seed: sample warning", context: { module: "seed", hint: "demo" } },
+      { level: "ERROR", message: "Seed: sample error", context: { module: "seed", code: "DEMO_ERR" } },
+    ],
   });
 
   // 10. Seed Vouchers

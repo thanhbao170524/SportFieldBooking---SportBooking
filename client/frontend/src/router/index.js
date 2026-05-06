@@ -193,12 +193,7 @@ const routes = [
     component: () => import("../views/admin/views/CommunityManagementView.vue"),
     meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN"] },
   },
-  {
-    path: "/admin/news",
-    name: "admin-news",
-    component: () => import("../views/admin/views/ReportsManagementView.vue"),
-    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN"] },
-  },
+
   {
     path: "/admin/violations",
     name: "admin-violations",

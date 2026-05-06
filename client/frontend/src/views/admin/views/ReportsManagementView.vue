@@ -32,7 +32,7 @@
            
            <div class="search-input ml-auto">
               <Search :size="14" />
-              <input type="text" placeholder="Tìm kiếm báo cáo..." />
+              <input v-model="searchQuery" type="text" placeholder="Tìm kiếm báo cáo..." />
            </div>
         </div>
 
@@ -51,7 +51,7 @@
             <tbody>
               <tr v-for="r in filteredReports" :key="r.id">
                 <td>
-                  <div class="report-name-cell">
+                  <div class="report-name-cell clickable" @click="openReportDetail(r)">
                     <div class="report-icon" :class="r.type.toLowerCase()">
                        <component :is="r.icon" :size="14" />
                     </div>
@@ -72,11 +72,14 @@
                 </td>
                 <td>
                   <div class="row-actions justify-end">
-                    <button class="row-btn" title="Xem chi tiết"><Eye :size="14" /></button>
-                    <button class="row-btn success-hover" title="Tải xuống"><Download :size="14" /></button>
-                    <button class="row-btn danger-hover" title="Xóa"><Trash2 :size="14" /></button>
+                    <button class="row-btn" title="Xem chi tiết" @click="openReportDetail(r)"><Eye :size="14" /></button>
+                    <button class="row-btn success-hover" title="Tải xuống" @click="downloadMockReport(r)"><Download :size="14" /></button>
+                    <button class="row-btn danger-hover" title="Xóa" @click="deleteReport(r.id)"><Trash2 :size="14" /></button>
                   </div>
                 </td>
+              </tr>
+              <tr v-if="filteredReports.length === 0">
+                <td colspan="6" class="empty">Không tìm thấy báo cáo nào.</td>
               </tr>
             </tbody>
           </table>
@@ -86,7 +89,7 @@
 
     <!-- Quick Export Section -->
     <div class="quick-export mt-8">
-       <div class="section-title">Xuất báo cáo nhanh</div>
+       <div class="section-title">Xuất báo cáo nhanh (Dữ liệu thực tế)</div>
        <div class="export-grid">
           <div v-for="ex in quickExports" :key="ex.id" class="export-card">
              <div class="ex-icon"><component :is="ex.icon" :size="20" /></div>
@@ -94,9 +97,68 @@
                 <div class="ex-name">{{ ex.name }}</div>
                 <div class="ex-desc">{{ ex.desc }}</div>
              </div>
-             <button class="ex-btn"><Download :size="14" /> EXCEL</button>
+             <button class="ex-btn" @click="handleQuickExport(ex.id)" :disabled="exporting === ex.id">
+                <Download v-if="exporting !== ex.id" :size="14" />
+                <RefreshCw v-else :size="14" class="spin" />
+                EXCEL/CSV
+             </button>
           </div>
        </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div v-if="selectedReport" class="modal-overlay" @click.self="selectedReport = null">
+      <div class="modal-content glass-modal" @click.stop>
+        <div class="modal-header">
+          <div class="modal-title-row">
+            <FilePieChart :size="18" class="modal-title-icon" />
+            <h3>Chi tiết báo cáo</h3>
+          </div>
+          <button class="close-modal" @click="selectedReport = null"><X :size="18" /></button>
+        </div>
+        <div class="modal-body custom-scrollbar">
+          <div class="report-detail-grid">
+            <div class="detail-item">
+              <label>Tên báo cáo</label>
+              <div class="value">{{ selectedReport.name }}</div>
+            </div>
+            <div class="detail-item">
+              <label>Loại</label>
+              <div class="value">{{ selectedReport.typeLabel }}</div>
+            </div>
+            <div class="detail-item">
+              <label>Kỳ báo cáo</label>
+              <div class="value">{{ selectedReport.period }}</div>
+            </div>
+            <div class="detail-item">
+              <label>Ngày tạo</label>
+              <div class="value">{{ selectedReport.date }}</div>
+            </div>
+            <div class="detail-item">
+              <label>Kích thước</label>
+              <div class="value">{{ selectedReport.size }}</div>
+            </div>
+            <div class="detail-item">
+              <label>Định dạng</label>
+              <div class="value">{{ selectedReport.format }}</div>
+            </div>
+          </div>
+          <div class="report-summary-box mt-4">
+             <div class="summary-title">Tóm tắt nội dung</div>
+             <p class="summary-text">
+                Báo cáo này chứa các số liệu tổng hợp về {{ selectedReport.name.toLowerCase() }}. 
+                Dữ liệu đã được hệ thống tự động kết xuất vào lúc {{ selectedReport.date }}.
+                Vui lòng tải xuống tệp đính kèm để xem chi tiết đầy đủ các trường dữ liệu.
+             </p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="selectedReport = null">Đóng</button>
+          <button class="btn-success" @click="downloadMockReport(selectedReport)">
+            <Download :size="14" /> Tải xuống tệp tin
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -106,17 +168,22 @@ import { ref, computed } from 'vue';
 import { 
   FilePieChart, Plus, Search, Eye, Download, Trash2, 
   FileText, CircleDollarSign, Users, ShieldAlert,
-  CalendarCheck
+  CalendarCheck, X, RefreshCw
 } from 'lucide-vue-next';
+import { adminService } from '@/services/admin.service';
 
 export default {
   name: 'ReportsManagementView',
   components: { 
     FilePieChart, Plus, Search, Eye, Download, Trash2, 
-    FileText, CircleDollarSign, Users, ShieldAlert, CalendarCheck
+    FileText, CircleDollarSign, Users, ShieldAlert, CalendarCheck, X, RefreshCw
   },
   setup() {
     const activeTab = ref('all');
+    const searchQuery = ref('');
+    const exporting = ref(null);
+    const selectedReport = ref(null);
+
     const tabs = [
       { id: 'all', label: 'Tất cả' },
       { id: 'FINANCE', label: 'Tài chính' },
@@ -128,7 +195,7 @@ export default {
       { id: 1, name: 'Báo cáo doanh thu Tháng 3/2026', type: 'FINANCE', typeLabel: 'Tài chính', icon: 'CircleDollarSign', date: '30/03/2026', period: 'Tháng 3/2026', size: '256 KB', format: 'Excel', status: 'ready', statusLabel: 'Sẵn sàng' },
       { id: 2, name: 'Thống kê người dùng mới Quý 1', type: 'USER', typeLabel: 'Người dùng', icon: 'Users', date: '28/03/2026', period: 'Quý 1/2026', size: '1.2 MB', format: 'PDF', status: 'ready', statusLabel: 'Sẵn sàng' },
       { id: 3, name: 'Báo cáo vi phạm & Giải quyết khiếu nại', type: 'SYSTEM', typeLabel: 'Hệ thống', icon: 'ShieldAlert', date: '25/03/2026', period: 'Tuần qua', size: '124 KB', format: 'Excel', status: 'ready', statusLabel: 'Sẵn sàng' },
-      { id: 4, name: 'Phân tích tỉ lệ lấp đầy sân bóng đá', type: 'FINANCE', typeLabel: 'Vận hành', icon: 'CalendarCheck', date: '20/03/2026', period: 'Tháng 3/2026', size: '45 KB', format: 'CSV', status: 'processing', statusLabel: 'Đang xử lý' }
+      { id: 4, name: 'Phân tích tỉ lệ lấp đầy sân bóng đá', type: 'SYSTEM', typeLabel: 'Vận hành', icon: 'CalendarCheck', date: '20/03/2026', period: 'Tháng 3/2026', size: '45 KB', format: 'CSV', status: 'ready', statusLabel: 'Sẵn sàng' }
     ]);
 
     const quickExports = [
@@ -138,17 +205,94 @@ export default {
     ];
 
     const filteredReports = computed(() => {
-      if (activeTab.value === 'all') return reports.value;
-      return reports.value.filter(r => r.type === activeTab.value);
+      let result = reports.value;
+      if (activeTab.value !== 'all') {
+        result = result.filter(r => r.type === activeTab.value);
+      }
+      if (searchQuery.value) {
+        const q = searchQuery.value.toLowerCase();
+        result = result.filter(r => r.name.toLowerCase().includes(q));
+      }
+      return result;
     });
+
+    const openReportDetail = (r) => {
+      selectedReport.value = r;
+    };
+
+    const deleteReport = (id) => {
+      if (confirm('Bạn có chắc muốn xóa báo cáo này?')) {
+        reports.value = reports.value.filter(r => r.id !== id);
+      }
+    };
+
+    const downloadMockReport = (r) => {
+      alert(`Đang tải báo cáo: ${r.name}...`);
+    };
 
     const handleCreateReport = () => {
       alert("Chức năng tạo báo cáo tùy chỉnh đang được phát triển.");
     };
 
+    const handleQuickExport = async (type) => {
+      exporting.value = type;
+      try {
+        let data = [];
+        let filename = '';
+        
+        if (type === 'usr') {
+          const res = await adminService.getUsers();
+          data = res.data?.data || [];
+          filename = `DanhSachNguoiDung_${new Date().toLocaleDateString()}.csv`;
+        } else if (type === 'club') {
+          const res = await adminService.getAllClubs();
+          data = res.data?.data || [];
+          filename = `DanhSachCauLacBo_${new Date().toLocaleDateString()}.csv`;
+        } else if (type === 'rev') {
+          const res = await adminService.getStatsDashboard({ preset: 'this_month' });
+          // Revenue data is more complex, just sample the summary
+          data = [res.data?.data?.overview || {}];
+          filename = `BaoCaoDoanhThu_${new Date().toLocaleDateString()}.csv`;
+        }
+
+        if (data.length > 0) {
+          downloadCSV(data, filename);
+        } else {
+          alert('Không có dữ liệu để xuất.');
+        }
+      } catch (e) {
+        console.error(e);
+        alert('Có lỗi khi xuất dữ liệu.');
+      } finally {
+        exporting.value = null;
+      }
+    };
+
+    const downloadCSV = (data, filename) => {
+      const headers = Object.keys(data[0]).join(',');
+      const rows = data.map(obj => 
+        Object.values(obj).map(val => 
+          typeof val === 'object' ? JSON.stringify(val).replace(/,/g, ';') : String(val).replace(/,/g, ';')
+        ).join(',')
+      );
+      const csvContent = "\ufeff" + [headers, ...rows].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+
     return { 
       activeTab, tabs, filteredReports, 
-      quickExports, handleCreateReport 
+      searchQuery, selectedReport, exporting,
+      quickExports, handleCreateReport,
+      openReportDetail, deleteReport, 
+      downloadMockReport, handleQuickExport
     };
   }
 }
@@ -177,12 +321,14 @@ export default {
 
 /* Table Cells */
 .report-name-cell { display: flex; align-items: center; gap: 12px; }
+.report-name-cell.clickable { cursor: pointer; }
+.report-name-cell.clickable:hover .r-name { color: var(--accent); }
 .report-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
 .report-icon.finance { background: rgba(59,130,246,0.1); color: #3b82f6; }
 .report-icon.user { background: rgba(168,85,247,0.1); color: #a855f7; }
 .report-icon.system { background: rgba(249,115,22,0.1); color: var(--orange); }
 
-.r-name { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; }
+.r-name { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; transition: color 0.2s; }
 .r-size { font-size: 11px; color: var(--text-muted); }
 
 .type-tag { font-size: 11px; font-weight: 800; color: var(--text-secondary); background: var(--bg-tertiary); padding: 4px 10px; border-radius: 6px; }
@@ -210,14 +356,37 @@ export default {
   font-size: 11px; font-weight: 800; color: var(--green); cursor: pointer; 
   transition: all 0.2s;
 }
-.ex-btn:hover { background: rgba(34, 197, 94, 0.1); border-color: var(--green); }
+.ex-btn:hover:not(:disabled) { background: rgba(34, 197, 94, 0.1); border-color: var(--green); }
+.ex-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Modal Styles */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.glass-modal { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 16px; width: 500px; max-width: 90vw; box-shadow: 0 20px 40px rgba(0,0,0,0.4); overflow: hidden; display: flex; flex-direction: column; }
+.modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.modal-title-row { display: flex; align-items: center; gap: 10px; }
+.modal-title-row h3 { margin: 0; font-size: 16px; font-weight: 800; color: var(--text-primary); }
+.close-modal { background: transparent; border: none; color: var(--text-muted); cursor: pointer; }
+.modal-body { padding: 20px; overflow-y: auto; }
+.report-detail-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.detail-item label { display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
+.detail-item .value { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.report-summary-box { background: var(--bg-tertiary); padding: 16px; border-radius: 10px; border: 1px solid var(--border); }
+.summary-title { font-size: 12px; font-weight: 800; color: var(--text-secondary); margin-bottom: 8px; }
+.summary-text { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin: 0; }
+.modal-footer { padding: 16px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
+
+.btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); padding: 0 16px; height: 36px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; }
+.btn-success { background: var(--green); color: white; border: none; padding: 0 16px; height: 36px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
 
 /* Helpers */
 .text-right { text-align: right; }
 .justify-end { justify-content: flex-end; }
 .ml-auto { margin-left: auto; }
+.mt-4 { margin-top: 16px; }
 .mt-6 { margin-top: 24px; }
 .mt-8 { margin-top: 32px; }
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
 /* Row Actions */
 .row-actions { display: flex; gap: 6px; }
@@ -226,3 +395,4 @@ export default {
 .row-btn.success-hover:hover { background: var(--green); color: white; border-color: var(--green); }
 .row-btn.danger-hover:hover { background: var(--red); color: white; border-color: var(--red); }
 </style>
+

@@ -3,6 +3,8 @@ import { ApprovalStatus, CourtStatus, PostStatus } from "@/generated/prisma";
 import { notifyNewBooking } from "@/infra/realtime/socket";
 import { notifyPlayersAboutOwnerPost } from "@/modules/user/notification.service";
 
+const DEFAULT_COMMISSION_RATE = 0.1; // 10% phí nền tảng (admin revenue)
+
 /**
  * Lấy danh sách tất cả các câu lạc bộ và sân chi tiết (Dành cho Admin)
  */
@@ -189,7 +191,12 @@ export async function getAdminSummary(startDate?: string, endDate?: string) {
   const start = startDate ? new Date(startDate) : new Date(now.setHours(0, 0, 0, 0));
   const end = endDate ? new Date(endDate) : new Date();
 
-  const [pendingClubs, pendingKyc, totalUsers, activeClubs, totalBookings, filteredBookings, filteredRevenue] = await Promise.all([
+  const [
+    pendingClubs, pendingKyc, totalUsers, activeClubs, 
+    totalBookings, filteredBookings, filteredRevenue, 
+    confirmedBookings, userStats, courtStats, 
+    monthlyStats, bookingStatusBreakdown
+  ] = await Promise.all([
     prisma.club.count({ where: { approvalStatus: ApprovalStatus.PENDING } }),
     prisma.ownerProfile.count({ where: { kycStatus: ApprovalStatus.PENDING } }),
     prisma.user.count(),
@@ -206,18 +213,72 @@ export async function getAdminSummary(startDate?: string, endDate?: string) {
         createdAt: { gte: start, lte: end }
       },
       _sum: { finalAmount: true }
+    }),
+    prisma.booking.count({
+      where: {
+        status: 'CONFIRMED',
+        createdAt: { gte: start, lte: end }
+      }
+    }),
+    getUserStatsAdmin(startDate, endDate),
+    getCourtStatsAdmin(),
+    getMonthlyStatsAdmin(),
+    prisma.booking.groupBy({
+      by: ["status"],
+      _count: { _all: true },
+      where: {
+        createdAt: { gte: start, lte: end }
+      }
     })
   ]);
 
+  // Derived calculations
+  const averageBookingValue = totalBookings ? Math.round((Number(filteredRevenue._sum.finalAmount || 0) / totalBookings)) : 0;
+  const paymentSuccessRate = totalBookings ? Math.round((confirmedBookings / totalBookings) * 100) : 0;
+
   return {
-    pendingClubs,
-    pendingKyc,
-    totalUsers,
-    activeClubs,
-    totalBookings,
-    todayBookings: filteredBookings, // Đặt là filteredBookings nếu có filter
-    totalRevenue: Number(filteredRevenue._sum.finalAmount || 0),
-    violations: 4, 
+    users: {
+      totalUsers,
+      newUsers: userStats.newUsers,
+      activeUsers: userStats.active
+    },
+    clubs: {
+      activeClubs,
+      totalClubs: await prisma.club.count(),
+    },
+    courts: {
+      totalCourts: courtStats.total,
+      activeCourts: courtStats.active
+    },
+    approvals: {
+      pendingClubs,
+      pendingKyc
+    },
+    bookings: {
+      totalBookings: filteredBookings,
+      confirmedBookings,
+      cancelledBookings: await prisma.booking.count({ where: { status: 'CANCELLED', createdAt: { gte: start, lte: end } } }),
+    },
+    revenue: {
+      totalRevenue: Number(filteredRevenue._sum.finalAmount || 0),
+      platformCommission: Math.round(Number(filteredRevenue._sum.finalAmount || 0) * DEFAULT_COMMISSION_RATE),
+      averageBookingValue,
+      commissionRate: DEFAULT_COMMISSION_RATE
+    },
+    payments: {
+      successRate: paymentSuccessRate
+    },
+    moderation: {
+      pendingReports: await prisma.report.count({ where: { status: 'PENDING' } })
+    },
+    charts: {
+      monthly: monthlyStats,
+      bookingStatus: bookingStatusBreakdown.map(item => ({
+        status: item.status,
+        count: item._count._all
+      }))
+    },
+    violations: 4,
   };
 }
 
@@ -291,6 +352,18 @@ export async function getAllPostsAdmin() {
           id: true,
           name: true
         }
+      },
+      comments: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              avatarUrl: true
+            }
+          }
+        },
+        orderBy: { createdAt: "desc" }
       }
     },
     orderBy: { createdAt: "desc" }

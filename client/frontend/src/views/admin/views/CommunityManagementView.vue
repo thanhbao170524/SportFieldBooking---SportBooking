@@ -57,7 +57,7 @@
             <tbody>
               <tr v-for="c in filteredComments" :key="c.id">
                 <td class="w-45">
-                  <div class="comment-content">{{ c.content }}</div>
+                  <div class="comment-content clickable" @click="openCommentDetail(c)">{{ c.content }}</div>
                 </td>
                 <td>{{ c.user?.fullName || '-' }}</td>
                 <td class="muted">{{ c.post?.title || '-' }}</td>
@@ -69,11 +69,14 @@
                 <td>{{ formatDate(c.createdAt) }}</td>
                 <td class="text-right">
                   <div class="row-actions">
-                    <button class="row-btn" :disabled="loading" @click="toggleComment(c)">
+                    <button class="row-btn info-hover" title="Xem chi tiết" @click="openCommentDetail(c)">
+                      <Eye :size="14" />
+                    </button>
+                    <button class="row-btn" :disabled="loading" @click="toggleComment(c)" :title="c.isHidden ? 'Hiện' : 'Ẩn'">
                       <EyeOff v-if="!c.isHidden" :size="14" />
                       <Eye v-else :size="14" />
                     </button>
-                    <button class="row-btn danger-hover" :disabled="loading" @click="deleteComment(c)">
+                    <button class="row-btn danger-hover" :disabled="loading" @click="deleteComment(c)" title="Xóa">
                       <Trash2 :size="14" />
                     </button>
                   </div>
@@ -117,7 +120,7 @@
             <tbody>
               <tr v-for="r in filteredReports" :key="r.id">
                 <td class="w-45">
-                  <div class="report-reason">{{ r.reason }}</div>
+                  <div class="report-reason clickable" @click="openReportDetail(r)">{{ r.reason }}</div>
                   <div class="muted">Target: {{ r.targetType }} • {{ r.targetId }}</div>
                 </td>
                 <td>
@@ -134,10 +137,13 @@
                 <td>{{ formatDate(r.createdAt) }}</td>
                 <td class="text-right">
                   <div class="row-actions">
-                    <button class="row-btn success-hover" :disabled="loading || r.status !== 'PENDING'" @click="handleReport(r, 'RESOLVED')">
+                    <button class="row-btn info-hover" title="Xem chi tiết" @click="openReportDetail(r)">
+                      <Eye :size="14" />
+                    </button>
+                    <button class="row-btn success-hover" :disabled="loading || r.status !== 'PENDING'" @click="handleReport(r, 'RESOLVED')" title="Xử lý xong">
                       <Check :size="14" />
                     </button>
-                    <button class="row-btn danger-hover" :disabled="loading || r.status !== 'PENDING'" @click="handleReport(r, 'REJECTED')">
+                    <button class="row-btn danger-hover" :disabled="loading || r.status !== 'PENDING'" @click="handleReport(r, 'REJECTED')" title="Từ chối">
                       <X :size="14" />
                     </button>
                   </div>
@@ -153,17 +159,121 @@
 
       <div v-if="loading" class="loading-row">Đang tải...</div>
     </div>
+
+    <!-- ═══════════════ COMMENT DETAIL MODAL ═══════════════ -->
+    <div v-if="selectedComment" class="modal-overlay" @click.self="selectedComment = null">
+      <div class="modal-content glass-modal" @click.stop>
+        <div class="modal-header">
+          <div class="modal-title-row">
+            <MessageSquare :size="18" class="modal-title-icon" />
+            <h3>Chi tiết bình luận</h3>
+          </div>
+          <button class="close-modal" @click="selectedComment = null"><X :size="18" /></button>
+        </div>
+        <div class="modal-body custom-scrollbar">
+          <div class="detail-section">
+            <label class="detail-label">Nội dung</label>
+            <div class="detail-content-body">{{ selectedComment.content }}</div>
+          </div>
+          <div class="detail-meta-grid mt-4">
+             <div class="meta-item">
+                <label class="meta-label">Người viết</label>
+                <div class="meta-value">{{ selectedComment.user?.fullName }} ({{ selectedComment.user?.email || 'N/A' }})</div>
+             </div>
+             <div class="meta-item">
+                <label class="meta-label">Bài đăng</label>
+                <div class="meta-value">{{ selectedComment.post?.title || '-' }}</div>
+             </div>
+             <div class="meta-item">
+                <label class="meta-label">Ngày tạo</label>
+                <div class="meta-value">{{ formatDate(selectedComment.createdAt) }}</div>
+             </div>
+             <div class="meta-item">
+                <label class="meta-label">Trạng thái</label>
+                <div class="meta-value">
+                   <span class="status" :class="selectedComment.isHidden ? 'hidden' : 'active'">
+                    {{ selectedComment.isHidden ? 'Đã ẩn' : 'Hiển thị' }}
+                   </span>
+                </div>
+             </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="selectedComment = null">Đóng</button>
+          <button class="btn-warning" @click="toggleComment(selectedComment); selectedComment = null">
+            <EyeOff v-if="!selectedComment.isHidden" :size="14" />
+            <Eye v-else :size="14" />
+            {{ selectedComment.isHidden ? 'Hiện bình luận' : 'Ẩn bình luận' }}
+          </button>
+          <button class="btn-danger" @click="deleteComment(selectedComment); selectedComment = null">
+            <Trash2 :size="14" /> Xóa vĩnh viễn
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ REPORT DETAIL MODAL ═══════════════ -->
+    <div v-if="selectedReport" class="modal-overlay" @click.self="selectedReport = null">
+      <div class="modal-content glass-modal" @click.stop>
+        <div class="modal-header">
+          <div class="modal-title-row">
+            <ShieldAlert :size="18" class="modal-title-icon" />
+            <h3>Chi tiết báo cáo vi phạm</h3>
+          </div>
+          <button class="close-modal" @click="selectedReport = null"><X :size="18" /></button>
+        </div>
+        <div class="modal-body custom-scrollbar">
+          <div class="detail-section">
+            <label class="detail-label">Lý do báo cáo</label>
+            <div class="detail-content-body text-red">{{ selectedReport.reason }}</div>
+          </div>
+          <div class="detail-meta-grid mt-4">
+             <div class="meta-item">
+                <label class="meta-label">Người báo cáo</label>
+                <div class="meta-value">{{ selectedReport.reporter?.fullName }}</div>
+             </div>
+             <div class="meta-item">
+                <label class="meta-label">Đối tượng bị báo cáo</label>
+                <div class="meta-value">{{ selectedReport.targetType }} (ID: {{ selectedReport.targetId }})</div>
+             </div>
+             <div class="meta-item">
+                <label class="meta-label">Ngày báo cáo</label>
+                <div class="meta-value">{{ formatDate(selectedReport.createdAt) }}</div>
+             </div>
+             <div class="meta-item">
+                <label class="meta-label">Trạng thái xử lý</label>
+                <div class="meta-value">
+                   <span class="status" :class="String(selectedReport.status || '').toLowerCase()">
+                    {{ formatReportStatus(selectedReport.status) }}
+                   </span>
+                </div>
+             </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="selectedReport = null">Đóng</button>
+          <template v-if="selectedReport.status === 'PENDING'">
+            <button class="btn-success" @click="handleReport(selectedReport, 'RESOLVED'); selectedReport = null">
+              <Check :size="14" /> Xác nhận xử lý
+            </button>
+            <button class="btn-danger-outline" @click="handleReport(selectedReport, 'REJECTED'); selectedReport = null">
+              <X :size="14" /> Từ chối báo cáo
+            </button>
+          </template>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
 import { ref, computed, onMounted } from 'vue';
-import { MessageSquare, RefreshCw, Search, EyeOff, Eye, Trash2, Check, X } from 'lucide-vue-next';
+import { MessageSquare, RefreshCw, Search, EyeOff, Eye, Trash2, Check, X, ShieldAlert } from 'lucide-vue-next';
 import { adminService } from '@/services/admin.service';
 
 export default {
   name: 'CommunityManagementView',
-  components: { MessageSquare, RefreshCw, Search, EyeOff, Eye, Trash2, Check, X },
+  components: { MessageSquare, RefreshCw, Search, EyeOff, Eye, Trash2, Check, X, ShieldAlert },
   setup() {
     const loading = ref(false);
     const activeTab = ref('comments');
@@ -176,6 +286,17 @@ export default {
 
     const reportQ = ref('');
     const reportFilter = ref('');
+
+    const selectedComment = ref(null);
+    const selectedReport = ref(null);
+
+    const openCommentDetail = (c) => {
+      selectedComment.value = c;
+    };
+
+    const openReportDetail = (r) => {
+      selectedReport.value = r;
+    };
 
     const formatDate = (d) => {
       if (!d) return '-';
@@ -301,6 +422,10 @@ export default {
       handleReport,
       formatDate,
       formatReportStatus,
+      selectedComment,
+      selectedReport,
+      openCommentDetail,
+      openReportDetail,
     };
   },
 };
@@ -332,7 +457,9 @@ th { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: v
 .text-right { text-align: right; }
 
 .w-45 { width: 45%; }
-.comment-content, .report-reason { color: var(--text-primary); font-weight: 650; white-space: pre-wrap; }
+.comment-content, .report-reason { color: var(--text-primary); font-weight: 650; white-space: pre-wrap; transition: color 0.2s; }
+.comment-content.clickable, .report-reason.clickable { cursor: pointer; }
+.comment-content.clickable:hover, .report-reason.clickable:hover { color: var(--accent); }
 .muted { color: var(--text-muted); font-size: 11px; margin-top: 2px; }
 
 .status { font-size: 11px; font-weight: 800; padding: 5px 10px; border-radius: 999px; border: 1px solid rgba(148, 163, 184, 0.18); display: inline-flex; }
@@ -348,6 +475,7 @@ th { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: v
 .row-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .danger-hover:hover { border-color: rgba(239, 68, 68, 0.4); color: #ef4444; background: rgba(239,68,68,0.08); }
 .success-hover:hover { border-color: rgba(34, 197, 94, 0.4); color: var(--green); background: rgba(34,197,94,0.08); }
+.info-hover:hover { border-color: rgba(79, 110, 247, 0.4); color: var(--accent); background: rgba(79,110,247,0.08); }
 
 .empty { padding: 18px; text-align: center; color: var(--text-muted); }
 .loading-row { padding: 12px 16px; font-size: 12px; color: var(--text-muted); }
@@ -355,5 +483,29 @@ th { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: v
 .btn-secondary { height: 36px; border-radius: 10px; border: 1px solid var(--border); background: transparent; color: var(--text-primary); padding: 0 12px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
 .btn-secondary:hover { background: var(--bg-tertiary); }
 .btn-secondary:disabled { opacity: 0.6; cursor: not-allowed; }
-</style>
 
+/* Modal Styles */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.glass-modal { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 16px; width: 600px; max-width: 90vw; box-shadow: 0 20px 40px rgba(0,0,0,0.4); overflow: hidden; display: flex; flex-direction: column; }
+.modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-tertiary); }
+.modal-title-row { display: flex; align-items: center; gap: 10px; }
+.modal-title-row h3 { margin: 0; font-size: 16px; font-weight: 800; color: var(--text-primary); }
+.modal-title-icon { color: var(--accent); }
+.close-modal { background: transparent; border: none; color: var(--text-muted); cursor: pointer; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
+.close-modal:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+.modal-body { padding: 24px; overflow-y: auto; max-height: 70vh; }
+.detail-section { margin-bottom: 20px; }
+.detail-label { display: block; font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.05em; }
+.detail-content-body { background: var(--bg-tertiary); padding: 16px; border-radius: 12px; border: 1px solid var(--border); font-size: 14px; line-height: 1.6; color: var(--text-primary); white-space: pre-wrap; }
+.detail-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+.detail-value { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.text-lg { font-size: 15px; }
+.text-red { color: #ef4444; }
+
+.modal-footer { padding: 16px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 12px; background: var(--bg-tertiary); }
+.btn-success { background: var(--green); color: white; border: none; padding: 0 16px; height: 38px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.btn-danger { background: #ef4444; color: white; border: none; padding: 0 16px; height: 38px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.btn-danger-outline { background: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 0 16px; height: 38px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.btn-warning { background: var(--orange); color: white; border: none; padding: 0 16px; height: 38px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+</style>

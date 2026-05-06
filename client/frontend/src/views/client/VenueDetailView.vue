@@ -698,6 +698,8 @@ export default {
             address: `${apiClub.address}, ${apiClub.ward ? apiClub.ward + ', ' : ''}${apiClub.district}, ${apiClub.city}`,
             image: apiClub.coverImageUrl || '',
             description: apiClub.description || '',
+            rating: apiClub.rating || 0,
+            reviewCount: apiClub.reviewCount || 0,
             amenities: apiClub.amenities?.map(a => ({
               id: a.amenity.id, 
               name: a.amenity.name, 
