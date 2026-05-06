@@ -20,16 +20,13 @@ export async function POST(req: NextRequest) {
       idCardBackUrl,
       businessLicenseUrl,
       taxCode,
-      bankName,
-      bankAccountNumber,
-      bankAccountName,
       cancellationPolicy,
     } = body;
 
     // 3. Validate các trường bắt buộc
-    if (!idCardNumber || !bankName || !bankAccountNumber || !bankAccountName) {
+    if (!idCardNumber) {
       return errorResponse(
-        "Vui lòng cung cấp đầy đủ thông tin: Số CCCD, và thông tin tài khoản ngân hàng.",
+        "Vui lòng cung cấp đầy đủ thông tin: Số CCCD.",
         422
       );
     }
@@ -41,9 +38,6 @@ export async function POST(req: NextRequest) {
       idCardBackUrl,
       businessLicenseUrl,
       taxCode,
-      bankName,
-      bankAccountNumber,
-      bankAccountName,
       cancellationPolicy,
     });
 

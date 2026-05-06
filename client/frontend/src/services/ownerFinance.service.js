@@ -7,6 +7,21 @@ export const ownerFinanceService = {
    */
   getFinance(params = {}) {
     return api.get('/owner/finance', { params });
+  },
+
+  /**
+   * Lấy lịch sử yêu cầu rút tiền
+   */
+  getPayouts() {
+    return api.get('/owner/finance/payouts');
+  },
+
+  /**
+   * Gửi yêu cầu rút tiền
+   * @param {{ amount: number, note?: string }} data
+   */
+  createPayoutRequest(data) {
+    return api.post('/owner/finance/payouts', data);
   }
 };
 

@@ -14,10 +14,6 @@ export interface OnboardingInput {
   idCardBackUrl?: string;
   businessLicenseUrl?: string;
   taxCode?: string;
-  // Bước 2: Tài khoản ngân hàng
-  bankName: string;
-  bankAccountNumber: string;
-  bankAccountName: string;
   // Bước 3: Quy định vận hành
   cancellationPolicy?: string;
 }
@@ -39,9 +35,6 @@ export async function submitOwnerOnboarding(userId: string, input: OnboardingInp
         idCardBackUrl: input.idCardBackUrl,
         businessLicenseUrl: input.businessLicenseUrl,
         taxCode: input.taxCode,
-        bankName: input.bankName,
-        bankAccountNumber: input.bankAccountNumber,
-        bankAccountName: input.bankAccountName,
         cancellationPolicy: input.cancellationPolicy,
         kycStatus: "PENDING", // Admin sẽ duyệt sau
       },
@@ -51,9 +44,6 @@ export async function submitOwnerOnboarding(userId: string, input: OnboardingInp
         idCardBackUrl: input.idCardBackUrl,
         businessLicenseUrl: input.businessLicenseUrl,
         taxCode: input.taxCode,
-        bankName: input.bankName,
-        bankAccountNumber: input.bankAccountNumber,
-        bankAccountName: input.bankAccountName,
         cancellationPolicy: input.cancellationPolicy,
         kycStatus: "PENDING",
       },

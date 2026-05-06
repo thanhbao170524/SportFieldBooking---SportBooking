@@ -382,6 +382,8 @@ import { notificationService } from '@/services/notification.service';
 import { toast } from 'vue3-toastify';
 import VenueCard from '@/components/client/booking/VenueCard.vue';
 
+const phoneVN = /^(0|\+84)[0-9]{9}$/;
+
 export default {
   name: 'ProfileView',
   components: {
@@ -551,9 +553,48 @@ export default {
        }
     },
     async updateProfile() {
+      const fullName = String(this.form.fullName || '').trim();
+      const phone = String(this.form.phone || '').trim();
+      const address = String(this.form.address || '');
+      const bio = String(this.form.bio || '');
+
+      if (fullName.length < 2) {
+        toast.error("Họ và tên phải có ít nhất 2 ký tự");
+        return;
+      }
+      if (fullName.length > 100) {
+        toast.error("Họ và tên tối đa 100 ký tự");
+        return;
+      }
+      if (phone && !phoneVN.test(phone)) {
+        toast.error("Số điện thoại không hợp lệ (VD: 0901234567 hoặc +84901234567)");
+        return;
+      }
+      if (address && address.length > 255) {
+        toast.error("Địa chỉ tối đa 255 ký tự");
+        return;
+      }
+      if (bio && bio.length > 500) {
+        toast.error("Tiểu sử tối đa 500 ký tự");
+        return;
+      }
+      if (this.form.dateOfBirth) {
+        const d = new Date(this.form.dateOfBirth);
+        if (isNaN(d.getTime())) {
+          toast.error("Ngày sinh không hợp lệ");
+          return;
+        }
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (d > today) {
+          toast.error("Ngày sinh không được lớn hơn ngày hiện tại");
+          return;
+        }
+      }
+
       this.saving = true;
       try {
-        const payload = { ...this.form };
+        const payload = { ...this.form, fullName, phone, address, bio };
         // Backend yêu cầu ISO 8601 datetime cho dateOfBirth
         if (payload.dateOfBirth) {
           payload.dateOfBirth = new Date(payload.dateOfBirth).toISOString();
@@ -573,6 +614,18 @@ export default {
     async changePassword() {
       if (this.pwForm.newPassword !== this.pwForm.confirmPassword) {
         toast.error("Mật khẩu xác nhận không khớp");
+        return;
+      }
+      if (!this.pwForm.oldPassword || !this.pwForm.newPassword || !this.pwForm.confirmPassword) {
+        toast.error("Vui lòng nhập đầy đủ thông tin mật khẩu");
+        return;
+      }
+      if (String(this.pwForm.newPassword).length < 8) {
+        toast.error("Mật khẩu mới phải có ít nhất 8 ký tự");
+        return;
+      }
+      if (!/[A-Za-z]/.test(this.pwForm.newPassword) || !/[0-9]/.test(this.pwForm.newPassword)) {
+        toast.error("Mật khẩu mới phải bao gồm cả chữ và số");
         return;
       }
       this.saving = true;

@@ -52,6 +52,12 @@ export const createCourtSchema = z.object({
   images: z.array(z.string().url()).optional(),
 });
 
+export const updateCourtSchema = createCourtSchema
+  .partial()
+  .extend({
+    status: z.enum(["ACTIVE", "MAINTENANCE", "INACTIVE"]).optional(),
+  });
+
 // ============================================================
 // TYPES
 // ============================================================
@@ -59,6 +65,7 @@ export const createCourtSchema = z.object({
 export type SearchCourtInput = ZodInfer<typeof searchCourtSchema>;
 export type CreateClubInput = ZodInfer<typeof createClubSchema>;
 export type CreateCourtInput = ZodInfer<typeof createCourtSchema>;
+export type UpdateCourtInput = ZodInfer<typeof updateCourtSchema>;
 
 export const courtPricingSchema = z.array(z.object({
   dayOfWeek:    z.number().int().min(0).max(6).optional(),

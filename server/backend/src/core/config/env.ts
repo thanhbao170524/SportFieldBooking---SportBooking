@@ -50,6 +50,8 @@ const envSchema = z.object({
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().optional(),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_PLATFORM_ACCOUNT_ID: z.string().optional(),
+  STRIPE_CONNECT_COUNTRY: z.string().optional(),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

@@ -22,7 +22,7 @@ export async function PATCH(
     const { status } = await req.json();
     if (!status) return errorResponse("Thiếu trạng thái cập nhật", 400);
 
-    const booking = await updateBookingStatus(bookingId, user.userId, status);
+    const booking = await updateBookingStatus(user.userId, bookingId, status);
     return successResponse("Cập nhật trạng thái thành công", booking);
   } catch (error: unknown) {
     if (error instanceof Error) {

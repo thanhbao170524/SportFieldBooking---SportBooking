@@ -62,6 +62,9 @@
       <router-link to="/admin/stats" class="nav-item" active-class="active">
         <span class="nav-icon"><BarChart3 :size="16" /></span> Thống kê hệ thống
       </router-link>
+      <router-link to="/admin/finance" class="nav-item" active-class="active">
+        <span class="nav-icon"><Wallet :size="16" /></span> Tài chính
+      </router-link>
       <router-link to="/admin/reports" class="nav-item" active-class="active">
         <span class="nav-icon"><FilePieChart :size="16" /></span> Báo cáo
       </router-link>
@@ -96,7 +99,7 @@ import { useRouter } from 'vue-router';
 import { 
   Activity, LayoutDashboard, Home, Clock, Lock, 
   Users, Building2, ShieldAlert, FileText, Newspaper, 
-  MessageSquare, BarChart3, FilePieChart, Key, Settings,
+  MessageSquare, BarChart3, Wallet, FilePieChart, Key, Settings,
   User, LogOut, ShieldCheck
 } from 'lucide-vue-next';
 import { adminService } from '@/services/admin.service';
@@ -106,7 +109,7 @@ export default {
   components: {
     Activity, LayoutDashboard, Home, Clock, Lock, 
     Users, Building2, ShieldAlert, FileText, Newspaper, 
-    MessageSquare, BarChart3, FilePieChart, Key, Settings,
+    MessageSquare, BarChart3, Wallet, FilePieChart, Key, Settings,
     User, LogOut, ShieldCheck
   },
   setup() {

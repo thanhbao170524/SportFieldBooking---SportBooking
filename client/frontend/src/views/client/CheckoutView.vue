@@ -372,7 +372,7 @@
               <div class="chk-pay-methods">
 
                 <!-- Chuyển khoản ngân hàng -->
-                <div :class="['chk-pay-method', { active: payMethod === 'bank' }]" @click="payMethod = 'bank'">
+                <div v-if="availableMethods.bank" :class="['chk-pay-method', { active: payMethod === 'bank' }]" @click="payMethod = 'bank'">
                   <div class="chk-pay-method__radio">
                     <div class="chk-radio-dot" v-if="payMethod === 'bank'"></div>
                   </div>
@@ -625,7 +625,7 @@
                 </transition>
 
                 <!-- Thẻ quốc tế (Stripe) -->
-                <div :class="['chk-pay-method', { active: payMethod === 'card' }]" @click="payMethod = 'card'">
+                <div v-if="availableMethods.card" :class="['chk-pay-method', { active: payMethod === 'card' }]" @click="payMethod = 'card'">
                   <div class="chk-pay-method__radio">
                     <div class="chk-radio-dot" v-if="payMethod === 'card'"></div>
                   </div>
@@ -971,6 +971,9 @@ import LoadingView from "@/components/common/LoadingView.vue";
 import '@/assets/checkout.css';
 import { toast } from 'vue3-toastify';
 
+const phoneVN = /^(0|\+84)[0-9]{9}$/;
+const voucherCodeRe = /^[A-Z0-9_-]{3,20}$/;
+
 export default {
   name: 'CheckoutView',
   components: { LoadingView },
@@ -1030,7 +1033,9 @@ export default {
       try { return JSON.parse(this.bookingInfo.slots); } catch { return []; }
     },
     finalCalculatedTotal() {
-      return this.discount = this.bookingInfo.total;
+      const baseAmount = this.courtSubtotalAll() + this.serviceTotal;
+      const disc = Number(this.discount) || 0;
+      return Math.max(0, baseAmount - disc);
     },
 
     parsedServices() {
@@ -1078,6 +1083,23 @@ export default {
       return mins >= 60
         ? `${Math.floor(mins / 60)} tiếng${mins % 60 ? ' ' + mins % 60 + 'p' : ''}`
         : `${mins} phút`;
+    },
+
+    availableMethods() {
+      // Ẩn phương thức nếu chủ sân chưa cấu hình
+      const c = this.clubTransferProfile || {};
+      const bankOk = !!(String(c.transferBankName || '').trim()
+        && String(c.transferAccountNumber || '').trim()
+        && String(c.transferBeneficiaryName || '').trim());
+      const cardOk = !!c.stripeCardEnabled;
+
+      return {
+        bank: bankOk,
+        card: cardOk,
+        momo: true,
+        vnpay: true,
+        cash: true,
+      };
     },
 
     bankTransferDisplay() {
@@ -1151,6 +1173,11 @@ export default {
 
     canSubmit() {
       if (!this.agreed) return false;
+      if (!this.availableMethods[this.payMethod]) return false;
+      if (this.finalCalculatedTotal <= 0) return false;
+      if (!this.bookingInfo.club_id) return false;
+      if (!this.parsedSlots.length) return false;
+      if (this.payMethod === 'card' && !this.isCardValid) return false;
       return true;
     },
   },
@@ -1272,10 +1299,18 @@ export default {
             transferAccountNumber: d.transferAccountNumber,
             transferBeneficiaryName: d.transferBeneficiaryName,
             transferQrImageUrl: d.transferQrImageUrl,
+            stripeCardEnabled: !!d.stripeCardEnabled,
             phone: d.phone,
             email: d.email,
             name: d.name,
           };
+
+          // Nếu phương thức đang chọn bị ẩn → chọn phương thức hợp lệ đầu tiên
+          const order = ['vnpay', 'momo', 'card', 'bank', 'cash'];
+          if (!this.availableMethods[this.payMethod]) {
+            const next = order.find((m) => this.availableMethods[m]);
+            if (next) this.payMethod = next;
+          }
         }
       } catch (e) {
         console.warn('fetchClubTransferProfile', e);
@@ -1344,8 +1379,65 @@ export default {
     },
 
     async handleCheckout() {
-      this.isProcessing = true;
       this.errorMessage = '';
+
+      // ── Frontend validations (high-signal) ─────────────────────
+      const name = String(this.bookingInfo.name || '').trim();
+      const phone = String(this.bookingInfo.phone || '').trim();
+      const email = String(this.bookingInfo.email || '').trim();
+      const slots = (() => {
+        try {
+          return typeof this.bookingInfo.booking_slots === 'string'
+            ? JSON.parse(this.bookingInfo.booking_slots)
+            : (this.bookingInfo.booking_slots || []);
+        } catch { return []; }
+      })();
+
+      if (!this.agreed) {
+        toast.error('Vui lòng đồng ý với điều khoản dịch vụ.');
+        return;
+      }
+      if (!this.availableMethods[this.payMethod]) {
+        toast.error('Phương thức thanh toán không khả dụng. Vui lòng chọn phương thức khác.');
+        return;
+      }
+      if (!this.bookingInfo.club_id) {
+        toast.error('Thiếu thông tin câu lạc bộ. Vui lòng quay lại chọn sân.');
+        return;
+      }
+      if (!Array.isArray(slots) || slots.length === 0) {
+        toast.error('Bạn chưa chọn khung giờ nào.');
+        return;
+      }
+      if (this.payMethod === 'card' && !this.isCardValid) {
+        toast.error('Vui lòng kiểm tra thông tin thẻ.');
+        return;
+      }
+      if (this.finalCalculatedTotal <= 0) {
+        toast.error('Tổng thanh toán không hợp lệ.');
+        return;
+      }
+      if (!name || name.length < 2) {
+        toast.error('Vui lòng nhập họ tên hợp lệ.');
+        return;
+      }
+      if (!phoneVN.test(phone)) {
+        toast.error('Số điện thoại không hợp lệ (VD: 0901234567 hoặc +84901234567).');
+        return;
+      }
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        toast.error('Email không hợp lệ.');
+        return;
+      }
+
+      // Validate slot payload shape
+      const badSlot = slots.find((s) => !s?.courtId || !s?.startTime);
+      if (badSlot) {
+        toast.error('Dữ liệu khung giờ không hợp lệ. Vui lòng chọn lại.');
+        return;
+      }
+
+      this.isProcessing = true;
 
       try {
         const paymentMap = {
@@ -1358,18 +1450,14 @@ export default {
 
         const payload = {
           clubId: this.bookingInfo.club_id,
-          slots: (() => {
-            try {
-              return typeof this.bookingInfo.booking_slots === 'string'
-                ? JSON.parse(this.bookingInfo.booking_slots)
-                : (this.bookingInfo.booking_slots || []);
-            } catch { return []; }
-          })(),
-          bookerName: this.bookingInfo.name,
-          bookerPhone: this.bookingInfo.phone,
-          bookerEmail: this.bookingInfo.email || undefined,
+          slots,
+          bookerName: name,
+          bookerPhone: phone,
+          bookerEmail: email || undefined,
           note: this.bookingInfo.note || undefined,
-          voucherCode: this.voucherInput.trim().toUpperCase() || undefined,
+          voucherCode: (this.voucherInput || '').trim()
+            ? String(this.voucherInput).trim().toUpperCase()
+            : undefined,
           paymentMethod: paymentMap[this.payMethod] || 'VNPAY',
           serviceIds: (() => {
             try {
@@ -1380,6 +1468,11 @@ export default {
             } catch { return []; }
           })(),
         };
+
+        if (payload.voucherCode && !voucherCodeRe.test(payload.voucherCode)) {
+          toast.error('Mã giảm giá không hợp lệ.');
+          return;
+        }
 
         const res = await bookingService.createBooking(payload);
 
@@ -1427,6 +1520,13 @@ export default {
       this.voucherErrorMessage = '';
 
       const code = this.voucherInput.trim().toUpperCase();
+      if (!voucherCodeRe.test(code)) {
+        this.voucherError = true;
+        this.voucherErrorMessage = "Mã giảm giá không hợp lệ";
+        this.discount = 0;
+        this.bookingInfo.voucher_code = '';
+        return;
+      }
       const clubId = this.bookingInfo.club_id;
       const baseAmount = this.courtSubtotalAll() + this.serviceTotal;
       const courtIds = [...new Set((this.bookingInfo.courts || []).map((c) => c.id))];
@@ -1438,9 +1538,9 @@ export default {
           if (v.type === 'PERCENTAGE') {
             let disc = baseAmount * (v.value / 100);
             if (v.maxDiscountAmount && disc > v.maxDiscountAmount) disc = v.maxDiscountAmount;
-            this.discount = disc;
+            this.discount = Math.min(disc, baseAmount);
           } else {
-            this.discount = v.value;
+            this.discount = Math.min(Number(v.value) || 0, baseAmount);
           }
           this.bookingInfo.voucher_code = code;
           this.showVoucherInput = true;
@@ -1571,8 +1671,15 @@ export default {
     handleFileUpload(e) {
       const file = e.target.files[0];
       if (!file) return;
+      const okTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      if (file.type && !okTypes.includes(file.type)) {
+        toast.error("Chỉ chấp nhận ảnh JPG/PNG/WEBP");
+        e.target.value = '';
+        return;
+      }
       if (file.size > 5 * 1024 * 1024) {
-        alert("File quá lớn! Vui lòng chọn ảnh < 5MB");
+        toast.error("File quá lớn! Vui lòng chọn ảnh < 5MB");
+        e.target.value = '';
         return;
       }
       this.proofFile = file;

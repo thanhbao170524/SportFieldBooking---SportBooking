@@ -60,6 +60,8 @@ export async function POST(req: NextRequest) {
         MOMO_CONFIG_MISSING: ["Cấu hình MoMo chưa hoàn tất. Vui lòng liên hệ Admin.", 500],
         STRIPE_CONFIG_MISSING: ["Cấu hình thanh toán thẻ chưa hoàn tất. Vui lòng liên hệ Admin.", 500],
         STRIPE_SESSION_URL_MISSING: ["Không thể tạo phiên thanh toán. Vui lòng thử lại.", 502],
+        OWNER_STRIPE_CONNECT_NOT_SET: ["Chủ sân chưa liên kết Stripe để nhận tiền thẻ. Vui lòng chọn phương thức khác hoặc liên hệ chủ sân.", 422],
+        OWNER_STRIPE_CONNECT_INVALID: ["Chủ sân cấu hình Stripe Connect chưa đúng (đang dùng tài khoản Stripe của hệ thống). Vui lòng vào Quản lý thanh toán để cập nhật lại.", 422],
       };
       const [msg, status] = errorMap[error.message] || [];
       if (msg) return errorResponse(msg, status);
