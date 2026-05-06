@@ -1,224 +1,206 @@
-import api from '../api/axios';
+import api from "../api/axios";
 
 /**
  * Service dành riêng cho thao tác của Admin
  */
 export const adminService = {
-    // ==========================================
-    // Quản lý Câu lạc bộ (Sân)
-    // ==========================================
+  // Permissions
+  getPermissions() {
+    return api.get("/admin/permissions");
+  },
 
-    /**
-     * Lấy toàn bộ danh sách CLB (Dành cho Admin)
-     */
-    getAllClubs() {
-        return api.get('/admin/clubs');
-    },
-    /**
-     * Cập nhật trạng thái phê duyệt của CLB
-     * @param {string} clubId 
-     * @param {'APPROVED' | 'REJECTED' | 'PENDING'} status 
-     */
-    updateClubApproval(clubId, status) {
-        return api.patch(`/admin/clubs/${clubId}/approval`, { status });
-    },
+  updatePermissions(matrix) {
+    return api.patch("/admin/permissions", { matrix });
+  },
 
-    /**
-     * Khóa hoặc mở khóa CLB
-     * @param {string} clubId 
-     * @param {boolean} isActive 
-     */
-    updateClubStatus(clubId, isActive) {
-        return api.patch(`/admin/clubs/${clubId}/status`, { isActive });
-    },
+  // ==========================================
+  // Quản lý Câu lạc bộ (Sân)
+  // ==========================================
 
-    /**
-     * Cập nhật trạng thái một sân đơn lẻ
-     * @param {string} courtId 
-     * @param {'ACTIVE' | 'SUSPENDED' | 'INACTIVE'} status 
-     */
-    updateCourtStatus(courtId, status) {
-        return api.patch(`/admin/courts/${courtId}/status`, { status });
-    },
+  /**
+   * Lấy toàn bộ danh sách CLB (Dành cho Admin)
+   */
+  getAllClubs() {
+    return api.get("/admin/clubs");
+  },
+  /**
+   * Cập nhật trạng thái phê duyệt của CLB
+   * @param {string} clubId
+   * @param {'APPROVED' | 'REJECTED' | 'PENDING'} status
+   */
+  updateClubApproval(clubId, status) {
+    return api.patch(`/admin/clubs/${clubId}/approval`, { status });
+  },
 
-    /**
-     * Lấy các số liệu tổng quan (Counts) cho Sidebar/Badge
-     * @param {string} [startDate] 
-     * @param {string} [endDate]
-     */
-    getSummary(startDate, endDate) {
-        return api.get('/admin/summary', {
-            params: { startDate, endDate }
-        });
-    },
+  /**
+   * Khóa hoặc mở khóa CLB
+   * @param {string} clubId
+   * @param {boolean} isActive
+   */
+  updateClubStatus(clubId, isActive) {
+    return api.patch(`/admin/clubs/${clubId}/status`, { isActive });
+  },
 
-    // ==========================================
-    // Quản lý KYC (Xác minh Owner)
-    // ==========================================
+  /**
+   * Cập nhật trạng thái một sân đơn lẻ
+   * @param {string} courtId
+   * @param {'ACTIVE' | 'SUSPENDED' | 'INACTIVE'} status
+   */
+  updateCourtStatus(courtId, status) {
+    return api.patch(`/admin/courts/${courtId}/status`, { status });
+  },
 
-    /**
-     * Lấy danh sách hồ sơ KYC của các Owner
-     */
-    getAllKyc() {
-        return api.get('/admin/kyc');
-    },
+  /**
+   * Lấy các số liệu tổng quan (Counts) cho Sidebar/Badge
+   * @param {string} [startDate]
+   * @param {string} [endDate]
+   */
+  getSummary(startDate, endDate) {
+    return api.get("/admin/summary", {
+      params: { startDate, endDate },
+    });
+  },
 
-    /**
-     * Lấy toàn bộ hồ sơ các Chủ Câu lạc bộ (Owners)
-     */
-    getAllOwners() {
-        return api.get('/admin/owners');
-    },
+  // ==========================================
+  // Quản lý KYC (Xác minh Owner)
+  // ==========================================
 
-    /**
-     * Xét duyệt KYC cho Owner
-     * @param {string} profileId 
-     * @param {'APPROVED' | 'REJECTED'} status 
-     * @param {string} [note] - Lý do nếu từ chối
-     */
-    updateKycStatus(profileId, status, note) {
-        return api.patch(`/admin/kyc/${profileId}`, { status, note });
-    },
+  /**
+   * Lấy danh sách hồ sơ KYC của các Owner
+   */
+  getAllKyc() {
+    return api.get("/admin/kyc");
+  },
 
-    /**
-     * Lấy danh sách toàn bộ người dùng
-     */
-    getUsers() {
-        return api.get('/admin/users');
-    },
+  /**
+   * Lấy toàn bộ hồ sơ các Chủ Câu lạc bộ (Owners)
+   */
+  getAllOwners() {
+    return api.get("/admin/owners");
+  },
 
-    /**
-     * Khóa/Mở khóa tài khoản người dùng
-     * @param {string} userId 
-     * @param {boolean} isActive 
-     */
-    updateUserStatus(userId, isActive) {
-        return api.patch(`/admin/users/${userId}/status`, { isActive });
-    },
+  /**
+   * Xét duyệt KYC cho Owner
+   * @param {string} profileId
+   * @param {'APPROVED' | 'REJECTED'} status
+   * @param {string} [note] - Lý do nếu từ chối
+   */
+  updateKycStatus(profileId, status, note) {
+    return api.patch(`/admin/kyc/${profileId}`, { status, note });
+  },
 
-    // ==========================================
-    // Quản lý nội dung (Posts / Comments / Reports)
-    // ==========================================
+  /**
+   * Lấy danh sách toàn bộ người dùng
+   */
+  getUsers() {
+    return api.get("/admin/users");
+  },
 
-    /**
-     * Lấy danh sách bài đăng
-     */
-    getAllPosts() {
-        return api.get('/admin/posts');
-    },
+  /**
+   * Khóa/Mở khóa tài khoản người dùng
+   * @param {string} userId
+   * @param {boolean} isActive
+   */
+  updateUserStatus(userId, isActive) {
+    return api.patch(`/admin/users/${userId}/status`, { isActive });
+  },
 
-    /**
-     * Ẩn/hiện/hết hạn bài đăng
-     * @param {string} postId
-     * @param {'ACTIVE'|'HIDDEN'|'EXPIRED'} status
-     */
-    updatePostStatus(postId, status) {
-        return api.patch(`/admin/posts/${postId}`, { status });
-    },
+  // ==========================================
+  // Quản lý nội dung (Posts / Comments / Reports)
+  // ==========================================
 
-    /**
-     * Kiểm duyệt bài đăng
-     * @param {string} postId
-     * @param {{action:'APPROVE'|'REJECT', note?:string}} payload
-     */
-    moderatePost(postId, payload) {
-        return api.patch(`/admin/posts/${postId}`, payload);
-    },
+  /**
+   * Lấy danh sách bài đăng
+   */
+  getAllPosts() {
+    return api.get("/admin/posts");
+  },
 
-    /**
-     * Xoá mềm bài đăng
-     */
-    deletePost(postId) {
-        return api.delete(`/admin/posts/${postId}`);
-    },
+  /**
+   * Ẩn/hiện/hết hạn bài đăng
+   * @param {string} postId
+   * @param {'ACTIVE'|'HIDDEN'|'EXPIRED'} status
+   */
+  updatePostStatus(postId, status) {
+    return api.patch(`/admin/posts/${postId}`, { status });
+  },
 
-    /**
-     * Lấy danh sách bình luận
-     */
-    getAllComments() {
-        return api.get('/admin/comments');
-    },
+  /**
+   * Kiểm duyệt bài đăng
+   * @param {string} postId
+   * @param {{action:'APPROVE'|'REJECT', note?:string}} payload
+   */
+  moderatePost(postId, payload) {
+    return api.patch(`/admin/posts/${postId}`, payload);
+  },
 
-    /**
-     * Ẩn/hiện bình luận
-     * @param {string} commentId
-     * @param {boolean} isHidden
-     */
-    updateCommentHidden(commentId, isHidden) {
-        return api.patch(`/admin/comments/${commentId}`, { isHidden });
-    },
+  /**
+   * Xoá mềm bài đăng
+   */
+  deletePost(postId) {
+    return api.delete(`/admin/posts/${postId}`);
+  },
 
-    /**
-     * Xoá bình luận
-     */
-    deleteComment(commentId) {
-        return api.delete(`/admin/comments/${commentId}`);
-    },
+  /**
+   * Lấy danh sách bình luận
+   */
+  getAllComments() {
+    return api.get("/admin/comments");
+  },
 
-    /**
-     * Lấy danh sách report/vi phạm
-     */
-    getAllReports() {
-        return api.get('/admin/reports');
-    },
+  /**
+   * Ẩn/hiện bình luận
+   * @param {string} commentId
+   * @param {boolean} isHidden
+   */
+  updateCommentHidden(commentId, isHidden) {
+    return api.patch(`/admin/comments/${commentId}`, { isHidden });
+  },
 
-    /**
-     * Xử lý report
-     * @param {string} reportId
-     * @param {'RESOLVED'|'REJECTED'} status
-     */
-    handleReport(reportId, status) {
-        return api.patch(`/admin/reports/${reportId}`, { status });
-    },
+  /**
+   * Xoá bình luận
+   */
+  deleteComment(commentId) {
+    return api.delete(`/admin/comments/${commentId}`);
+  },
 
-    // ==========================================
-    // Thống kê hệ thống (Admin)
-    // ==========================================
+  /**
+   * Lấy danh sách report/vi phạm
+   */
+  getAllReports() {
+    return api.get("/admin/reports");
+  },
 
-    /**
-     * Dashboard tổng quan thống kê (1 API)
-     * @param {object} params { preset?: 'last_week'|'this_month'|'last_month', startDate?: string, endDate?: string }
-     */
-    getStatsDashboard(params = {}) {
-        return api.get('/admin/stats/dashboard', { params });
-    },
+  /**
+   * Xử lý report
+   * @param {string} reportId
+   * @param {'RESOLVED'|'REJECTED'} status
+   */
+  handleReport(reportId, status) {
+    return api.patch(`/admin/reports/${reportId}`, { status });
+  },
 
-    // ==========================================
-    // Phân quyền (RBAC) - Admin
-    // ==========================================
+  // ==========================================
+  // Thống kê hệ thống (Admin)
+  // ==========================================
 
-    getPermissionsConfig() {
-        return api.get('/admin/permissions');
-    },
+  /**
+   * Dashboard tổng quan thống kê (1 API)
+   * @param {object} params { preset?: 'last_week'|'this_month'|'last_month', startDate?: string, endDate?: string }
+   */
+  getStatsDashboard(params = {}) {
+    return api.get("/admin/stats/dashboard", { params });
+  },
 
-    savePermissionsConfig(matrix) {
-        return api.patch('/admin/permissions', { matrix });
-    },
+  // ==========================================
+  // Phân quyền (RBAC) - Admin
+  // ==========================================
 
-    // ==========================================
-    // Quản lý Tài chính (Admin)
-    // ==========================================
+  getPermissionsConfig() {
+    return api.get("/admin/permissions");
+  },
 
-    /**
-     * Lấy danh sách toàn bộ thanh toán (payments) trong hệ thống
-     */
-    getAllPayments() {
-        return api.get('/admin/finance/payments');
-    },
-
-    /**
-     * Lấy danh sách yêu cầu rút tiền (payouts)
-     * @param {string} [status] - Lọc theo trạng thái PENDING, COMPLETED, etc.
-     */
-    getPayoutRequests(status) {
-        return api.get('/admin/finance/payouts', { params: { status } });
-    },
-
-    /**
-     * Xử lý yêu cầu rút tiền (Duyệt/Từ chối/Hoàn thành)
-     * @param {{ requestId: string, status: string, adminNote?: string }} payload 
-     */
-    processPayoutRequest(payload) {
-        return api.patch('/admin/finance/payouts', payload);
-    }
+  savePermissionsConfig(matrix) {
+    return api.patch("/admin/permissions", { matrix });
+  },
 };
