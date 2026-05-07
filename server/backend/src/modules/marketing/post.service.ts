@@ -310,7 +310,7 @@ export async function getPostByClubSlug(clubSlug: string, postSlug: string, user
   return final;
 }
 
-export async function enrichPostsWithLikes(posts: any[], userId?: string) {
+export async function enrichPostsWithLikes<T extends { id: string }>(posts: T[], userId?: string) {
   if (!userId || !posts.length) return posts;
   const postIds = posts.map(p => p.id);
   const likes = await prisma.postLike.findMany({
