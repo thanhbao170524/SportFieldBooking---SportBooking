@@ -77,6 +77,44 @@
       @cancel="cancelBookingById"
     />
 
+    <!-- Lock/Unlock Court Modal -->
+    <transition name="fade">
+      <div v-if="showLockCourtModal" class="modal-overlay" @click.self="closeLockCourtModal">
+        <div class="modal-card">
+          <div class="modal-header">
+            <div class="modal-title">
+              <span class="material-icons">lock</span>
+              Khóa sân bảo trì
+            </div>
+            <button class="icon-btn" @click="closeLockCourtModal" :disabled="lockCourtSubmitting">
+              <span class="material-icons">close</span>
+            </button>
+          </div>
+
+          <div class="modal-body">
+            <p class="modal-desc">Chọn sân để chuyển trạng thái sang <b>Bảo trì</b> (hoặc mở khóa về <b>Hoạt động</b>).</p>
+
+            <div class="field">
+              <label>Sân</label>
+              <select v-model="lockCourtId" class="select" :disabled="lockCourtSubmitting">
+                <option value="" disabled>-- Chọn sân --</option>
+                <option v-for="c in courts" :key="c.id" :value="c.id">
+                  {{ c.name }} ({{ c.rawStatus === 'MAINTENANCE' ? 'Đang bảo trì' : 'Hoạt động' }})
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button class="btn ghost" @click="closeLockCourtModal" :disabled="lockCourtSubmitting">Hủy</button>
+            <button class="btn primary" @click="submitLockCourt" :disabled="!lockCourtId || lockCourtSubmitting">
+              {{ lockCourtActionLabel }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
   </div>
 </template>
 
@@ -127,6 +165,10 @@ export default {
       courts:         [],
       showOfflineModal: false,
       detailBooking: null,
+
+      showLockCourtModal: false,
+      lockCourtId: '',
+      lockCourtSubmitting: false,
     };
   },
 
@@ -188,11 +230,17 @@ export default {
       try {
         const res = await courtService.getCourts(this.currentClubId);
         if (res.data?.success) {
-          this.courts = res.data.data.map(c => ({
-            ...c,
-            status:     'available',
-            statusText: 'Trống sân',
-          }));
+          this.courts = res.data.data.map(c => {
+            const rawStatus = c.status || 'ACTIVE';
+            const isLocked = rawStatus === 'MAINTENANCE' || rawStatus === 'INACTIVE';
+            return {
+              ...c,
+              rawStatus,
+              status: isLocked ? 'locked' : 'available',
+              statusText: isLocked ? 'Bảo trì' : 'Trống sân',
+              session: null,
+            };
+          });
         }
       } catch (err) {
         console.error('fetchCourts failed', err);
@@ -276,6 +324,13 @@ export default {
 
       // Update court busy status
       this.courts.forEach(court => {
+        // Keep maintenance/inactive courts locked
+        if (court.rawStatus === 'MAINTENANCE' || court.rawStatus === 'INACTIVE') {
+          court.status = 'locked';
+          court.statusText = court.rawStatus === 'MAINTENANCE' ? 'Bảo trì' : 'Tạm dừng';
+          court.session = null;
+          return;
+        }
         const busyBooking = this.allBookings.find(b =>
           b.items?.some(i => i.timeSlot?.court?.id === court.id || i.timeSlot?.courtId === court.id)
           && ['CONFIRMED', 'PENDING'].includes(b.status)
@@ -284,6 +339,10 @@ export default {
           court.status     = 'occupied';
           court.statusText = 'Đang có lịch';
           court.session    = `${busyBooking.bookerName || 'Khách'}`;
+        } else {
+          court.status = 'available';
+          court.statusText = 'Trống sân';
+          court.session = null;
         }
       });
     },
@@ -434,8 +493,45 @@ export default {
       this.$router.push({ path: '/owner/bookings', query: { bookingId: String(booking.id) } });
     },
 
-    handleLockCourt()   { console.log('Lock court – TODO'); },
+    handleLockCourt() {
+      if (!this.courts?.length) {
+        toast.info('Chưa có sân để khóa.');
+        return;
+      }
+      // Default select first court
+      this.lockCourtId = String(this.courts[0]?.id || '');
+      this.showLockCourtModal = true;
+    },
     handleViewReports() { this.$router.push('/owner/finance'); },
+
+    closeLockCourtModal() {
+      if (this.lockCourtSubmitting) return;
+      this.showLockCourtModal = false;
+    },
+
+    async submitLockCourt() {
+      if (!this.lockCourtId) return;
+      const court = this.courts.find(c => String(c.id) === String(this.lockCourtId));
+      if (!court) return;
+
+      const nextStatus = court.rawStatus === 'MAINTENANCE' ? 'ACTIVE' : 'MAINTENANCE';
+      this.lockCourtSubmitting = true;
+      try {
+        const res = await courtService.updateCourt(this.lockCourtId, { status: nextStatus });
+        if (res?.data?.success === false) {
+          toast.error(res?.data?.message || 'Không thể cập nhật trạng thái sân.');
+          return;
+        }
+        toast.success(nextStatus === 'MAINTENANCE' ? 'Đã khóa sân (bảo trì).' : 'Đã mở khóa sân.');
+        this.showLockCourtModal = false;
+        await this.refreshAllData();
+      } catch (err) {
+        const msg = err?.response?.data?.message || 'Không thể cập nhật trạng thái sân.';
+        toast.error(msg);
+      } finally {
+        this.lockCourtSubmitting = false;
+      }
+    },
 
     formatTime(t) {
       if (!t) return '';
@@ -450,6 +546,13 @@ export default {
     getStatusClass(s) {
       return { PENDING:'warning', CONFIRMED:'success', WAITING_PAYMENT:'info',
                COMPLETED:'info',  CANCELLED:'danger' }[s] || '';
+    },
+  },
+  computed: {
+    lockCourtActionLabel() {
+      const court = this.courts.find(c => String(c.id) === String(this.lockCourtId));
+      if (!court) return 'Cập nhật';
+      return court.rawStatus === 'MAINTENANCE' ? 'Mở khóa sân' : 'Khóa sân';
     },
   },
 };
@@ -558,6 +661,94 @@ export default {
   flex-direction: column;
   gap: 20px;
 }
+
+/* ── Modal (lock court) ───────────────── */
+.fade-enter-active, .fade-leave-active { transition: opacity 0.15s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 9999;
+}
+
+.modal-card {
+  width: min(520px, 100%);
+  background: #fff;
+  border: 1px solid #eaecf2;
+  border-radius: 16px;
+  box-shadow: 0 18px 50px rgba(15, 22, 35, 0.25);
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.modal-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  color: #0f1623;
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid #eaecf2;
+  background: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.modal-body { padding: 14px 16px 6px; }
+.modal-desc { margin: 0 0 12px; color: #64748b; font-size: 14px; line-height: 1.45; }
+.field label { display: block; font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 6px; }
+.select {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid #eaecf2;
+  padding: 0 12px;
+  font-family: inherit;
+  font-size: 14px;
+  background: #fff;
+}
+.select:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15); }
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 12px 16px 16px;
+}
+
+.btn {
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid #eaecf2;
+  font-family: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn.ghost { background: #fff; color: #0f1623; }
+.btn.primary { background: #059669; border-color: #059669; color: #fff; }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* ── Responsive ──────────────────────── */
 @media (max-width: 1280px) {

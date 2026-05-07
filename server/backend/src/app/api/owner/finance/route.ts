@@ -226,7 +226,7 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // Occupancy + heatmap (by timeslot hours) in range
+    // Occupancy (by timeslot status) in range
     const timeSlotsInRange = await prisma.timeSlot.findMany({
       where: {
         court: { clubId: { in: clubIds }, deletedAt: null },
@@ -239,20 +239,6 @@ export async function GET(req: NextRequest) {
     const bookedSlots = timeSlotsInRange.filter((s) => s.status === "BOOKED").length;
     const totalSlots = timeSlotsInRange.length || 0;
     const occupancyRate = totalSlots ? Math.round((bookedSlots * 10000) / totalSlots) / 100 : 0;
-
-    // Heatmap by dayOfWeek (0..6) and hour (0..23) using slot start hour
-    const heatmap: { day: number; hour: number; booked: number; total: number }[] = [];
-    const hm = new Map<string, { day: number; hour: number; booked: number; total: number }>();
-    for (const s of timeSlotsInRange) {
-      const d = s.startTime.getDay();
-      const h = s.startTime.getHours();
-      const key = `${d}-${h}`;
-      const cur = hm.get(key) || { day: d, hour: h, booked: 0, total: 0 };
-      cur.total += 1;
-      if (s.status === "BOOKED") cur.booked += 1;
-      hm.set(key, cur);
-    }
-    heatmap.push(...hm.values());
 
     // Chart: tối đa 12 buckets theo kỳ
     const ms = (d: Date) => d.getTime();
@@ -382,7 +368,6 @@ export async function GET(req: NextRequest) {
       },
       bookingStatusBreakdown,
       chart,
-      heatmap,
       topCustomers,
       recentTransactions,
       breakdownByClub,
