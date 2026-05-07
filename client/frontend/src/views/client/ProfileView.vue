@@ -285,6 +285,10 @@
 
                     <footer class="post-card__footer mt-4">
                       <div class="d-flex gap-2 w-100">
+                        <router-link :to="{ name: 'post-detail', params: { id: post.id } }" class="btn-action-outline flex-1 text-decoration-none d-flex align-items-center justify-content-center gap-1">
+                          <span class="material-icons">visibility</span>
+                          Xem
+                        </router-link>
                         <button class="btn-action-outline flex-1" @click="editPost(post)">
                           <span class="material-icons">edit</span>
                           Sửa
@@ -699,7 +703,7 @@ export default {
         this.userPosts = allPosts.filter(post => 
           post.authorId === this.user.id || 
           (post.author && post.author.id === this.user.id)
-        );
+        ).map(p => ({ ...p, commentCount: p._count?.comments || 0, viewCount: p.viewCount || 0 }));
       } catch (e) {
         console.error("Lỗi tải bài đăng:", e);
         toast.error("Không thể tải danh sách bài đăng");
@@ -738,14 +742,18 @@ export default {
       }
     },
     async handleMarkRead(noti) {
-      if (noti.isRead) return;
-      try {
-        await notificationService.markAsRead(noti.id);
-        noti.isRead = true;
-        // Update local counter or state if needed
-      } catch (e) { 
-        console.error("Error marking as read:", e);
+      if (!noti.isRead) {
+        try {
+          await notificationService.markAsRead(noti.id);
+          noti.isRead = true;
+          // Update local counter or state if needed
+        } catch (e) { 
+          console.error("Error marking as read:", e);
+        }
       }
+      
+      // Chuyển hướng đến trang cộng đồng để hiển thị bài đăng/tin tức
+      this.$router.push({ name: 'friend' });
     },
     async handleMarkAllRead() {
       try {
@@ -794,8 +802,8 @@ export default {
        }
        this.saving = true;
        try {
-         // Create post via owner endpoint if they are allowed, or common user endpoint
-         const res = await postService.createPost({
+         // Create post via user endpoint
+         const res = await postService.createUserPost({
            ...this.matchForm,
            clubId: this.matchForm.clubId || this.userClubs[0]?.id // Default to one club for visibility
          });
@@ -805,7 +813,7 @@ export default {
            await this.fetchUserPosts();
          }
        } catch (e) {
-         toast.error("Lỗi khi đăng bài. Bạn cần quyền đặc biệt để đăng lên bảng tin.");
+         toast.error("Lỗi khi đăng bài.");
        } finally {
          this.saving = false;
        }

@@ -96,6 +96,12 @@ const routes = [
   meta: { requiresAuth: true },
   },
   {
+    path: "/community/post/:id",
+    name: "post-detail",
+    component: () => import("../views/client/PostDetailView.vue"),
+    meta: { requiresAuth: true },
+  },
+  {
     path: "/about",
     name: "about",
     component: () => import("../views/client/AboutView.vue"),

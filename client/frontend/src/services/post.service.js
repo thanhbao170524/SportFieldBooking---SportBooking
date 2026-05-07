@@ -37,6 +37,11 @@ export const postService = {
         return response.data;
     },
 
+    createUserPost: async (postData) => {
+        const response = await api.post('/posts', postData);
+        return response.data;
+    },
+
     updatePost: async (postId, postData) => {
         const response = await api.patch('/owner/posts', postData, {
             params: { id: postId },
@@ -70,6 +75,26 @@ export const postService = {
 
     recordPostView: async (postId) => {
         const response = await api.post(`/posts/${postId}/view`);
+        return response.data;
+    },
+
+    getComments: async (postId) => {
+        const response = await api.get(`/posts/${postId}/comments`);
+        return response.data;
+    },
+
+    addComment: async (postId, content) => {
+        const response = await api.post(`/posts/${postId}/comments`, { content });
+        return response.data;
+    },
+
+    joinMatch: async (postId) => {
+        const response = await api.post(`/posts/${postId}/join`);
+        return response.data;
+    },
+
+    toggleLike: async (postId) => {
+        const response = await api.post(`/posts/${postId}/like`);
         return response.data;
     },
 };

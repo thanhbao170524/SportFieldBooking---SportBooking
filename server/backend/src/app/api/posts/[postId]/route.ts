@@ -14,7 +14,10 @@ export async function GET(
     const { postId } = await params;
     if (!postId) return errorResponse("Thiếu postId", 400);
 
-    const post = await getPostById(postId);
+    const { getAuthUser } = await import("@/middleware/auth.middleware");
+    const { user } = await getAuthUser(_req).catch(() => ({ user: null }));
+
+    const post = await getPostById(postId, user?.userId);
     if (!post) return errorResponse("Không tìm thấy bài đăng", 404);
 
     return successResponse("Lấy chi tiết bài đăng thành công", post);

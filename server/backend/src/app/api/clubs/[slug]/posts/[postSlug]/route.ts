@@ -14,7 +14,10 @@ export async function GET(
     const { slug, postSlug } = await params;
     if (!slug || !postSlug) return errorResponse("Thiếu slug câu lạc bộ hoặc slug bài đăng", 400);
 
-    const post = await getPostByClubSlug(slug, postSlug);
+    const { getAuthUser } = await import("@/middleware/auth.middleware");
+    const { user } = await getAuthUser(_req).catch(() => ({ user: null }));
+
+    const post = await getPostByClubSlug(slug, postSlug, user?.userId);
     if (!post) return errorResponse("Không tìm thấy bài đăng", 404);
 
     return successResponse("Lấy chi tiết bài đăng thành công", post);

@@ -136,15 +136,26 @@
             <article v-for="post in filteredFeed" :key="post.id" class="social-post" :data-post-id="post.id">
               <!-- Post Author & Meta -->
               <header class="social-post__header">
-                <div class="author-info">
+                <!-- User Author -->
+                <router-link v-if="post.user" to="/profile" class="author-info text-decoration-none">
                   <div class="avatar-sm shadow-sm">
-                    <img :src="post.club?.logoUrl || defaultClubLogo" alt="Club Logo" />
+                    <img :src="post.user.avatarUrl || defaultAvatar" alt="User Avatar" class="rounded-circle" />
                   </div>
                   <div class="author-text">
-                    <div class="author-name">{{ post.club?.name || 'Cộng đồng Thể thao' }}</div>
+                    <div class="author-name text-dark">{{ post.user.fullName }}</div>
                     <div class="post-time">{{ timeAgo(post.createdAt) }} • {{ getLabel(post.type) }}</div>
                   </div>
-                </div>
+                </router-link>
+                <!-- Club Author -->
+                <router-link v-else :to="{ name: 'venue-detail', params: { id: post.club?.slug }, query: { tab: 'info' } }" class="author-info text-decoration-none">
+                  <div class="avatar-sm shadow-sm">
+                    <img :src="(post.club?.images && post.club.images.length > 0) ? post.club.images[0].url : (post.club?.logoUrl || defaultClubLogo)" alt="Club Logo" />
+                  </div>
+                  <div class="author-text">
+                    <div class="author-name text-dark">{{ post.club?.name || 'Cộng đồng Thể thao' }}</div>
+                    <div class="post-time">{{ timeAgo(post.createdAt) }} • {{ getLabel(post.type) }}</div>
+                  </div>
+                </router-link>
                 <div class="post-options">
                   <button class="btn-icon" @click="copyShareLink(post)"><span class="material-icons">share</span></button>
                 </div>
@@ -180,8 +191,8 @@
                 </div>
 
                 <!-- Media (Optional) -->
-                <div v-if="post.imageUrl" class="post-media-box mt-3">
-                   <img :src="post.imageUrl" class="post-img" loading="lazy" />
+                <div v-if="post.imageUrl || post.club?.logoUrl" class="post-media-box mt-3">
+                   <img :src="post.imageUrl || post.club?.logoUrl" class="post-img" loading="lazy" />
                 </div>
               </div>
 
@@ -204,13 +215,15 @@
                    </div>
                 </div>
 
-                <div class="post-actions-main mt-3">
-                   <button v-if="post.type === 'TEAM_MATCHING'" class="btn-join-premium" @click="joinMatch(post)">
+                <div class="post-actions-main mt-3 d-flex gap-2">
+                   <button v-if="post.type === 'TEAM_MATCHING'" class="btn-join-premium flex-grow-1" @click="joinMatch(post)">
                       THAM GIA KÈO
                    </button>
-                   <button v-else class="btn-detail-premium" @click="viewDetail(post)">
+                   <router-link :to="{ name: 'post-detail', params: { id: post.id } }" 
+                                class="btn-detail-premium text-center text-decoration-none d-block"
+                                :class="{ 'flex-grow-1': post.type === 'TEAM_MATCHING', 'w-100': post.type !== 'TEAM_MATCHING' }">
                       XEM CHI TIẾT
-                   </button>
+                   </router-link>
                 </div>
 
                 <!-- Collapsible Comments -->
@@ -221,11 +234,13 @@
                       <input type="text" placeholder="Viết bình luận..." @keyup.enter="submitComment(post.id, $event)" />
                     </div>
                     <div class="comments-list mt-3">
-                       <div v-for="c in mockComments" :key="c.id" class="comment-item">
-                          <img :src="c.avatar" class="avatar-tiny" />
+                       <div v-if="loadingComments && expandedComments === post.id" class="text-center text-muted small">Đang tải...</div>
+                       <div v-else-if="realComments[post.id]?.length === 0" class="text-center text-muted small">Chưa có bình luận nào.</div>
+                       <div v-for="c in realComments[post.id]" :key="c.id" class="comment-item">
+                          <img :src="c.user?.avatarUrl || defaultAvatar" class="avatar-tiny" />
                           <div class="comment-bubble">
-                             <div class="comment-author">{{ c.name }}</div>
-                             <div class="comment-text">{{ c.text }}</div>
+                             <div class="comment-author">{{ c.user?.fullName || 'Người dùng' }}</div>
+                             <div class="comment-text">{{ c.content }}</div>
                           </div>
                        </div>
                     </div>
@@ -388,8 +403,12 @@ export default {
         { id: 1, name: 'Lâm Nguyễn', text: 'Kèo này còn chỗ không bạn ơi?', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Lam' },
         { id: 2, name: 'Hoàng Minh', text: 'Mình xin 1 slot nhé, trình trung bình.', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Minh' }
       ],
+      realComments: {},
+      loadingComments: false,
+      defaultAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=User',
       defaultClubLogo: 'https://api.dicebear.com/7.x/identicon/svg?seed=Club',
       currentUserAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Me',
+      currentUserId: null,
       _feedIo: null
     };
   },
@@ -426,6 +445,8 @@ export default {
     }
   },
   async mounted() {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    this.currentUserId = user.id;
     await this.fetchMatches();
     await this.fetchUserClubs();
     this.loadLikes();
@@ -437,19 +458,25 @@ export default {
         const res = await postService.getPublicFeed({ limit: 50, page: 1 });
         const list = unwrapPostListPayload(res.data);
         
-        // Mocking some interaction counts for UI
+        // Map interaction counts
         this.allFeed = list.map(p => ({
           ...p,
-          likeCount: Math.floor(Math.random() * 50),
-          commentCount: Math.floor(Math.random() * 10)
+          likeCount: p._count?.likes || 0,
+          commentCount: p._count?.comments || 0
         }));
+
+        // Sync liked states
+        this.allFeed.forEach(p => {
+          if (p.isLikedByUser && !this.likedPosts.includes(p.id)) {
+            this.likedPosts.push(p.id);
+          }
+        });
         
         this.stats.activeMatch = this.allFeed.filter(p => p.type === 'TEAM_MATCHING').length;
       } catch (e) {
         toast.error("Không thể tải bảng tin cộng đồng");
       } finally {
         this.loading = false;
-        this.$nextTick(() => this.setupFeedViewTracking());
       }
     },
     async fetchUserClubs() {
@@ -466,7 +493,7 @@ export default {
       this.saving = true;
       try {
         const contentWithSkill = `[${this.createForm.skillSelection}] ${this.createForm.content}`;
-        await postService.createPost({
+        await postService.createUserPost({
           ...this.createForm,
           content: contentWithSkill,
           type: 'TEAM_MATCHING'
@@ -480,55 +507,105 @@ export default {
         this.saving = false;
       }
     },
-    toggleLike(post) {
-      const idx = this.likedPosts.indexOf(post.id);
-      if (idx > -1) {
-        this.likedPosts.splice(idx, 1);
-        post.likeCount--;
-      } else {
-        this.likedPosts.push(post.id);
-        post.likeCount++;
+    async toggleLike(post) {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.info("Vui lòng đăng nhập để thả tim bài viết");
+        return;
       }
-      this.saveLikes();
+      try {
+        const res = await postService.toggleLike(post.id);
+        const { liked } = res.data;
+        
+        // Update local state
+        const idx = this.likedPosts.indexOf(post.id);
+        if (liked) {
+          if (idx === -1) {
+            this.likedPosts.push(post.id);
+            post.likeCount++;
+          }
+        } else {
+          if (idx > -1) {
+            this.likedPosts.splice(idx, 1);
+            post.likeCount = Math.max(0, (post.likeCount || 0) - 1);
+          }
+        }
+      } catch (e) {
+        toast.error("Không thể thực hiện thao tác này");
+      }
     },
     isLiked(id) {
       return this.likedPosts.includes(id);
     },
     loadLikes() {
-      const saved = localStorage.getItem('community_likes');
-      if (saved) this.likedPosts = JSON.parse(saved);
+      // Likes are now synced from server in fetchMatches
+      this.likedPosts = [];
     },
-    saveLikes() {
-      localStorage.setItem('community_likes', JSON.stringify(this.likedPosts));
-    },
-    toggleComments(id) {
-      this.expandedComments = this.expandedComments === id ? null : id;
-    },
-    submitComment(postId, event) {
-      const text = event.target.value.trim();
-      if (!text) return;
-      toast.success("Bình luận của bạn đã được gửi!");
-      event.target.value = '';
-    },
-    async copyShareLink(post) {
-      const url = `${window.location.origin}/community?clubSlug=${post.club?.slug || 'common'}&postSlug=${post.slug}`;
-      try {
-        await navigator.clipboard.writeText(url);
-        toast.success("Đã sao chép link chia sẻ!");
-      } catch (e) {
-        toast.error("Không thể sao chép");
+    async toggleComments(id) {
+      if (this.expandedComments === id) {
+        this.expandedComments = null;
+      } else {
+        this.expandedComments = id;
+        this.loadingComments = true;
+        try {
+          const res = await postService.getComments(id);
+          this.realComments = { ...this.realComments, [id]: res.data || [] };
+        } catch(e) {
+          console.error(e);
+        } finally {
+          this.loadingComments = false;
+        }
       }
     },
-    joinMatch(post) {
+    async submitComment(postId, event) {
+      const text = event.target.value.trim();
+      if (!text) return;
+      
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.info("Vui lòng đăng nhập để bình luận");
+        return;
+      }
+
+      try {
+        const res = await postService.addComment(postId, text);
+        if (!this.realComments[postId]) {
+          this.realComments[postId] = [];
+        }
+        this.realComments[postId].unshift(res.data);
+        event.target.value = '';
+        
+        // Update comment count
+        const post = this.allFeed.find(p => p.id === postId);
+        if (post) post.commentCount = (post.commentCount || 0) + 1;
+        
+        toast.success("Bình luận của bạn đã được gửi!");
+      } catch (e) {
+        toast.error("Lỗi khi gửi bình luận");
+      }
+    },
+    async joinMatch(post) {
       const token = localStorage.getItem('token');
       if (!token) {
         toast.info("Vui lòng đăng nhập để tham gia kèo");
         return;
       }
-      this.joiningActive = post;
+      
+      // Check if user is the author
+      if (this.currentUserId === post.userId || (post.club && post.club.ownerId === this.currentUserId)) {
+        toast.warning("Bạn không thể tham gia kèo do chính mình tạo.");
+        return;
+      }
+
+      try {
+        await postService.joinMatch(post.id);
+        this.joiningActive = post;
+      } catch(e) {
+        toast.error(e.response?.data?.message || "Không thể tham gia kèo lúc này.");
+      }
     },
     viewDetail(post) {
-       toast.info(`Xem chi tiết: ${post.title}`);
+       this.$router.push({ name: 'post-detail', params: { id: post.id } });
     },
     resetFilters() {
       this.filters = { keyword: '', level: '', date: '' };
@@ -572,23 +649,9 @@ export default {
     formatTime(d) {
       if (!d) return '';
       return new Date(d).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-    },
-    setupFeedViewTracking() {
-      if (typeof IntersectionObserver === 'undefined') return;
-      if (this._feedIo) this._feedIo.disconnect();
-      this._feedIo = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            const id = entry.target.getAttribute('data-post-id');
-            if (id) postService.recordPostView(id).catch(() => {});
-            this._feedIo.unobserve(entry.target);
-          }
-        });
-      }, { threshold: 0.5 });
-      this.$el.querySelectorAll('[data-post-id]').forEach(el => this._feedIo.observe(el));
     }
   }
-};
+}
 </script>
 
 <style scoped>
