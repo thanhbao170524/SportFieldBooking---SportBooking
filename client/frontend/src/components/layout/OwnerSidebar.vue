@@ -81,6 +81,7 @@ export default {
         { name: 'services',  label: 'Dịch Vụ',      path: '/owner/services',  icon: 'room_service',             lockable: true },
         { name: 'bookings',  label: 'Đơn Đặt Sân',  path: '/owner/bookings',  icon: 'event_available',          lockable: true },
         { name: 'finance',   label: 'Thống Kê',    path: '/owner/finance',   icon: 'bar_chart',   lockable: true },
+        { name: 'complaints', label: 'Khiếu Nại',  path: '/owner/reports',   icon: 'report',                   lockable: false },
         { name: 'payments',  label: 'Thanh Toán', path: '/owner/payments', icon: 'payments', lockable: true },
         { name: 'customers', label: 'Khách Hàng',   path: '/owner/customers', icon: 'groups',                   lockable: true },
         { name: 'vouchers',  label: 'Khuyến Mãi',   path: '/owner/vouchers',  icon: 'local_offer',              lockable: true },

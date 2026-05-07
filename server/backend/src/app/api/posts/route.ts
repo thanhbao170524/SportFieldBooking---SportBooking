@@ -72,26 +72,5 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * DELETE /api/posts/[postId]
+ * Note: DELETE is implemented in `/api/posts/[postId]`.
  */
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ postId: string }> }
-) {
-  try {
-    const { getAuthUser } = await import("@/middleware/auth.middleware");
-    const { user, error } = await getAuthUser(req);
-    if (error) return error;
-
-    const { postId } = await params;
-    const { deletePost } = await import("@/modules/marketing/post.service");
-    
-    await deletePost(postId, user.userId);
-    return successResponse("Xóa bài đăng thành công", null);
-  } catch (error) {
-    if (error instanceof Error && error.message === "POST_NOT_FOUND_OR_UNAUTHORIZED") {
-      return errorResponse("Không tìm thấy bài đăng hoặc bạn không có quyền xóa.", 403);
-    }
-    return serverErrorResponse(error);
-  }
-}

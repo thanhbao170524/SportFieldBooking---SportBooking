@@ -271,6 +271,12 @@ const routes = [
     meta: { layout: "owner", requiresAuth: true, roles: ["OWNER"] },
   },
   {
+    path: "/owner/reports",
+    name: "owner-reports",
+    component: () => import("../views/owner/ReportsView.vue"),
+    meta: { layout: "owner", requiresAuth: true, roles: ["OWNER"] },
+  },
+  {
     path: "/owner/customers",
     name: "owner-customers",
     component: () => import("../views/owner/CustomersView.vue"),

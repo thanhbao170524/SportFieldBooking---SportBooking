@@ -19,6 +19,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const period = (searchParams.get("period") || "week").toLowerCase(); // day|week|month|year
     const anchorDateStr = searchParams.get("date"); // YYYY-MM-DD
+    const clubIdParam = (searchParams.get("clubId") || "").trim();
+    const courtIdParam = (searchParams.get("courtId") || "").trim();
 
     const now = new Date();
     const anchor = anchorDateStr ? new Date(`${anchorDateStr}T00:00:00`) : now;
@@ -44,9 +46,13 @@ export async function GET(req: NextRequest) {
       start = startOfDay(new Date(end.getFullYear(), end.getMonth(), end.getDate() - 6));
     }
 
-    // Owner clubs
+    // Owner clubs (optionally filter by clubId)
     const clubs = await prisma.club.findMany({
-      where: { ownerId: user.userId, deletedAt: null },
+      where: {
+        ownerId: user.userId,
+        deletedAt: null,
+        ...(clubIdParam ? { id: clubIdParam } : {}),
+      },
       select: { id: true, name: true }
     });
     const clubIds = clubs.map((c) => c.id);
@@ -67,42 +73,73 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Bookings trong kỳ + payments
+    // If courtId is set, validate it belongs to selected clubs
+    let courtIdFilter: string | null = null;
+    if (courtIdParam) {
+      const court = await prisma.court.findFirst({
+        where: { id: courtIdParam, clubId: { in: clubIds }, deletedAt: null },
+        select: { id: true },
+      });
+      if (court) courtIdFilter = court.id;
+      else courtIdFilter = "__INVALID__"; // forces empty results safely
+    }
+
+    // Bookings trong kỳ (dùng createdAt để khớp các dashboard hiện tại)
     const bookingsInRange = await prisma.booking.findMany({
       where: {
         clubId: { in: clubIds },
-        status: "CONFIRMED",
         createdAt: { gte: start, lte: end },
         deletedAt: null
       },
       select: {
         id: true,
-        bookingCode: true,
+        status: true,
         createdAt: true,
         clubId: true,
+        userId: true,
         finalAmount: true,
         payment: {
           select: {
             method: true,
             status: true,
-            confirmedAt: true,
-            paidAt: true
+            refundStatus: true,
+            refundAmount: true,
+            refundedAt: true,
           }
         },
         items: {
-          select: { timeSlot: { select: { court: { select: { id: true, name: true } } } } }
+          select: {
+            timeSlot: {
+              select: {
+                startTime: true,
+                endTime: true,
+                courtId: true,
+                court: { select: { id: true, name: true } },
+              }
+            }
+          }
         }
       },
       orderBy: { createdAt: "desc" },
-      take: 2000
+      take: 4000
     });
 
     const commissionRate = 0.1;
     const isOnline = (method?: string | null) =>
       method === "CREDIT_CARD" || method === "VNPAY" || method === "MOMO" || method === "BANK_TRANSFER";
 
-    const totalRevenue = bookingsInRange.reduce((s, b) => s + Number(b.finalAmount || 0), 0);
-    const totalBookings = bookingsInRange.length;
+    const matchesCourt = (b: (typeof bookingsInRange)[number]) => {
+      if (!courtIdFilter) return true;
+      if (courtIdFilter === "__INVALID__") return false;
+      const slots = b.items?.map((i) => i.timeSlot?.courtId).filter(Boolean) || [];
+      return slots.includes(courtIdFilter);
+    };
+
+    const scopedBookings = bookingsInRange.filter(matchesCourt);
+    const confirmedBookingsList = scopedBookings.filter((b) => b.status === "CONFIRMED");
+    const totalRevenue = confirmedBookingsList.reduce((s, b) => s + Number(b.finalAmount || 0), 0);
+    const totalBookings = confirmedBookingsList.length;
+    const averageBookingValue = totalBookings ? Math.round(totalRevenue / totalBookings) : 0;
 
     // Avg rating theo kỳ (Review.createdAt)
     const ratingAgg = await prisma.review.aggregate({
@@ -122,8 +159,8 @@ export async function GET(req: NextRequest) {
     const walletAvailable = Number(realWallet.balance);
     const commissionRateFromProfile = 0.1; // Fallback or fetch from profile if needed
 
-    // Need reconcile: bookings confirmed nhưng payment chưa confirmed (hoặc CASH)
-    const needReconcile = bookingsInRange
+    // Need reconcile: booking confirmed nhưng CASH hoặc payment chưa confirmed
+    const needReconcile = confirmedBookingsList
       .filter((b) => {
         const p = b.payment;
         if (!p) return true;
@@ -131,6 +168,91 @@ export async function GET(req: NextRequest) {
         return p.status !== "CONFIRMED";
       })
       .reduce((s, b) => s + Number(b.finalAmount || 0), 0);
+
+    // Booking status breakdown
+    const bookingStatusBreakdown = (["PENDING", "WAITING_PAYMENT", "CONFIRMED", "CANCELLED", "COMPLETED"] as const).map(
+      (st) => ({
+        status: st,
+        count: scopedBookings.filter((b) => b.status === st).length
+      })
+    );
+
+    // Cancel / refund stats
+    const cancelledCount = scopedBookings.filter((b) => b.status === "CANCELLED").length;
+    const refundRequestedCount = scopedBookings.filter((b) => b.payment?.refundStatus === "REQUESTED").length;
+    const refundCompletedCount = scopedBookings.filter((b) => b.payment?.refundStatus === "COMPLETED").length;
+    const refundTotalAmount = scopedBookings
+      .filter((b) => b.payment?.refundStatus === "COMPLETED")
+      .reduce((s, b) => s + Number(b.payment?.refundAmount || 0), 0);
+
+    // Customer stats (new vs returning) in range based on Booking.createdAt
+    const customerAgg = await prisma.booking.groupBy({
+      by: ["userId"],
+      where: {
+        clubId: { in: clubIds },
+        createdAt: { gte: start, lte: end },
+        deletedAt: null,
+        ...(courtIdFilter && courtIdFilter !== "__INVALID__"
+          ? { items: { some: { timeSlot: { courtId: courtIdFilter } } } }
+          : {}),
+      },
+      _count: { _all: true },
+    });
+    const uniqueCustomers = customerAgg.length;
+    const repeatCustomers = customerAgg.filter((r) => (r._count as any)._all >= 2).length;
+    const newCustomers = uniqueCustomers - repeatCustomers;
+
+    // Top customers by spend in range (CONFIRMED only)
+    const spendByUser = new Map<string, number>();
+    for (const b of confirmedBookingsList) {
+      spendByUser.set(b.userId, (spendByUser.get(b.userId) || 0) + Number(b.finalAmount || 0));
+    }
+    const topCustomerIds = [...spendByUser.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([id]) => id);
+    const topUsers = topCustomerIds.length
+      ? await prisma.user.findMany({
+          where: { id: { in: topCustomerIds } },
+          select: { id: true, fullName: true, email: true, phone: true },
+        })
+      : [];
+    const topCustomers = topCustomerIds.map((uid) => {
+      const u = topUsers.find((x) => x.id === uid);
+      return {
+        userId: uid,
+        fullName: u?.fullName || "Khách",
+        phone: u?.phone || null,
+        email: u?.email || null,
+        spent: Math.round(spendByUser.get(uid) || 0),
+        bookings: customerAgg.find((x) => x.userId === uid)?._count?._all || 0,
+      };
+    });
+
+    // Occupancy + heatmap (by timeslot hours) in range
+    const timeSlotsInRange = await prisma.timeSlot.findMany({
+      where: {
+        court: { clubId: { in: clubIds }, deletedAt: null },
+        startTime: { gte: start, lte: end },
+        ...(courtIdFilter && courtIdFilter !== "__INVALID__" ? { courtId: courtIdFilter } : {}),
+      },
+      select: { id: true, startTime: true, endTime: true, status: true },
+      take: 200000,
+    });
+    const bookedSlots = timeSlotsInRange.filter((s) => s.status === "BOOKED").length;
+    const totalSlots = timeSlotsInRange.length || 0;
+    const occupancyRate = totalSlots ? Math.round((bookedSlots * 10000) / totalSlots) / 100 : 0;
+
+    // Heatmap by dayOfWeek (0..6) and hour (0..23) using slot start hour
+    const heatmap: { day: number; hour: number; booked: number; total: number }[] = [];
+    const hm = new Map<string, { day: number; hour: number; booked: number; total: number }>();
+    for (const s of timeSlotsInRange) {
+      const d = s.startTime.getDay();
+      const h = s.startTime.getHours();
+      const key = `${d}-${h}`;
+      const cur = hm.get(key) || { day: d, hour: h, booked: 0, total: 0 };
+      cur.total += 1;
+      if (s.status === "BOOKED") cur.booked += 1;
+      hm.set(key, cur);
+    }
+    heatmap.push(...hm.values());
 
     // Chart: tối đa 12 buckets theo kỳ
     const ms = (d: Date) => d.getTime();
@@ -155,7 +277,7 @@ export async function GET(req: NextRequest) {
     const chart = Array.from({ length: bucketCount }, (_, i) => {
       const bStart = new Date(ms(start) + i * bucketMs);
       const bEnd = new Date(Math.min(ms(end), ms(start) + (i + 1) * bucketMs - 1));
-      const list = bookingsInRange.filter((b) => b.createdAt >= bStart && b.createdAt <= bEnd);
+      const list = confirmedBookingsList.filter((b) => b.createdAt >= bStart && b.createdAt <= bEnd);
       const onlineAmount = list.filter((b) => isOnline(b.payment?.method)).reduce((s, b) => s + Number(b.finalAmount || 0), 0);
       const cashAmount = list.filter((b) => b.payment?.method === "CASH").reduce((s, b) => s + Number(b.finalAmount || 0), 0);
       const bookingsCount = list.length;
@@ -197,7 +319,7 @@ export async function GET(req: NextRequest) {
 
     // Breakdown by club
     const revenueByClub = clubIds.map((cid) => {
-      const sum = bookingsInRange.filter((b) => b.clubId === cid).reduce((s, b) => s + Number(b.finalAmount || 0), 0);
+      const sum = confirmedBookingsList.filter((b) => b.clubId === cid).reduce((s, b) => s + Number(b.finalAmount || 0), 0);
       const name = clubs.find((c) => c.id === cid)?.name || "Cơ sở";
       return { clubId: cid, name, revenue: sum };
     }).filter(r => r.revenue > 0);
@@ -214,7 +336,7 @@ export async function GET(req: NextRequest) {
 
     // Top courts by revenue
     const courtRevenue = new Map<string, { name: string; revenue: number; bookings: number }>();
-    for (const b of bookingsInRange) {
+    for (const b of confirmedBookingsList) {
       const courts = b.items?.map(i => i.timeSlot.court).filter(Boolean) || [];
       const uniq = new Map<string, string>();
       for (const c of courts) uniq.set(c.id, c.name);
@@ -242,12 +364,26 @@ export async function GET(req: NextRequest) {
         totalWithdrawn: Number(realWallet.totalWithdrawn || 0),
         needReconcile,
         commissionRate: commissionRateFromProfile,
+        averageBookingValue,
+        occupancyRate,
+        cancelledCount,
+        refundRequestedCount,
+        refundCompletedCount,
+        refundTotalAmount,
+        uniqueCustomers,
+        newCustomers,
+        repeatCustomers,
+        clubId: clubIdParam || null,
+        courtId: courtIdFilter && courtIdFilter !== "__INVALID__" ? courtIdFilter : null,
         period,
         start,
         end,
         ratingCount: ratingAgg._count._all
       },
+      bookingStatusBreakdown,
       chart,
+      heatmap,
+      topCustomers,
       recentTransactions,
       breakdownByClub,
       topCourts

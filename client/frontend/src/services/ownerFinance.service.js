@@ -25,3 +25,13 @@ export const ownerFinanceService = {
   }
 };
 
+export const ownerReportService = {
+  /**
+   * Lấy danh sách khiếu nại/góp ý của Owner
+   * @param {{ status?: 'PENDING'|'REVIEWED'|'RESOLVED'|'REJECTED' }} params
+   */
+  getMyReports(params = {}) {
+    return api.get('/owner/reports', { params });
+  }
+};
+
