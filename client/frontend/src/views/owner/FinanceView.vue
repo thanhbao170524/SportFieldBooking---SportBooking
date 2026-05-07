@@ -77,10 +77,10 @@
       </div>
     </div>
 
-    <!-- Main charts row -->
-    <div class="finance-grid">
-      <!-- Bar chart -->
-      <div class="card chart-card">
+    <!-- Charts -->
+    <div class="charts-grid">
+      <!-- Revenue chart -->
+      <div class="card chart-card revenue-card">
         <div class="card-header">
           <div>
             <h3 class="card-title">Doanh thu theo kỳ</h3>
@@ -97,8 +97,24 @@
         </div>
       </div>
 
-      <!-- Right column -->
-      <div class="right-col">
+      <!-- Bookings count chart -->
+      <div class="card chart-card bookings-card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">Số đơn theo kỳ</h3>
+            <p class="card-desc">Đơn CONFIRMED · {{ periodLabel }}</p>
+          </div>
+        </div>
+        <div class="chart-wrap chart-wrap-sm">
+          <Bar v-if="bookingsBarData" :data="bookingsBarData" :options="bookingsBarOptions" />
+          <div v-else class="chart-empty">Không có dữ liệu trong kỳ này</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Insights -->
+    <div class="insights-columns">
+      <div class="insights-col">
         <!-- Customer stats -->
         <div class="card breakdown-card" v-if="customerStats">
           <h3 class="card-title">Khách hàng trong kỳ</h3>
@@ -144,6 +160,23 @@
           </div>
         </div>
 
+        <!-- Top courts -->
+        <div class="card ranking-card" v-if="topCourts.length">
+          <h3 class="card-title">Sân doanh thu cao</h3>
+          <div class="ranking-list">
+            <div v-for="(court, idx) in topCourts" :key="court.id" class="ranking-item">
+              <div class="r-idx">{{ String(idx + 1).padStart(2,'0') }}</div>
+              <div class="r-body">
+                <p class="r-name">{{ court.name }}</p>
+                <p class="r-sub">{{ court.bookings }} lượt đặt</p>
+              </div>
+              <div class="r-val">{{ formatCurrency(court.revenue) }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="insights-col">
         <!-- Breakdown by club -->
         <div class="card breakdown-card" v-if="clubBreakdown.length">
           <h3 class="card-title">Theo cơ sở</h3>
@@ -157,21 +190,6 @@
                 <div class="progress-fill" :style="`width:${item.percent}%;background:${item.color}`"></div>
               </div>
               <div class="b-val">{{ formatCurrency(item.value) }}</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Top courts -->
-        <div class="card ranking-card" v-if="topCourts.length">
-          <h3 class="card-title">Sân doanh thu cao</h3>
-          <div class="ranking-list">
-            <div v-for="(court, idx) in topCourts" :key="court.id" class="ranking-item">
-              <div class="r-idx">{{ String(idx + 1).padStart(2,'0') }}</div>
-              <div class="r-body">
-                <p class="r-name">{{ court.name }}</p>
-                <p class="r-sub">{{ court.bookings }} lượt đặt</p>
-              </div>
-              <div class="r-val">{{ formatCurrency(court.revenue) }}</div>
             </div>
           </div>
         </div>
@@ -191,10 +209,12 @@
           </div>
         </div>
 
-        <!-- Empty right col -->
-        <div v-if="!clubBreakdown.length && !topCourts.length" class="card empty-card">
+        <div
+          v-if="!customerStats && !clubBreakdown.length && !topCourts.length && !topCustomers.length"
+          class="card empty-card"
+        >
           <span class="material-icons">bar_chart</span>
-          <p>Chưa có đơn đặt trong kỳ này</p>
+          <p>Chưa có dữ liệu thống kê trong kỳ này</p>
         </div>
       </div>
     </div>
@@ -203,38 +223,6 @@
     <div class="auto-refresh-note">
       <span class="material-icons">schedule</span>
       Dữ liệu tự động làm mới mỗi 1 giờ. Lần tiếp theo: {{ nextRefreshLabel }}
-    </div>
-
-    <!-- Heatmap -->
-    <div class="card heatmap-card" v-if="heatmapMatrix.length">
-      <div class="card-header">
-        <div>
-          <h3 class="card-title">Giờ vàng (Heatmap)</h3>
-          <p class="card-desc">Tỷ lệ slot được đặt theo thứ/giờ trong kỳ (tính theo time slots)</p>
-        </div>
-      </div>
-      <div class="heatmap-wrap">
-        <div class="heatmap-grid">
-          <div class="hm-row hm-header">
-            <div class="hm-cell hm-day">Thứ</div>
-            <div v-for="h in heatmapHours" :key="h" class="hm-cell hm-hour">{{ String(h).padStart(2,'0') }}</div>
-          </div>
-          <div v-for="row in heatmapMatrix" :key="row.day" class="hm-row">
-            <div class="hm-cell hm-day">{{ row.label }}</div>
-            <div
-              v-for="cell in row.cells"
-              :key="cell.key"
-              class="hm-cell hm-box"
-              :title="cell.title"
-              :style="`background:${cell.bg}`"
-            ></div>
-          </div>
-        </div>
-        <div class="hm-legend">
-          <span class="hm-legend-item"><span class="hm-swatch" style="background:rgba(22,163,74,0.15)"></span> Thấp</span>
-          <span class="hm-legend-item"><span class="hm-swatch" style="background:rgba(22,163,74,0.85)"></span> Cao</span>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -276,11 +264,11 @@ export default {
       summaryStats: [],
       avgRating: 0,
       barData: null,
+      bookingsBarData: null,
       clubBreakdown: [],
       topCourts: [],
       topCustomers: [],
       customerStats: null,
-      heatmapRaw: [],
 
       ownerClubs: [],
       courts: [],
@@ -335,46 +323,36 @@ export default {
         }
       };
     }
+
     ,
-    heatmapHours() {
-      // display from 6h -> 22h as default for sports booking
-      return Array.from({ length: 17 }, (_, i) => i + 6);
-    },
-    heatmapMatrix() {
-      const raw = Array.isArray(this.heatmapRaw) ? this.heatmapRaw : [];
-      if (!raw.length) return [];
-
-      const dayLabels = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-      const byKey = new Map(raw.map((r) => [`${r.day}-${r.hour}`, r]));
-      const hours = this.heatmapHours;
-
-      const ratio = (r) => {
-        const total = Number(r?.total || 0);
-        const booked = Number(r?.booked || 0);
-        return total ? booked / total : 0;
+    bookingsBarOptions() {
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#0f172a',
+            padding: 12,
+            callbacks: {
+              label: (ctx) => ` ${ctx.raw} đơn`,
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { color: '#94a3b8', font: { size: 12, weight: '700' } }
+          },
+          y: {
+            beginAtZero: true,
+            grid: { color: 'rgba(148,163,184,0.1)' },
+            ticks: { color: '#94a3b8', font: { size: 11 } }
+          }
+        }
       };
-      const clamp = (x) => Math.max(0, Math.min(1, x));
-      const bgFor = (p) => {
-        // green scale
-        const a = 0.12 + clamp(p) * 0.75;
-        return `rgba(22,163,74,${a.toFixed(3)})`;
-      };
-
-      return dayLabels.map((label, day) => {
-        const cells = hours.map((hour) => {
-          const r = byKey.get(`${day}-${hour}`);
-          const p = ratio(r);
-          const booked = Number(r?.booked || 0);
-          const total = Number(r?.total || 0);
-          return {
-            key: `${day}-${hour}`,
-            bg: bgFor(p),
-            title: `${label} ${String(hour).padStart(2,'0')}:00 • ${booked}/${total} slot • ${(p*100).toFixed(0)}%`,
-          };
-        });
-        return { day, label, cells };
-      });
     }
+    
   },
   async mounted() {
     await this.loadClubsAndCourts();
@@ -518,6 +496,23 @@ export default {
           this.barData = null;
         }
 
+        if (chart.length) {
+          this.bookingsBarData = {
+            labels: chart.map(x => x.label),
+            datasets: [
+              {
+                label: 'Số đơn',
+                data: chart.map(x => Number(x.bookingsCount || 0)),
+                backgroundColor: 'rgba(99,102,241,0.85)',
+                borderRadius: 6,
+                borderSkipped: false,
+              }
+            ]
+          };
+        } else {
+          this.bookingsBarData = null;
+        }
+
         this.clubBreakdown = Array.isArray(data.breakdownByClub) ? data.breakdownByClub : [];
         this.topCourts = Array.isArray(data.topCourts) ? data.topCourts : [];
         this.topCustomers = Array.isArray(data.topCustomers) ? data.topCustomers : [];
@@ -526,7 +521,6 @@ export default {
           newCustomers: Number(s.newCustomers || 0),
           repeatCustomers: Number(s.repeatCustomers || 0),
         };
-        this.heatmapRaw = Array.isArray(data.heatmap) ? data.heatmap : [];
         this.lastUpdatedAt = new Date();
       } catch (e) {
         console.error('fetchFinance error', e);
@@ -606,9 +600,14 @@ export default {
 .star.filled { color: #f59e0b; }
 .star.half { color: #fcd34d; }
 
-/* Grid */
-.finance-grid { display: grid; grid-template-columns: 1.8fr 1fr; gap: 24px; align-items: start; }
-.right-col { display: flex; flex-direction: column; gap: 24px; }
+/* Charts */
+.charts-grid { display: grid; grid-template-columns: 1.8fr 1fr; gap: 24px; align-items: start; }
+.revenue-card { min-height: 360px; }
+.bookings-card { min-height: 360px; }
+
+/* Insights */
+.insights-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+.insights-col { display: flex; flex-direction: column; gap: 24px; }
 .card { background: #fff; border-radius: 24px; border: 1px solid #eaecf2; padding: 24px; box-shadow: 0 4px 20px rgba(15,22,35,0.04); }
 .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
 .card-title { font-family: 'Barlow Condensed', sans-serif; font-size: 17px; font-weight: 800; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; color: #0f1623; }
@@ -619,6 +618,7 @@ export default {
 .dot.online { background: #10b981; }
 .dot.cash { background: #3b82f6; }
 .chart-wrap { height: 280px; position: relative; }
+.chart-wrap-sm { height: 220px; position: relative; }
 .chart-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #94a3b8; }
 
 /* Breakdown */
@@ -650,7 +650,7 @@ export default {
 .auto-refresh-note .material-icons { font-size: 16px; }
 
 /* Responsive */
-@media (max-width: 1280px) { .finance-grid { grid-template-columns: 1fr; } }
+@media (max-width: 1280px) { .charts-grid { grid-template-columns: 1fr; } .insights-columns { grid-template-columns: 1fr; } }
 @media (max-width: 1024px) { .stats-row { grid-template-columns: 1fr 1fr; } .skeleton-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 640px) {
   .stats-row { grid-template-columns: 1fr; }
@@ -658,17 +658,4 @@ export default {
   .period-switch { flex-wrap: wrap; }
 }
 
-/* Heatmap */
-.heatmap-card { margin-top: 10px; }
-.heatmap-wrap { overflow-x: auto; }
-.heatmap-grid { min-width: 900px; display: flex; flex-direction: column; gap: 6px; }
-.hm-row { display: grid; grid-template-columns: 60px repeat(17, 1fr); gap: 6px; align-items: center; }
-.hm-cell { border-radius: 10px; border: 1px solid #eaecf2; height: 34px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #64748b; background: #fff; }
-.hm-header .hm-cell { background: #f8fafc; color: #475569; height: 30px; }
-.hm-box { background: rgba(22,163,74,0.12); border-color: rgba(22,163,74,0.15); }
-.hm-day { justify-content: flex-start; padding-left: 10px; font-weight: 800; }
-.hm-hour { font-weight: 800; }
-.hm-legend { display: flex; gap: 14px; margin-top: 12px; font-size: 12px; color: #64748b; }
-.hm-legend-item { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; }
-.hm-swatch { width: 18px; height: 10px; border-radius: 999px; border: 1px solid #eaecf2; }
 </style>
