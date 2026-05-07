@@ -385,4 +385,51 @@ export default {
 .mt-6 { margin-top: 24px; }
 .ml-auto { margin-left: auto; }
 .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+/* Row Actions & Buttons */
+.row-actions { display: flex; gap: 8px; align-items: center; }
+.row-actions.justify-end { justify-content: flex-end; }
+
+.row-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+}
+
+.row-btn:hover {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.3);
+}
+
+.row-btn.ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+}
+
+.row-btn.ghost:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  border-color: var(--border);
+  transform: none;
+  box-shadow: none;
+}
+
+.row-btn:active {
+  transform: translateY(0);
+}
+
+.text-right { text-align: right; }
 </style>

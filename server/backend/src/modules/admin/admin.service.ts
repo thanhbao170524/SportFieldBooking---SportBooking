@@ -2,132 +2,24 @@ import { prisma } from "@/infra/db/prisma";
 import { ApprovalStatus, CourtStatus, PostStatus } from "@/generated/prisma";
 import { notifyNewBooking } from "@/infra/realtime/socket";
 import { notifyPlayersAboutOwnerPost } from "@/modules/user/notification.service";
+import {
+  DEFAULT_PERMISSIONS_MATRIX,
+  PermissionsMatrix,
+  getPermissionsMatrix,
+  savePermissionsMatrix,
+} from "@/modules/admin/rbac";
 
 const DEFAULT_COMMISSION_RATE = 0.1; // 10% phí nền tảng (admin revenue)
 
 
-// PERMISSIONS
-export type PermissionKey =
-  | "view_users"
-  | "edit_users"
-  | "lock_users"
-  | "approve_clubs"
-  | "verify_kyc"
-  | "manage_courts"
-  | "view_finance"
-  | "export_reports"
-  | "manage_settings"
-  | "manage_perms"
-  | "moderate_posts"
-  | "moderate_comments"
-  | "view_stats";
-
-export type RoleKey = "ADMIN" | "MODERATOR" | "OWNER" | "USER";
-
-export type PermissionsMatrix = Record<RoleKey, Record<PermissionKey, boolean>>;
-
-const CONFIG_KEY = "RBAC_PERMISSIONS";
-
-export const DEFAULT_PERMISSIONS_MATRIX: PermissionsMatrix = {
-  ADMIN: {
-    view_users: true,
-    edit_users: true,
-    lock_users: true,
-    approve_clubs: true,
-    verify_kyc: true,
-    manage_courts: true,
-    view_finance: true,
-    export_reports: true,
-    manage_settings: true,
-    manage_perms: true,
-    moderate_posts: true,
-    moderate_comments: true,
-    view_stats: true,
-  },
-  MODERATOR: {
-    view_users: true,
-    edit_users: false,
-    lock_users: false,
-    approve_clubs: false,
-    verify_kyc: false,
-    manage_courts: false,
-    view_finance: false,
-    export_reports: false,
-    manage_settings: false,
-    manage_perms: false,
-    moderate_posts: true,
-    moderate_comments: true,
-    view_stats: true,
-  },
-  OWNER: {
-    view_users: false,
-    edit_users: false,
-    lock_users: false,
-    approve_clubs: false,
-    verify_kyc: false,
-    manage_courts: true,
-    view_finance: true,
-    export_reports: false,
-    manage_settings: false,
-    manage_perms: false,
-    moderate_posts: false,
-    moderate_comments: false,
-    view_stats: false,
-  },
-  USER: {
-    view_users: false,
-    edit_users: false,
-    lock_users: false,
-    approve_clubs: false,
-    verify_kyc: false,
-    manage_courts: false,
-    view_finance: false,
-    export_reports: false,
-    manage_settings: false,
-    manage_perms: false,
-    moderate_posts: false,
-    moderate_comments: false,
-    view_stats: false,
-  },
-};
-
 export async function getPermissionsAdmin(): Promise<PermissionsMatrix> {
-  const row = await prisma.systemConfig.findUnique({
-    where: { key: CONFIG_KEY },
-    select: { value: true },
-  });
-
-  if (!row?.value) {
-    return DEFAULT_PERMISSIONS_MATRIX;
-  }
-
-  try {
-    return JSON.parse(row.value) as PermissionsMatrix;
-  } catch {
-    return DEFAULT_PERMISSIONS_MATRIX;
-  }
+  return getPermissionsMatrix();
 }
 
 export async function updatePermissionsAdmin(
   matrix: PermissionsMatrix
 ): Promise<PermissionsMatrix> {
-  matrix.ADMIN.manage_perms = true;
-
-  const serialized = JSON.stringify(matrix);
-
-  await prisma.systemConfig.upsert({
-    where: { key: CONFIG_KEY },
-    create: {
-      key: CONFIG_KEY,
-      value: serialized,
-      description: "RBAC permissions matrix",
-    },
-    update: {
-      value: serialized,
-    },
-  });
-
-  return matrix;
+  return savePermissionsMatrix(matrix);
 }
 
 /**
@@ -317,93 +209,100 @@ export async function getAdminSummary(startDate?: string, endDate?: string) {
   const end = endDate ? new Date(endDate) : new Date();
 
   const [
-    pendingClubs, pendingKyc, totalUsers, activeClubs, 
-    totalBookings, filteredBookings, filteredRevenue, 
-    confirmedBookings, userStats, courtStats, 
-    monthlyStats, bookingStatusBreakdown
+    pendingClubs, pendingKyc, totalUsers, activeClubs,
+    totalBookings, filteredBookings, filteredRevenue,
+    confirmedBookings, cancelledBookings,
+    userStats, courtStats,
+    monthlyStats, bookingStatusBreakdown,
+    pendingReports, totalClubs,
+    visitStats
   ] = await Promise.all([
     prisma.club.count({ where: { approvalStatus: ApprovalStatus.PENDING } }),
     prisma.ownerProfile.count({ where: { kycStatus: ApprovalStatus.PENDING } }),
     prisma.user.count(),
     prisma.club.count({ where: { approvalStatus: ApprovalStatus.APPROVED, isActive: true } }),
     prisma.booking.count(),
-    prisma.booking.count({
-      where: {
-        createdAt: { gte: start, lte: end }
-      }
-    }),
+    prisma.booking.count({ where: { createdAt: { gte: start, lte: end } } }),
     prisma.booking.aggregate({
-      where: { 
-        status: 'CONFIRMED',
-        createdAt: { gte: start, lte: end }
-      },
+      where: { status: 'CONFIRMED', createdAt: { gte: start, lte: end } },
       _sum: { finalAmount: true }
     }),
-    prisma.booking.count({
-      where: {
-        status: 'CONFIRMED',
-        createdAt: { gte: start, lte: end }
-      }
-    }),
+    prisma.booking.count({ where: { status: 'CONFIRMED', createdAt: { gte: start, lte: end } } }),
+    prisma.booking.count({ where: { status: 'CANCELLED', createdAt: { gte: start, lte: end } } }),
     getUserStatsAdmin(startDate, endDate),
     getCourtStatsAdmin(),
     getMonthlyStatsAdmin(),
     prisma.booking.groupBy({
       by: ["status"],
       _count: { _all: true },
-      where: {
-        createdAt: { gte: start, lte: end }
-      }
-    })
+      where: { createdAt: { gte: start, lte: end } }
+    }),
+    prisma.report.count({ where: { status: 'PENDING' } }),
+    prisma.club.count(),
+    getVisitStatsAdmin(startDate, endDate),
   ]);
 
   // Derived calculations
-  const averageBookingValue = totalBookings ? Math.round((Number(filteredRevenue._sum.finalAmount || 0) / totalBookings)) : 0;
-  const paymentSuccessRate = totalBookings ? Math.round((confirmedBookings / totalBookings) * 100) : 0;
+  const totalRevenue = Number(filteredRevenue._sum.finalAmount || 0);
+  const platformCommission = Math.round(totalRevenue * DEFAULT_COMMISSION_RATE);
+  const averageBookingValue = filteredBookings > 0 ? Math.round(totalRevenue / filteredBookings) : 0;
+  const paymentSuccessRate = filteredBookings > 0 ? Math.round((confirmedBookings / filteredBookings) * 100) : 0;
+
+  // Court fill rate: ratio of confirmed bookings to total active courts × days in period
+  const periodDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+  // Assume each active court can host ~4 sessions per day (adjustable)
+  const maxSessions = courtStats.active * periodDays * 4;
+  const fillRate = maxSessions > 0 ? Math.min(100, Math.round((confirmedBookings / maxSessions) * 100)) : 0;
 
   return {
     users: {
       totalUsers,
       newUsers: userStats.newUsers,
-      activeUsers: userStats.active
+      activeUsers: userStats.active,
     },
     clubs: {
       activeClubs,
-      totalClubs: await prisma.club.count(),
+      totalClubs,
     },
     courts: {
       totalCourts: courtStats.total,
-      activeCourts: courtStats.active
+      activeCourts: courtStats.active,
+      fillRate,
     },
     approvals: {
       pendingClubs,
-      pendingKyc
+      pendingKyc,
     },
     bookings: {
       totalBookings: filteredBookings,
       confirmedBookings,
-      cancelledBookings: await prisma.booking.count({ where: { status: 'CANCELLED', createdAt: { gte: start, lte: end } } }),
+      cancelledBookings,
     },
     revenue: {
-      totalRevenue: Number(filteredRevenue._sum.finalAmount || 0),
-      platformCommission: Math.round(Number(filteredRevenue._sum.finalAmount || 0) * DEFAULT_COMMISSION_RATE),
+      totalRevenue,
+      platformCommission,
       averageBookingValue,
-      commissionRate: DEFAULT_COMMISSION_RATE
+      commissionRate: DEFAULT_COMMISSION_RATE,
     },
     payments: {
-      successRate: paymentSuccessRate
+      successRate: paymentSuccessRate,
     },
     moderation: {
-      pendingReports: await prisma.report.count({ where: { status: 'PENDING' } })
+      pendingReports,
+    },
+    visits: {
+      totalVisits: visitStats.totalVisits,
+      uniqueUsers: visitStats.uniqueUsers,
     },
     charts: {
       monthly: monthlyStats,
       bookingStatus: bookingStatusBreakdown.map(item => ({
         status: item.status,
-        count: item._count._all
-      }))
+        count: item._count._all,
+      })),
     },
-    violations: 4,
+    violations: pendingReports,
+    periodDays,
   };
 }
 
@@ -439,6 +338,7 @@ export async function getAllUsersAdmin() {
       id: true,
       email: true,
       fullName: true,
+      phone: true,
       role: true,
       isActive: true,
       avatarUrl: true,
@@ -457,13 +357,67 @@ export async function getAllUsersAdmin() {
 }
 
 /**
- * Khóa hoặc mở khóa một tài khoản người dùng
+ * Đếm số Admin đang hoạt động (dùng để bảo vệ Super Admin duy nhất)
  */
-export async function toggleUserActiveStatus(userId: string, isActive: boolean) {
-  return prisma.user.update({
+export async function countActiveAdmins(): Promise<number> {
+  return prisma.user.count({ where: { role: 'ADMIN', isActive: true } });
+}
+
+/**
+ * Khóa hoặc mở khóa một tài khoản người dùng.
+ * Quy tắc bảo vệ:
+ *  - Không thể khóa tài khoản Admin khác (cùng cấp).
+ *  - Nếu chỉ còn 1 Admin hoạt động, không được khóa Admin đó.
+ */
+export async function toggleUserActiveStatus(
+  actorId: string,
+  userId: string,
+  isActive: boolean
+) {
+  // Lấy thông tin target user
+  const target = await prisma.user.findUnique({
     where: { id: userId },
-    data: { isActive }
+    select: { id: true, role: true, isActive: true },
   });
+  if (!target) throw new Error('USER_NOT_FOUND');
+
+  // Lấy thông tin người thực hiện
+  const actor = await prisma.user.findUnique({
+    where: { id: actorId },
+    select: { id: true, role: true },
+  });
+  if (!actor) throw new Error('ACTOR_NOT_FOUND');
+
+  // Không cho phép Admin khóa Admin khác cùng cấp
+  if (target.role === 'ADMIN' && actor.role === 'ADMIN' && actor.id !== target.id) {
+    throw new Error('CANNOT_LOCK_PEER_ADMIN');
+  }
+
+  // Bảo vệ: không khóa Admin duy nhất còn hoạt động
+  if (!isActive && target.role === 'ADMIN') {
+    const activeAdminCount = await countActiveAdmins();
+    if (activeAdminCount <= 1) {
+      throw new Error('CANNOT_LOCK_LAST_ADMIN');
+    }
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: { isActive },
+  });
+
+  // Audit log
+  await prisma.auditLog.create({
+    data: {
+      userId: actorId,
+      action: isActive ? 'UNLOCK_USER' : 'LOCK_USER',
+      entity: 'User',
+      entityId: userId,
+      details: { targetRole: target.role, newStatus: isActive },
+    },
+  }).catch(() => {});
+
+  return updated;
 }
 
 /**

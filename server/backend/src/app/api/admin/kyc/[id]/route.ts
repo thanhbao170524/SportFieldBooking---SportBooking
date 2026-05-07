@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { updateOwnerKYCStatus } from "@/modules/admin/admin.service";
 import { successResponse, serverErrorResponse, badRequestResponse } from "@/lib/response";
 import { ApprovalStatus } from "@/generated/prisma";
+import { requireAdminPermissions } from "@/middleware/admin-rbac.middleware";
 
 /**
  * PATCH /api/admin/kyc/:id
@@ -9,6 +10,9 @@ import { ApprovalStatus } from "@/generated/prisma";
  */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const auth = await requireAdminPermissions(req, ["verify_kyc"]);
+    if (auth.error) return auth.error;
+
     const { id } = await params;
     const body = await req.json();
     const { status, note } = body;

@@ -285,14 +285,35 @@ export default {
     // Data Fetching
     const fetchData = async () => {
       try {
+        /*
         const [payRes, payReqRes] = await Promise.all([
           adminService.getAllPayments(),
           adminService.getPayoutRequests()
         ]);
-        // Không hiển thị giao dịch CASH/BANK_TRANSFER trong UI Admin Finance
-        // (CASH: thanh toán tại sân, BANK_TRANSFER: chuyển thẳng tới tài khoản CLB)
         payments.value = (payRes.data?.data || []).filter((p) => p.method !== 'CASH' && p.method !== 'BANK_TRANSFER');
         payoutRequests.value = payReqRes.data?.data || [];
+        */
+
+        // MOCK DATA
+        payments.value = [
+          { id: '1', transactionRef: 'TXN-100293', bookingId: 'BK-8821', customerName: 'Nguyễn Văn A', clubName: 'Sân bóng ABC', method: 'VNPAY', amount: 500000, status: 'CONFIRMED', createdAt: '2026-05-07T08:00:00Z', refundStatus: 'NONE' },
+          { id: '2', transactionRef: 'TXN-100294', bookingId: 'BK-8822', customerName: 'Trần Thị B', clubName: 'CLB Cầu lông XYZ', method: 'MOMO', amount: 350000, status: 'CONFIRMED', createdAt: '2026-05-07T09:30:00Z', refundStatus: 'NONE' },
+          { id: '3', transactionRef: 'TXN-100295', bookingId: 'BK-8823', customerName: 'Lê Văn C', clubName: 'Sân bóng ABC', method: 'CREDIT_CARD', amount: 600000, status: 'PENDING', createdAt: '2026-05-07T10:15:00Z', refundStatus: 'NONE' },
+          { id: '4', transactionRef: 'TXN-100296', bookingId: 'BK-8824', customerName: 'Phạm Minh D', clubName: 'Tennis Riverside', method: 'VNPAY', amount: 1200000, status: 'REFUNDED', createdAt: '2026-05-06T14:20:00Z', refundStatus: 'COMPLETED' },
+        ];
+
+        payoutRequests.value = [
+          { 
+            id: 'req-001', amount: 5000000, status: 'PENDING', createdAt: '2026-05-07T07:45:00Z',
+            bankName: 'Vietcombank', bankAccountNum: '1029384756', bankAccountName: 'NGUYEN VAN A',
+            wallet: { ownerProfile: { user: { fullName: 'Nguyễn Văn A' } } }
+          },
+          { 
+            id: 'req-002', amount: 12000000, status: 'COMPLETED', createdAt: '2026-05-06T11:00:00Z',
+            bankName: 'MB Bank', bankAccountNum: '9999222211', bankAccountName: 'TRAN THI B',
+            wallet: { ownerProfile: { user: { fullName: 'Trần Thị B' } } }
+          }
+        ];
         
         // Basic stats calc
         stats.value.totalRevenue = payments.value.reduce((s, p) => s + (p.status === 'CONFIRMED' ? p.amount : 0), 0);
@@ -438,10 +459,11 @@ export default {
 .table-responsive { overflow-x: auto; }
 
 .row-actions { display: flex; gap: 8px; }
+.row-actions.justify-end { justify-content: flex-end; }
 .row-btn {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
   border: 1px solid var(--border);
   background: var(--bg-tertiary);
   color: var(--text-secondary);
@@ -449,11 +471,14 @@ export default {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
 }
-.row-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.row-btn:hover { background: var(--accent); color: white; border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.3); }
+.row-btn.ghost { background: transparent; border-color: transparent; color: var(--text-muted); }
+.row-btn.ghost:hover { background: rgba(255, 255, 255, 0.05); color: var(--text-primary); border-color: var(--border); transform: none; box-shadow: none; }
 .row-btn.success { border-color: rgba(34,197,94,0.25); color: var(--green); }
-.row-btn.success:hover { background: rgba(34,197,94,0.12); }
+.row-btn.success:hover { background: var(--green); color: white; border-color: var(--green); }
 
 .status-badge {
   display: inline-flex;

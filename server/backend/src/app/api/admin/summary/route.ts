@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAdminSummary, getMonthlyStatsAdmin } from "@/modules/admin/admin.service";
 import { successResponse, serverErrorResponse } from "@/lib/response";
+import { requireAdminPermissions } from "@/middleware/admin-rbac.middleware";
 
 /**
  * GET /api/admin/summary
@@ -8,6 +9,9 @@ import { successResponse, serverErrorResponse } from "@/lib/response";
  */
 export async function GET(req: NextRequest) {
   try {
+    const auth = await requireAdminPermissions(req, ["view_stats"]);
+    if (auth.error) return auth.error;
+
     const { searchParams } = new URL(req.url);
     const startDate = searchParams.get('startDate') || undefined;
     const endDate = searchParams.get('endDate') || undefined;

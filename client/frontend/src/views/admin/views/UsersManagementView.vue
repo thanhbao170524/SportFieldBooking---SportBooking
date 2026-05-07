@@ -54,8 +54,15 @@
             <span v-if="t.count > 0" class="tab-badge">{{ t.count }}</span>
           </button>
         </div>
+
+        <!-- Status filter -->
+        <select id="status-filter" v-model="statusFilter" class="status-select">
+          <option value="all">Tất cả trạng thái</option>
+          <option value="active">Hoạt động</option>
+          <option value="locked">Bị khóa</option>
+        </select>
         
-        <div class="search-input ml-auto">
+        <div class="search-input">
           <Search :size="14" />
           <input type="text" v-model="searchQuery" placeholder="Tên, email hoặc ID..." />
         </div>
@@ -112,7 +119,14 @@
               <td>
                 <div class="row-actions justify-end">
                    <button class="row-btn" @click="handleViewDetail(u)"><Eye :size="14" /></button>
-                   <button class="row-btn" :class="u.isActive ? 'warning-hover' : 'success-hover'" @click="handleToggleStatus(u)">
+                   <!-- Lock button: disabled for peer admins -->
+                   <button 
+                     class="row-btn" 
+                     :class="u.isActive ? 'warning-hover' : 'success-hover'"
+                     :disabled="u.role === 'ADMIN'"
+                     :title="u.role === 'ADMIN' ? 'Không thể khóa tài khoản Admin cùng cấp' : ''"
+                     @click="handleToggleStatus(u)"
+                   >
                       <component :is="u.isActive ? 'Lock' : 'Unlock'" :size="14" />
                    </button>
                    <button v-if="u.role !== 'ADMIN'" class="row-btn danger-hover" @click="handleDelete(u)"><Trash2 :size="14" /></button>
@@ -186,12 +200,24 @@
                  <div class="group-label">Thông tin liên hệ</div>
                  <div class="info-details-box">
                     <div class="d-item">
+                       <span class="d-label">Họ tên:</span>
+                       <span class="d-val">{{ selectedUser?.fullName }}</span>
+                    </div>
+                    <div class="d-item">
                        <span class="d-label">Email:</span>
                        <span class="d-val">{{ selectedUser?.email }}</span>
                     </div>
                     <div class="d-item">
                        <span class="d-label">Số điện thoại:</span>
                        <span class="d-val">{{ selectedUser?.phone || 'Chưa cập nhật' }}</span>
+                    </div>
+                    <div class="d-item">
+                       <span class="d-label">Ngày tham gia:</span>
+                       <span class="d-val">{{ formatDate(selectedUser?.createdAt) }}</span>
+                    </div>
+                    <div class="d-item">
+                       <span class="d-label">Lượt đặt sân:</span>
+                       <span class="d-val">{{ selectedUser?._count?.bookings || 0 }}</span>
                     </div>
                     <div class="d-item">
                        <span class="d-label">ID Người dùng:</span>
@@ -215,8 +241,11 @@
 
         <div class="modal-footer">
            <button class="footer-btn ghost" @click="showDetailModal = false">Thoát</button>
-           <button class="footer-btn danger" v-if="selectedUser?.isActive" @click="handleToggleStatus(selectedUser)">Khóa tài khoản</button>
-           <button class="footer-btn success" v-else @click="handleToggleStatus(selectedUser)">Mở khóa tài khoản</button>
+           <template v-if="selectedUser?.role !== 'ADMIN'">
+             <button class="footer-btn danger" v-if="selectedUser?.isActive" @click="handleToggleStatus(selectedUser)">Khóa tài khoản</button>
+             <button class="footer-btn success" v-else @click="handleToggleStatus(selectedUser)">Mở khóa tài khoản</button>
+           </template>
+           <span v-else class="admin-lock-note">⚠️ Không thể khóa tài khoản Admin cùng cấp</span>
         </div>
       </div>
     </div>
@@ -244,6 +273,8 @@ export default {
     const searchQuery = ref('');
     const activeTab = ref('all');
 
+    const statusFilter = ref('all');
+
     const tabs = computed(() => [
       { id: 'all', label: 'Tất cả', icon: 'LayoutGrid', count: users.value.length },
       { id: 'USER', label: 'Khách hàng', icon: 'UsersIcon', count: users.value.filter(u => u.role === 'USER').length },
@@ -267,15 +298,23 @@ export default {
     };
 
     const handleToggleStatus = async (user) => {
+      if (user.role === 'ADMIN') {
+        alert('Không thể khóa tài khoản Admin cùng cấp.');
+        return;
+      }
       const nextStatus = !user.isActive;
       const actionText = nextStatus ? 'mở khóa' : 'khóa';
-      if (!confirm(`Bạn có chắc muốn ${actionText} tài khoản này?`)) return;
+      if (!confirm(`Bạn có chắc muốn ${actionText} tài khoản "${user.fullName}"?`)) return;
 
       try {
         await adminService.updateUserStatus(user.id, nextStatus);
         user.isActive = nextStatus;
+        if (showDetailModal.value && selectedUser.value?.id === user.id) {
+          selectedUser.value.isActive = nextStatus;
+        }
       } catch (error) {
-        alert("Thao tác thất bại!");
+        const msg = error?.response?.data?.message || 'Thao tác thất bại!';
+        alert(msg);
       }
     };
 
@@ -300,20 +339,26 @@ export default {
 
     const filteredUsers = computed(() => {
       let filtered = users.value;
-      
+
       if (activeTab.value !== 'all') {
         filtered = filtered.filter(u => u.role === activeTab.value);
       }
-      
+
+      if (statusFilter.value === 'active') {
+        filtered = filtered.filter(u => u.isActive);
+      } else if (statusFilter.value === 'locked') {
+        filtered = filtered.filter(u => !u.isActive);
+      }
+
       if (searchQuery.value) {
         const q = searchQuery.value.toLowerCase();
-        filtered = filtered.filter(u => 
-          u.fullName.toLowerCase().includes(q) || 
+        filtered = filtered.filter(u =>
+          u.fullName.toLowerCase().includes(q) ||
           u.email.toLowerCase().includes(q) ||
           u.id.toLowerCase().includes(q)
         );
       }
-      
+
       return filtered;
     });
 
@@ -324,6 +369,7 @@ export default {
       loading,
       searchQuery,
       activeTab,
+      statusFilter,
       tabs,
       filteredUsers,
       counts,
@@ -381,9 +427,16 @@ export default {
   background: var(--accent); color: white; box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.4);
 }
 
-.table-toolbar { padding: 14px 20px; display: flex; align-items: center; gap: 16px; border-bottom: 1px solid var(--border); }
-.search-input { display: flex; align-items: center; gap: 10px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 8px; padding: 0 14px; height: 38px; width: 320px; transition: all 0.2s; }
+.table-toolbar { padding: 14px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.search-input { display: flex; align-items: center; gap: 10px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 8px; padding: 0 14px; height: 38px; width: 280px; transition: all 0.2s; margin-left: auto; }
 .search-input input { background: transparent; border: none; outline: none; color: var(--text-primary); font-size: 14px; width: 100%; }
+.status-select { height: 38px; padding: 0 12px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 13px; font-weight: 600; cursor: pointer; outline: none; }
+.admin-lock-note { font-size: 12px; color: var(--text-muted); padding: 8px 12px; background: rgba(245,158,11,0.1); border-radius: 8px; border: 1px solid rgba(245,158,11,0.2); }
+.kyc-notice { display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: rgba(79,110,247,0.06); border: 1px solid rgba(79,110,247,0.15); border-radius: 10px; font-size: 13px; color: var(--text-secondary); }
+.kyc-link { color: var(--accent); font-weight: 700; text-decoration: none; }
+.kyc-link:hover { text-decoration: underline; }
+.row-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.row-btn:disabled:hover { background: var(--bg-tertiary); color: var(--text-secondary); border-color: var(--border); }
 
 /* Modal CSS */
 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; animation: modalIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -468,9 +521,12 @@ export default {
 
 /* Row Actions */
 .row-locked { opacity: 0.7; filter: grayscale(0.5); }
-.row-actions { display: flex; gap: 6px; }
-.row-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
-.row-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--bg-hover); }
+.row-actions { display: flex; gap: 8px; align-items: center; }
+.row-actions.justify-end { justify-content: flex-end; }
+.row-btn { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); outline: none; }
+.row-btn:hover { background: var(--accent); color: white; border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.3); }
+.row-btn.ghost { background: transparent; border-color: transparent; color: var(--text-muted); }
+.row-btn.ghost:hover { background: rgba(255, 255, 255, 0.05); color: var(--text-primary); border-color: var(--border); transform: none; box-shadow: none; }
 .row-btn.success-hover:hover { background: var(--green); color: white; border-color: var(--green); }
 .row-btn.warning-hover:hover { background: var(--orange); color: white; border-color: var(--orange); }
 .row-btn.danger-hover:hover { background: var(--red); color: white; border-color: var(--red); }

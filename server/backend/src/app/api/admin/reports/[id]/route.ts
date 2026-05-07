@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleReportAdmin } from "@/modules/admin/admin.service";
 import { successResponse, serverErrorResponse } from "@/lib/response";
-import { getAuthUser, requireRole } from "@/middleware/auth.middleware";
+import { requireAdminPermissions } from "@/middleware/admin-rbac.middleware";
 
 interface Params {
   params: Promise<{
@@ -18,10 +18,8 @@ export async function PATCH(
   { params }: Params
 ): Promise<NextResponse> {
   try {
-    const { user, error } = await getAuthUser(req);
-    if (error) return error;
-    const roleError = requireRole(user, ["ADMIN"]);
-    if (roleError) return roleError;
+    const auth = await requireAdminPermissions(req, ["moderate_posts"]);
+    if (auth.error) return auth.error;
 
     const body: Body = await req.json();
     const { id } = await params;

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { PostStatus } from "@/generated/prisma";
 import { approveOwnerPostAdmin, deletePostAdmin, rejectOwnerPostAdmin, togglePostStatus } from "@/modules/admin/admin.service";
 import { prisma } from "@/infra/db/prisma";
-import { getAuthUser, requireRole } from "@/middleware/auth.middleware";
 import { badRequestResponse, serverErrorResponse, successResponse } from "@/lib/response";
+import { requireAdminPermissions } from "@/middleware/admin-rbac.middleware";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -17,10 +17,8 @@ interface PatchBody {
 
 export async function GET(req: NextRequest, { params }: Params): Promise<NextResponse> {
   try {
-    const { user, error } = await getAuthUser(req);
-    if (error) return error;
-    const roleError = requireRole(user, ["ADMIN"]);
-    if (roleError) return roleError;
+    const auth = await requireAdminPermissions(req, ["moderate_posts"]);
+    if (auth.error) return auth.error;
 
     const { id } = await params;
     const post = await prisma.post.findUnique({
@@ -43,10 +41,8 @@ export async function GET(req: NextRequest, { params }: Params): Promise<NextRes
 
 export async function PATCH(req: NextRequest, { params }: Params): Promise<NextResponse> {
   try {
-    const { user, error } = await getAuthUser(req);
-    if (error) return error;
-    const roleError = requireRole(user, ["ADMIN"]);
-    if (roleError) return roleError;
+    const auth = await requireAdminPermissions(req, ["moderate_posts"]);
+    if (auth.error) return auth.error;
 
     const { id } = await params;
     const body: PatchBody = await req.json();
@@ -54,12 +50,12 @@ export async function PATCH(req: NextRequest, { params }: Params): Promise<NextR
     const action = body.action;
 
     if (action === "APPROVE") {
-      const updated = await approveOwnerPostAdmin(id, user.userId);
+      const updated = await approveOwnerPostAdmin(id, auth.user.userId);
       return successResponse("Đã duyệt bài đăng", updated);
     }
 
     if (action === "REJECT") {
-      const updated = await rejectOwnerPostAdmin(id, user.userId, body.note);
+      const updated = await rejectOwnerPostAdmin(id, auth.user.userId, body.note);
       return successResponse("Đã từ chối bài đăng", updated);
     }
 
@@ -76,10 +72,8 @@ export async function PATCH(req: NextRequest, { params }: Params): Promise<NextR
 
 export async function DELETE(req: NextRequest, { params }: Params): Promise<NextResponse> {
   try {
-    const { user, error } = await getAuthUser(req);
-    if (error) return error;
-    const roleError = requireRole(user, ["ADMIN"]);
-    if (roleError) return roleError;
+    const auth = await requireAdminPermissions(req, ["moderate_posts"]);
+    if (auth.error) return auth.error;
 
     const { id } = await params;
     const updated = await deletePostAdmin(id);

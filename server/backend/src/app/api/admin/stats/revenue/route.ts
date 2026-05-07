@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRevenueStatsAdmin } from "@/modules/admin/admin.service";
 import { successResponse, serverErrorResponse } from "@/lib/response";
-import { getAuthUser, requireRole } from "@/middleware/auth.middleware";
+import { requireAdminPermissions } from "@/middleware/admin-rbac.middleware";
 
 interface RevenueStats {
   totalRevenue: number;
@@ -10,10 +10,8 @@ interface RevenueStats {
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
-    const { user, error } = await getAuthUser(req);
-    if (error) return error;
-    const roleError = requireRole(user, ["ADMIN"]);
-    if (roleError) return roleError;
+    const auth = await requireAdminPermissions(req, ["view_finance"]);
+    if (auth.error) return auth.error;
 
     const { searchParams } = new URL(req.url);
 

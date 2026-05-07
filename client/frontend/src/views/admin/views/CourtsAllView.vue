@@ -736,9 +736,12 @@ export default {
 .status-badge.locked { color: var(--text-muted); }
 .status-badge.locked .dot { background: var(--red); }
 
-.row-actions { display: flex; gap: 6px; }
-.row-btn { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
-.row-btn:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--accent); }
+.row-actions { display: flex; gap: 8px; }
+.row-actions.justify-end { justify-content: flex-end; }
+.row-btn { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); outline: none; }
+.row-btn:hover { background: var(--accent); color: white; border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.3); }
+.row-btn.ghost { background: transparent; border-color: transparent; color: var(--text-muted); }
+.row-btn.ghost:hover { background: rgba(255, 255, 255, 0.05); color: var(--text-primary); border-color: var(--border); transform: none; box-shadow: none; }
 .row-btn.success-hover:hover { background: var(--green); color: white; border-color: var(--green); }
 .row-btn.warning-hover:hover { background: var(--orange); color: white; border-color: var(--orange); }
 .row-btn.danger-hover:hover { background: var(--red); color: white; border-color: var(--red); }

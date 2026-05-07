@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/infra/db/prisma";
 import { badRequestResponse, serverErrorResponse, successResponse } from "@/lib/response";
+import { requireAdminPermissions } from "@/middleware/admin-rbac.middleware";
 
 type SystemLogItem = {
   id: string;
@@ -18,6 +19,9 @@ function parsePositiveInt(value: string | null, fallback: number) {
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
+    const auth = await requireAdminPermissions(req, ["view_stats"]);
+    if (auth.error) return auth.error;
+
     const { searchParams } = new URL(req.url);
 
     const page = parsePositiveInt(searchParams.get("page"), 1);
@@ -64,6 +68,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
+    const auth = await requireAdminPermissions(req, ["manage_settings"]);
+    if (auth.error) return auth.error;
+
     const body = (await req.json()) as {
       level?: string;
       message?: string;

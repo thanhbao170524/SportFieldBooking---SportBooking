@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/infra/db/prisma";
-import { getAuthUser, requireRole } from "@/middleware/auth.middleware";
 import { badRequestResponse, serverErrorResponse, successResponse } from "@/lib/response";
+import { requireAdminPermissions } from "@/middleware/admin-rbac.middleware";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -16,10 +16,8 @@ export async function PATCH(
   { params }: Params
 ): Promise<NextResponse> {
   try {
-    const { user, error } = await getAuthUser(req);
-    if (error) return error;
-    const roleError = requireRole(user, ["ADMIN"]);
-    if (roleError) return roleError;
+    const auth = await requireAdminPermissions(req, ["moderate_comments"]);
+    if (auth.error) return auth.error;
 
     const { id } = await params;
     const body: Body = await req.json();
@@ -48,10 +46,8 @@ export async function DELETE(
   { params }: Params
 ): Promise<NextResponse> {
   try {
-    const { user, error } = await getAuthUser(_);
-    if (error) return error;
-    const roleError = requireRole(user, ["ADMIN"]);
-    if (roleError) return roleError;
+    const auth = await requireAdminPermissions(_, ["moderate_comments"]);
+    if (auth.error) return auth.error;
 
     const { id } = await params;
     await prisma.comment.delete({

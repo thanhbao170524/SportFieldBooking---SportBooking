@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { successResponse, errorResponse } from "@/lib/response";
 import { toggleCourtStatus } from "@/modules/admin/admin.service";
 import { CourtStatus } from "@/generated/prisma";
+import { requireAdminPermissions } from "@/middleware/admin-rbac.middleware";
 
 /**
  * Cập nhật trạng thái một sân đơn lẻ (Admin)
@@ -11,6 +12,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAdminPermissions(req, ["manage_courts"]);
+    if (auth.error) return auth.error;
+
     const { id } = await params;
     const { status } = await req.json();
 

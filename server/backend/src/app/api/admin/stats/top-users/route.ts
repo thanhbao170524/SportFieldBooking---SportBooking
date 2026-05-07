@@ -1,5 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/infra/db/prisma";
+import { requireAdminPermissions } from "@/middleware/admin-rbac.middleware";
+import { successResponse, serverErrorResponse } from "@/lib/response";
 
 interface TopUser {
   userId: string;
@@ -7,8 +9,11 @@ interface TopUser {
   totalBookings: number;
 }
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
+    const auth = await requireAdminPermissions(req, ["view_stats"]);
+    if (auth.error) return auth.error;
+
     const grouped = await prisma.booking.groupBy({
       by: ["userId"],
       _count: { id: true },
@@ -32,11 +37,8 @@ export async function GET(): Promise<NextResponse> {
       })
     );
 
-    return NextResponse.json({
-      message: "Top users",
-      data: result
-    });
-  } catch {
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    return successResponse("Top users", result);
+  } catch (error: unknown) {
+    return serverErrorResponse(error);
   }
 }

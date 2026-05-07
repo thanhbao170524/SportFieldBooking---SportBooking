@@ -1,18 +1,17 @@
-import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getAllOwnersAdmin } from "@/modules/admin/admin.service";
+import { requireAdminPermissions } from "@/middleware/admin-rbac.middleware";
+import { successResponse, serverErrorResponse } from "@/lib/response";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const auth = await requireAdminPermissions(req, ["view_users"]);
+    if (auth.error) return auth.error;
+
     const owners = await getAllOwnersAdmin();
-    return NextResponse.json({
-      success: true,
-      data: owners,
-    });
-  } catch (error) {
-    console.error("Lỗi khi lấy danh sách Owners:", error);
-    return NextResponse.json(
-      { success: false, message: "Lỗi hệ thống khi lấy danh sách chủ câu lạc bộ" },
-      { status: 500 }
-    );
+    return successResponse("Lấy danh sách owners thành công", owners);
+  } catch (error: unknown) {
+    console.error("GET Admin Owners Error:", error);
+    return serverErrorResponse(error);
   }
 }

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { verifyToken, extractTokenFromHeader, JwtPayload } from "@/lib/jwt";
 import { errorResponse } from "@/lib/response";
 import { prisma } from "@/infra/db/prisma";
+import { getPermissionsMatrix, PermissionKey, RoleKey } from "@/modules/admin/rbac";
 
 export async function getAuthUser(
   req: NextRequest
@@ -59,5 +60,26 @@ export function requireRole(
   if (!roles.includes(user.role)) {
     return errorResponse("Bạn không có quyền thực hiện thao tác này.", 403);
   }
+  return null;
+}
+
+export async function requirePermission(
+  user: JwtPayload,
+  permissions: PermissionKey[]
+): Promise<ReturnType<typeof errorResponse> | null> {
+  const role = (user.role as RoleKey) || "USER";
+  const matrix = await getPermissionsMatrix();
+  const rolePerms = (matrix as any)[role] as Record<string, boolean> | undefined;
+
+  if (!rolePerms) {
+    return errorResponse("Bạn không có quyền thực hiện thao tác này.", 403);
+  }
+
+  for (const p of permissions) {
+    if (!rolePerms[p]) {
+      return errorResponse("Bạn không có quyền thực hiện thao tác này.", 403);
+    }
+  }
+
   return null;
 }

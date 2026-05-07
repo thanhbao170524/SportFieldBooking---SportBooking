@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/infra/db/prisma";
-import { getAuthUser, requireRole } from "@/middleware/auth.middleware";
 import { serverErrorResponse, successResponse } from "@/lib/response";
+import { requireAdminPermissions } from "@/middleware/admin-rbac.middleware";
+import { PaymentStatus, PaymentMethod } from "@/generated/prisma";
 
 /**
  * GET /api/admin/finance/payments
@@ -9,10 +10,8 @@ import { serverErrorResponse, successResponse } from "@/lib/response";
  */
 export async function GET(req: NextRequest) {
   try {
-    const { user, error } = await getAuthUser(req);
-    if (error) return error;
-    const roleError = requireRole(user, ["ADMIN"]);
-    if (roleError) return roleError;
+    const auth = await requireAdminPermissions(req, ["view_finance"]);
+    if (auth.error) return auth.error;
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
@@ -20,8 +19,8 @@ export async function GET(req: NextRequest) {
 
     const payments = await prisma.payment.findMany({
       where: {
-        ...(status ? { status: status as any } : {}),
-        ...(method ? { method: method as any } : {})
+        ...(status ? { status: status as PaymentStatus } : {}),
+        ...(method ? { method: method as PaymentMethod } : {})
       },
       include: {
         booking: {

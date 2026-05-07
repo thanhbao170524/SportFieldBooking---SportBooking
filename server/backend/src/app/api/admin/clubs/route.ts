@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAllClubsAdmin } from "@/modules/admin/admin.service";
 import { successResponse, serverErrorResponse } from "@/lib/response";
+import { requireAdminPermissions } from "@/middleware/admin-rbac.middleware";
 
 /**
  * GET /api/admin/clubs
@@ -8,8 +9,8 @@ import { successResponse, serverErrorResponse } from "@/lib/response";
  */
 export async function GET(req: NextRequest) {
   try {
-    // Lưu ý: Trong thực tế nên kiểm tra role Admin tại middleware hoặc ở đây
-    // Ví dụ: const user = await getCurrentUser(req); if (user?.role !== 'ADMIN') return forbiddenResponse();
+    const auth = await requireAdminPermissions(req, ["approve_clubs"]);
+    if (auth.error) return auth.error;
 
     const clubs = await getAllClubsAdmin();
     return successResponse("Lấy danh sách CLB thành công", clubs);

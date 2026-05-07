@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/infra/db/prisma";
-import { getAuthUser, requireRole } from "@/middleware/auth.middleware";
 import { serverErrorResponse, successResponse } from "@/lib/response";
+import { requireAdminPermissions } from "@/middleware/admin-rbac.middleware";
 
 interface SystemReport {
   totalUsers: number;
@@ -13,10 +13,8 @@ interface SystemReport {
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
-    const { user, error } = await getAuthUser(req);
-    if (error) return error;
-    const roleError = requireRole(user, ["ADMIN"]);
-    if (roleError) return roleError;
+    const auth = await requireAdminPermissions(req, ["view_stats"]);
+    if (auth.error) return auth.error;
 
     const [
       totalUsers,

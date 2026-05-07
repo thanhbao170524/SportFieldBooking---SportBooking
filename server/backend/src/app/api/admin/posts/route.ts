@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllPostsAdmin } from "@/modules/admin/admin.service";
 import { successResponse, serverErrorResponse } from "@/lib/response";
-import { getAuthUser, requireRole } from "@/middleware/auth.middleware";
+import { requireAdminPermissions } from "@/middleware/admin-rbac.middleware";
 
 interface PostItem {
   id: string;
@@ -16,10 +16,8 @@ interface PostItem {
 
 export async function GET(_: NextRequest): Promise<NextResponse> {
   try {
-    const { user, error } = await getAuthUser(_);
-    if (error) return error;
-    const roleError = requireRole(user, ["ADMIN"]);
-    if (roleError) return roleError;
+    const auth = await requireAdminPermissions(_, ["moderate_posts"]);
+    if (auth.error) return auth.error;
 
     const posts: PostItem[] = await getAllPostsAdmin();
 

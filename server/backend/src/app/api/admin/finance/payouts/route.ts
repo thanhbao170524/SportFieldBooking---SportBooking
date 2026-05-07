@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
-import { getAuthUser, requireRole } from "@/middleware/auth.middleware";
 import { errorResponse, serverErrorResponse, successResponse } from "@/lib/response";
 import { FinanceService } from "@/modules/finance/finance.service";
 import { PayoutStatus } from "@/generated/prisma";
+import { requireAdminPermissions } from "@/middleware/admin-rbac.middleware";
 
 /**
  * GET /api/admin/finance/payouts
@@ -10,10 +10,8 @@ import { PayoutStatus } from "@/generated/prisma";
  */
 export async function GET(req: NextRequest) {
   try {
-    const { user, error } = await getAuthUser(req);
-    if (error) return error;
-    const roleError = requireRole(user, ["ADMIN"]);
-    if (roleError) return roleError;
+    const auth = await requireAdminPermissions(req, ["view_finance"]);
+    if (auth.error) return auth.error;
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status") as PayoutStatus | undefined;
@@ -31,10 +29,8 @@ export async function GET(req: NextRequest) {
  */
 export async function PATCH(req: NextRequest) {
   try {
-    const { user, error } = await getAuthUser(req);
-    if (error) return error;
-    const roleError = requireRole(user, ["ADMIN"]);
-    if (roleError) return roleError;
+    const auth = await requireAdminPermissions(req, ["view_finance"]);
+    if (auth.error) return auth.error;
 
     const body = await req.json();
     const { requestId, status, adminNote } = body;
@@ -47,7 +43,7 @@ export async function PATCH(req: NextRequest) {
       requestId,
       status as PayoutStatus,
       adminNote,
-      user.userId
+      auth.user.userId
     );
 
     return successResponse("Cập nhật trạng thái yêu cầu rút tiền thành công", updatedRequest);

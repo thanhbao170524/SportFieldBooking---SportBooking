@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { toggleClubActiveStatus } from "@/modules/admin/admin.service";
 import { successResponse, serverErrorResponse } from "@/lib/response";
+import { requireAdminPermissions } from "@/middleware/admin-rbac.middleware";
 
 /**
  * PATCH /api/admin/clubs/:id/status
@@ -8,6 +9,9 @@ import { successResponse, serverErrorResponse } from "@/lib/response";
  */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const auth = await requireAdminPermissions(req, ["manage_courts"]);
+    if (auth.error) return auth.error;
+
     const { id } = await params;
     const body = await req.json();
     const { isActive } = body;
