@@ -121,6 +121,7 @@
                    <button class="row-btn" @click="handleViewDetail(u)"><Eye :size="14" /></button>
                    <!-- Lock button: disabled for peer admins -->
                    <button 
+                     v-if="hasPermission('lock_users')"
                      class="row-btn" 
                      :class="u.isActive ? 'warning-hover' : 'success-hover'"
                      :disabled="u.role === 'ADMIN'"
@@ -129,7 +130,7 @@
                    >
                       <component :is="u.isActive ? 'Lock' : 'Unlock'" :size="14" />
                    </button>
-                   <button v-if="u.role !== 'ADMIN'" class="row-btn danger-hover" @click="handleDelete(u)"><Trash2 :size="14" /></button>
+                   <button v-if="u.role !== 'ADMIN' && hasPermission('edit_users')" class="row-btn danger-hover" @click="handleDelete(u)"><Trash2 :size="14" /></button>
                 </div>
               </td>
             </tr>
@@ -242,10 +243,12 @@
         <div class="modal-footer">
            <button class="footer-btn ghost" @click="showDetailModal = false">Thoát</button>
            <template v-if="selectedUser?.role !== 'ADMIN'">
-             <button class="footer-btn danger" v-if="selectedUser?.isActive" @click="handleToggleStatus(selectedUser)">Khóa tài khoản</button>
-             <button class="footer-btn success" v-else @click="handleToggleStatus(selectedUser)">Mở khóa tài khoản</button>
+             <template v-if="hasPermission('lock_users')">
+               <button class="footer-btn danger" v-if="selectedUser?.isActive" @click="handleToggleStatus(selectedUser)">Khóa tài khoản</button>
+               <button class="footer-btn success" v-else @click="handleToggleStatus(selectedUser)">Mở khóa tài khoản</button>
+             </template>
            </template>
-           <span v-else class="admin-lock-note">⚠️ Không thể khóa tài khoản Admin cùng cấp</span>
+           <span v-else class="admin-lock-note">⚠️ Không thể khóa tài khoản Admin</span>
         </div>
       </div>
     </div>
@@ -284,6 +287,12 @@ export default {
 
     const showDetailModal = ref(false);
     const selectedUser = ref(null);
+    const currentUser = ref(null);
+
+    const hasPermission = (permissionKey) => {
+      if (currentUser.value?.role === 'ADMIN') return true;
+      return !!currentUser.value?.permissions?.[permissionKey];
+    };
 
     const fetchUsers = async () => {
       loading.value = true;
@@ -362,7 +371,15 @@ export default {
       return filtered;
     });
 
-    onMounted(fetchUsers);
+    onMounted(() => {
+      try {
+        const stored = localStorage.getItem('user');
+        if (stored) currentUser.value = JSON.parse(stored);
+      } catch (e) {
+        console.error("Error loading user for permissions:", e);
+      }
+      fetchUsers();
+    });
 
     return {
       users,
@@ -378,7 +395,8 @@ export default {
       handleViewDetail,
       formatDate,
       showDetailModal,
-      selectedUser
+      selectedUser,
+      hasPermission
     };
   }
 }

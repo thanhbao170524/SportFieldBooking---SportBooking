@@ -60,13 +60,13 @@
       <div class="chart-card wide">
         <div class="chart-header">
           <div>
-            <div class="chart-title">Xu hướng đặt sân</div>
-            <div class="chart-desc">Số đơn đặt theo 6 tháng gần nhất</div>
+            <div class="chart-title">{{ trendTitle }}</div>
+            <div class="chart-desc">{{ trendDesc }}</div>
           </div>
         </div>
         <div class="chart-body">
           <Line v-if="lineData" :data="lineData" :options="lineOpts" />
-          <div v-else class="chart-empty">Đang tải dữ liệu...</div>
+          <div v-else class="chart-empty">Không có dữ liệu trong khoảng thời gian này</div>
         </div>
       </div>
       <!-- Doughnut -->
@@ -144,6 +144,12 @@ export default {
     const startDate = ref('');
     const endDate   = ref('');
     const lastUpdated = ref('');
+    const currentUser = ref(null);
+
+    const hasPermission = (permissionKey) => {
+      if (currentUser.value?.role === 'ADMIN') return true;
+      return !!currentUser.value?.permissions?.[permissionKey];
+    };
 
     const presets = [
       { id: 'last_week',   label: 'Tuần trước'  },
@@ -166,56 +172,86 @@ export default {
     });
 
     // ── KPI cards ──────────────────────────────────────────────────────────────
-    const kpiCards = computed(() => [
-      {
-        label: 'Người dùng mới',
-        value: FMT_NUM(dash.value.users.newUsers),
-        sub: `Tổng: ${FMT_NUM(dash.value.users.totalUsers)} người dùng`,
-        icon: Users,
-        color: '#4f6ef7',
-        bg: 'rgba(79,110,247,0.12)',
-        pct: Math.min(100, (dash.value.users.newUsers / Math.max(dash.value.users.totalUsers, 1)) * 100),
-      },
-      {
-        label: 'Lượt truy cập',
-        value: FMT_NUM(dash.value.visits.totalVisits),
-        sub: `${FMT_NUM(dash.value.visits.uniqueUsers)} người dùng khác nhau`,
-        icon: Eye,
-        color: '#8b5cf6',
-        bg: 'rgba(139,92,246,0.12)',
-        pct: 70,
-      },
-      {
-        label: 'Sân đang hoạt động',
-        value: FMT_NUM(dash.value.courts.activeCourts),
-        sub: `Tỷ lệ lấp đầy: ${dash.value.courts.fillRate}%`,
-        icon: MapPin,
-        color: '#22c55e',
-        bg: 'rgba(34,197,94,0.12)',
-        pct: dash.value.courts.fillRate,
-      },
-      {
-        label: 'Tổng doanh thu',
-        value: FMT_VND(dash.value.revenue.totalRevenue),
-        sub: `Hoa hồng: ${FMT_VND(dash.value.revenue.platformCommission)}`,
-        icon: CircleDollarSign,
-        color: '#f59e0b',
-        bg: 'rgba(245,158,11,0.12)',
-        pct: Math.min(100, dash.value.revenue.platformCommission / Math.max(dash.value.revenue.totalRevenue, 1) * 100),
-      },
-    ]);
+    const kpiCards = computed(() => {
+      const cards = [
+        {
+          label: 'Người dùng mới',
+          value: FMT_NUM(dash.value.users.newUsers),
+          sub: `Tổng: ${FMT_NUM(dash.value.users.totalUsers)} người dùng`,
+          icon: Users,
+          color: '#4f6ef7',
+          bg: 'rgba(79,110,247,0.12)',
+          pct: Math.min(100, (dash.value.users.newUsers / Math.max(dash.value.users.totalUsers, 1)) * 100),
+        },
+        {
+          label: 'Lượt truy cập',
+          value: FMT_NUM(dash.value.visits.totalVisits),
+          sub: `${FMT_NUM(dash.value.visits.uniqueUsers)} người dùng khác nhau`,
+          icon: Eye,
+          color: '#8b5cf6',
+          bg: 'rgba(139,92,246,0.12)',
+          pct: 70,
+        },
+        {
+          label: 'Sân đang hoạt động',
+          value: FMT_NUM(dash.value.courts.activeCourts),
+          sub: `Tỷ lệ lấp đầy: ${dash.value.courts.fillRate}%`,
+          icon: MapPin,
+          color: '#22c55e',
+          bg: 'rgba(34,197,94,0.12)',
+          pct: dash.value.courts.fillRate,
+        }
+      ];
+
+      if (hasPermission('view_finance')) {
+        cards.push({
+          label: 'Tổng doanh thu',
+          value: FMT_VND(dash.value.revenue.totalRevenue),
+          sub: `Hoa hồng: ${FMT_VND(dash.value.revenue.platformCommission)}`,
+          icon: CircleDollarSign,
+          color: '#f59e0b',
+          bg: 'rgba(245,158,11,0.12)',
+          pct: Math.min(100, dash.value.revenue.platformCommission / Math.max(dash.value.revenue.totalRevenue, 1) * 100),
+        });
+      }
+
+      return cards;
+    });
 
     // ── Secondary stats ────────────────────────────────────────────────────────
-    const secondaryStats = computed(() => [
-      { label: 'Tổng đơn đặt',       value: FMT_NUM(dash.value.bookings.totalBookings),    icon: Activity,      bg: 'rgba(79,110,247,0.1)',  color: '#4f6ef7' },
-      { label: 'Đơn thành công',      value: FMT_NUM(dash.value.bookings.confirmedBookings), icon: CheckCircle2,  bg: 'rgba(34,197,94,0.1)',   color: '#22c55e' },
-      { label: 'Đơn đã hủy',          value: FMT_NUM(dash.value.bookings.cancelledBookings), icon: ShieldAlert,   bg: 'rgba(239,68,68,0.1)',   color: '#ef4444' },
-      { label: 'Tỷ lệ thành công',    value: dash.value.payments.successRate + '%',          icon: Percent,       bg: 'rgba(16,185,129,0.1)',  color: '#10b981' },
-      { label: 'Cơ sở hoạt động',     value: FMT_NUM(dash.value.clubs.activeClubs),          icon: Building2,     bg: 'rgba(245,158,11,0.1)',  color: '#f59e0b' },
-      { label: 'Vi phạm chờ xử lý',   value: FMT_NUM(dash.value.moderation.pendingReports), icon: ShieldAlert,   bg: 'rgba(239,68,68,0.08)', color: '#ef4444' },
-      { label: 'Hoa hồng nền tảng',   value: FMT_VND(dash.value.revenue.platformCommission), icon: TrendingUp,    bg: 'rgba(139,92,246,0.1)', color: '#8b5cf6' },
-      { label: 'Giá trị TB / đơn',    value: FMT_VND(dash.value.revenue.averageBookingValue),icon: CircleDollarSign, bg: 'rgba(79,110,247,0.1)', color: '#4f6ef7' },
-    ]);
+    const secondaryStats = computed(() => {
+      const stats = [
+        { label: 'Tổng đơn đặt',       value: FMT_NUM(dash.value.bookings.totalBookings),    icon: Activity,      bg: 'rgba(79,110,247,0.1)',  color: '#4f6ef7' },
+        { label: 'Đơn thành công',      value: FMT_NUM(dash.value.bookings.confirmedBookings), icon: CheckCircle2,  bg: 'rgba(34,197,94,0.1)',   color: '#22c55e' },
+        { label: 'Đơn đã hủy',          value: FMT_NUM(dash.value.bookings.cancelledBookings), icon: ShieldAlert,   bg: 'rgba(239,68,68,0.1)',   color: '#ef4444' },
+        { label: 'Tỷ lệ thành công',    value: dash.value.payments.successRate + '%',          icon: Percent,       bg: 'rgba(16,185,129,0.1)',  color: '#10b981' },
+        { label: 'Cơ sở hoạt động',     value: FMT_NUM(dash.value.clubs.activeClubs),          icon: Building2,     bg: 'rgba(245,158,11,0.1)',  color: '#f59e0b' },
+        { label: 'Vi phạm chờ xử lý',   value: FMT_NUM(dash.value.moderation.pendingReports), icon: ShieldAlert,   bg: 'rgba(239,68,68,0.08)', color: '#ef4444' },
+      ];
+
+      if (hasPermission('view_finance')) {
+        stats.push(
+          { label: 'Hoa hồng nền tảng',   value: FMT_VND(dash.value.revenue.platformCommission), icon: TrendingUp,    bg: 'rgba(139,92,246,0.1)', color: '#8b5cf6' },
+          { label: 'Giá trị TB / đơn',    value: FMT_VND(dash.value.revenue.averageBookingValue),icon: CircleDollarSign, bg: 'rgba(79,110,247,0.1)', color: '#4f6ef7' }
+        );
+      }
+      return stats;
+    });
+
+    const trendTitle = computed(() => {
+      if (preset.value === 'last_week') return 'Xu hướng tuần trước';
+      if (preset.value === 'this_month') return 'Xu hướng tháng này';
+      if (preset.value === 'last_month') return 'Xu hướng tháng trước';
+      return 'Xu hướng tùy chỉnh';
+    });
+
+    const trendDesc = computed(() => {
+      const monthly = dash.value.charts.monthly;
+      if (!monthly?.length) return 'Không có dữ liệu';
+      // DD/MM (5 chars) vs MM/YYYY (7 chars)
+      const isDaily = monthly[0].month.length === 5;
+      return isDaily ? 'Số đơn đặt theo từng ngày' : 'Số đơn đặt theo từng tháng';
+    });
 
     // ── Charts ─────────────────────────────────────────────────────────────────
     const lineData = computed(() => {
@@ -274,7 +310,6 @@ export default {
     const fetchDashboard = async () => {
       loading.value = true;
       try {
-        /*
         const params = {};
         if (preset.value !== 'custom') {
           params.preset = preset.value;
@@ -282,42 +317,11 @@ export default {
           if (startDate.value) params.startDate = startDate.value;
           if (endDate.value)   params.endDate   = endDate.value;
         }
+        
         const res = await adminService.getStatsDashboard(params);
-        if (res.data?.data) dash.value = { ...dash.value, ...res.data.data };
-        */
-
-        // MOCK DATA for dashboard
-        dash.value = {
-          users: { totalUsers: 1250, newUsers: 145, activeUsers: 890 },
-          clubs: { activeClubs: 24, totalClubs: 30 },
-          courts: { totalCourts: 112, activeCourts: 98, fillRate: 72 },
-          bookings: { totalBookings: 3450, confirmedBookings: 2890, cancelledBookings: 120 },
-          revenue: { 
-            totalRevenue: 850000000, 
-            platformCommission: 85000000, 
-            commissionRate: 0.1, 
-            averageBookingValue: 246000 
-          },
-          payments: { successRate: 98.5 },
-          moderation: { pendingReports: 4 },
-          visits: { totalVisits: 15400, uniqueUsers: 4200 },
-          approvals: { pendingClubs: 3, pendingKyc: 7 },
-          charts: { 
-            monthly: [
-              { month: '01/26', count: 450 },
-              { month: '02/26', count: 520 },
-              { month: '03/26', count: 480 },
-              { month: '04/26', count: 650 },
-              { month: '05/26', count: 890 },
-              { month: '06/26', count: 1200 }
-            ],
-            bookingStatus: [
-              { status: 'CONFIRMED', count: 2890 },
-              { status: 'PENDING', count: 440 },
-              { status: 'CANCELLED', count: 120 }
-            ]
-          },
-        };
+        if (res.data?.data) {
+          dash.value = { ...dash.value, ...res.data.data };
+        }
 
         const now = new Date();
         lastUpdated.value = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}, ${now.toLocaleDateString('vi-VN')}`;
@@ -330,7 +334,16 @@ export default {
 
     const onPresetClick = (id) => {
       preset.value = id;
-      if (id !== 'custom') fetchDashboard();
+      if (id === 'custom') {
+        // Mặc định là đầu tháng đến hôm nay
+        const now = new Date();
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        startDate.value = firstDay.toISOString().split('T')[0];
+        endDate.value = now.toISOString().split('T')[0];
+        fetchDashboard();
+      } else {
+        fetchDashboard();
+      }
     };
 
     // ── Export helpers ─────────────────────────────────────────────────────────
@@ -418,11 +431,19 @@ export default {
       doc.save(`BaoCao-Admin-${Date.now()}.pdf`);
     };
 
-    onMounted(fetchDashboard);
+    onMounted(() => {
+      try {
+        const stored = localStorage.getItem('user');
+        if (stored) currentUser.value = JSON.parse(stored);
+      } catch (e) {
+        console.error("Error loading user for permissions:", e);
+      }
+      fetchDashboard();
+    });
 
     return {
       loading, preset, startDate, endDate, lastUpdated, presets, dash,
-      kpiCards, secondaryStats,
+      kpiCards, secondaryStats, trendTitle, trendDesc,
       lineData, lineOpts, doughnutData, doughnutOpts,
       onPresetClick, fetchDashboard, exportExcel, exportPdf,
     };

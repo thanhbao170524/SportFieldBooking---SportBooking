@@ -1,163 +1,177 @@
 <template>
   <div class="page">
-    <div class="page-header">
-      <div class="header-left">
-        <div class="page-title">
-          <MessageSquare :size="22" class="title-icon" />
-          Quản lý Cộng đồng
+    <div v-if="hasPermission('view_posts')">
+      <div class="page-header">
+        <div class="header-left">
+          <div class="page-title">
+            <MessageSquare :size="22" class="title-icon" />
+            Quản lý Cộng đồng
+          </div>
+          <div class="page-subtitle">Duyệt bình luận và xử lý report/vi phạm.</div>
         </div>
-        <div class="page-subtitle">Duyệt bình luận và xử lý report/vi phạm.</div>
+
+        <div class="header-actions">
+          <button class="btn-secondary" :disabled="loading" @click="refreshAll">
+            <RefreshCw :size="16" />
+            Làm mới
+          </button>
+        </div>
       </div>
 
-      <div class="header-actions">
-        <button class="btn-secondary" :disabled="loading" @click="refreshAll">
-          <RefreshCw :size="16" />
-          Làm mới
-        </button>
+      <div class="card">
+        <div class="tabs">
+          <button class="tab-btn" :class="{ active: activeTab === 'comments' }" @click="activeTab = 'comments'">
+            Bình luận
+          </button>
+          <button class="tab-btn" :class="{ active: activeTab === 'reports' }" @click="activeTab = 'reports'">
+            Báo cáo
+          </button>
+        </div>
+
+        <!-- COMMENTS -->
+        <div v-if="activeTab === 'comments'" class="pane">
+          <div class="toolbar">
+            <select v-model="commentFilter" class="select">
+              <option value="">Tất cả</option>
+              <option value="visible">Đang hiển thị</option>
+              <option value="hidden">Đã ẩn</option>
+            </select>
+
+            <div class="search-input ml-auto">
+              <Search :size="14" />
+              <input v-model="commentQ" type="text" placeholder="Tìm nội dung / tên người dùng / tiêu đề bài..." />
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nội dung</th>
+                  <th>Người viết</th>
+                  <th>Bài đăng</th>
+                  <th>Trạng thái</th>
+                  <th>Ngày tạo</th>
+                  <th class="text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="c in filteredComments" :key="c.id">
+                  <td class="w-45">
+                    <div class="comment-content clickable" @click="openCommentDetail(c)">{{ c.content }}</div>
+                  </td>
+                  <td>{{ c.user?.fullName || '-' }}</td>
+                  <td class="muted">{{ c.post?.title || '-' }}</td>
+                  <td>
+                    <span class="status" :class="c.isHidden ? 'hidden' : 'active'">
+                      {{ c.isHidden ? 'Đã ẩn' : 'Hiển thị' }}
+                    </span>
+                  </td>
+                  <td>{{ formatDate(c.createdAt) }}</td>
+                  <td class="text-right">
+                    <div class="row-actions">
+                      <button class="row-btn info-hover" title="Xem chi tiết" @click="openCommentDetail(c)">
+                        <Eye :size="14" />
+                      </button>
+                      <button v-if="hasPermission('moderate_comments')" class="row-btn" :disabled="loading" @click="toggleComment(c)" :title="c.isHidden ? 'Hiện' : 'Ẩn'">
+                        <EyeOff v-if="!c.isHidden" :size="14" />
+                        <Eye v-else :size="14" />
+                      </button>
+                      <button v-if="hasPermission('delete_posts')" class="row-btn danger-hover" :disabled="loading" @click="deleteComment(c)" title="Xóa">
+                        <Trash2 :size="14" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                <tr v-if="!loading && filteredComments.length === 0">
+                  <td colspan="6" class="empty">Không có dữ liệu.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- REPORTS -->
+        <div v-else class="pane">
+          <div class="toolbar">
+            <select v-model="reportFilter" class="select">
+              <option value="">Tất cả trạng thái</option>
+              <option value="PENDING">Chờ xử lý</option>
+              <option value="RESOLVED">Đã xử lý</option>
+              <option value="REJECTED">Từ chối</option>
+            </select>
+
+            <div class="search-input ml-auto">
+              <Search :size="14" />
+              <input v-model="reportQ" type="text" placeholder="Tìm lý do / người báo cáo..." />
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Lý do</th>
+                  <th>Người báo cáo</th>
+                  <th>Trạng thái</th>
+                  <th>Ngày tạo</th>
+                  <th class="text-right">Xử lý</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in filteredReports" :key="r.id">
+                  <td class="w-45">
+                    <div class="report-reason clickable" @click="openReportDetail(r)">{{ r.reason }}</div>
+                    <div class="muted">Target: {{ r.targetType }} • {{ r.targetId }}</div>
+                  </td>
+                  <td>
+                    <div class="reporter">
+                      <div class="name">{{ r.reporter?.fullName || '-' }}</div>
+                      <div class="muted">{{ r.reporter?.email || '' }}</div>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="status" :class="String(r.status || '').toLowerCase()">
+                      {{ formatReportStatus(r.status) }}
+                    </span>
+                  </td>
+                  <td>{{ formatDate(r.createdAt) }}</td>
+                  <td class="text-right">
+                    <div class="row-actions">
+                      <button class="row-btn info-hover" title="Xem chi tiết" @click="openReportDetail(r)">
+                        <Eye :size="14" />
+                      </button>
+                      <template v-if="hasPermission('moderate_posts')">
+                        <button class="row-btn success-hover" :disabled="loading || r.status !== 'PENDING'" @click="handleReport(r, 'RESOLVED')" title="Xử lý xong">
+                          <Check :size="14" />
+                        </button>
+                        <button class="row-btn danger-hover" :disabled="loading || r.status !== 'PENDING'" @click="handleReport(r, 'REJECTED')" title="Từ chối">
+                          <X :size="14" />
+                        </button>
+                      </template>
+                    </div>
+                  </td>
+                </tr>
+                <tr v-if="!loading && filteredReports.length === 0">
+                  <td colspan="5" class="empty">Không có dữ liệu.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div v-if="loading" class="loading-row">Đang tải...</div>
       </div>
     </div>
 
-    <div class="card">
-      <div class="tabs">
-        <button class="tab-btn" :class="{ active: activeTab === 'comments' }" @click="activeTab = 'comments'">
-          Bình luận
-        </button>
-        <button class="tab-btn" :class="{ active: activeTab === 'reports' }" @click="activeTab = 'reports'">
-          Reports / Vi phạm
-        </button>
+    <!-- Access Denied State -->
+    <div v-else class="denied-state">
+      <div class="denied-content">
+        <div class="lock-icon"><ShieldAlert :size="48" /></div>
+        <h3>Truy cập bị từ chối</h3>
+        <p>Bạn không có quyền quản lý nội dung cộng đồng. Vui lòng liên hệ Admin tối cao.</p>
+        <router-link to="/admin" class="back-home">Quay lại Dashboard</router-link>
       </div>
-
-      <!-- COMMENTS -->
-      <div v-if="activeTab === 'comments'" class="pane">
-        <div class="toolbar">
-          <select v-model="commentFilter" class="select">
-            <option value="">Tất cả</option>
-            <option value="visible">Đang hiển thị</option>
-            <option value="hidden">Đã ẩn</option>
-          </select>
-
-          <div class="search-input ml-auto">
-            <Search :size="14" />
-            <input v-model="commentQ" type="text" placeholder="Tìm nội dung / tên người dùng / tiêu đề bài..." />
-          </div>
-        </div>
-
-        <div class="table-responsive">
-          <table>
-            <thead>
-              <tr>
-                <th>Nội dung</th>
-                <th>Người viết</th>
-                <th>Bài đăng</th>
-                <th>Trạng thái</th>
-                <th>Ngày tạo</th>
-                <th class="text-right">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="c in filteredComments" :key="c.id">
-                <td class="w-45">
-                  <div class="comment-content clickable" @click="openCommentDetail(c)">{{ c.content }}</div>
-                </td>
-                <td>{{ c.user?.fullName || '-' }}</td>
-                <td class="muted">{{ c.post?.title || '-' }}</td>
-                <td>
-                  <span class="status" :class="c.isHidden ? 'hidden' : 'active'">
-                    {{ c.isHidden ? 'Đã ẩn' : 'Hiển thị' }}
-                  </span>
-                </td>
-                <td>{{ formatDate(c.createdAt) }}</td>
-                <td class="text-right">
-                  <div class="row-actions">
-                    <button class="row-btn info-hover" title="Xem chi tiết" @click="openCommentDetail(c)">
-                      <Eye :size="14" />
-                    </button>
-                    <button class="row-btn" :disabled="loading" @click="toggleComment(c)" :title="c.isHidden ? 'Hiện' : 'Ẩn'">
-                      <EyeOff v-if="!c.isHidden" :size="14" />
-                      <Eye v-else :size="14" />
-                    </button>
-                    <button class="row-btn danger-hover" :disabled="loading" @click="deleteComment(c)" title="Xóa">
-                      <Trash2 :size="14" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-              <tr v-if="!loading && filteredComments.length === 0">
-                <td colspan="6" class="empty">Không có dữ liệu.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- REPORTS -->
-      <div v-else class="pane">
-        <div class="toolbar">
-          <select v-model="reportFilter" class="select">
-            <option value="">Tất cả trạng thái</option>
-            <option value="PENDING">Chờ xử lý</option>
-            <option value="RESOLVED">Đã xử lý</option>
-            <option value="REJECTED">Từ chối</option>
-          </select>
-
-          <div class="search-input ml-auto">
-            <Search :size="14" />
-            <input v-model="reportQ" type="text" placeholder="Tìm lý do / người báo cáo..." />
-          </div>
-        </div>
-
-        <div class="table-responsive">
-          <table>
-            <thead>
-              <tr>
-                <th>Lý do</th>
-                <th>Người báo cáo</th>
-                <th>Trạng thái</th>
-                <th>Ngày tạo</th>
-                <th class="text-right">Xử lý</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="r in filteredReports" :key="r.id">
-                <td class="w-45">
-                  <div class="report-reason clickable" @click="openReportDetail(r)">{{ r.reason }}</div>
-                  <div class="muted">Target: {{ r.targetType }} • {{ r.targetId }}</div>
-                </td>
-                <td>
-                  <div class="reporter">
-                    <div class="name">{{ r.reporter?.fullName || '-' }}</div>
-                    <div class="muted">{{ r.reporter?.email || '' }}</div>
-                  </div>
-                </td>
-                <td>
-                  <span class="status" :class="String(r.status || '').toLowerCase()">
-                    {{ formatReportStatus(r.status) }}
-                  </span>
-                </td>
-                <td>{{ formatDate(r.createdAt) }}</td>
-                <td class="text-right">
-                  <div class="row-actions">
-                    <button class="row-btn info-hover" title="Xem chi tiết" @click="openReportDetail(r)">
-                      <Eye :size="14" />
-                    </button>
-                    <button class="row-btn success-hover" :disabled="loading || r.status !== 'PENDING'" @click="handleReport(r, 'RESOLVED')" title="Xử lý xong">
-                      <Check :size="14" />
-                    </button>
-                    <button class="row-btn danger-hover" :disabled="loading || r.status !== 'PENDING'" @click="handleReport(r, 'REJECTED')" title="Từ chối">
-                      <X :size="14" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-              <tr v-if="!loading && filteredReports.length === 0">
-                <td colspan="5" class="empty">Không có dữ liệu.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div v-if="loading" class="loading-row">Đang tải...</div>
     </div>
 
     <!-- ═══════════════ COMMENT DETAIL MODAL ═══════════════ -->
@@ -200,12 +214,12 @@
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" @click="selectedComment = null">Đóng</button>
-          <button class="btn-warning" @click="toggleComment(selectedComment); selectedComment = null">
+          <button v-if="hasPermission('moderate_comments')" class="btn-warning" @click="toggleComment(selectedComment); selectedComment = null">
             <EyeOff v-if="!selectedComment.isHidden" :size="14" />
             <Eye v-else :size="14" />
             {{ selectedComment.isHidden ? 'Hiện bình luận' : 'Ẩn bình luận' }}
           </button>
-          <button class="btn-danger" @click="deleteComment(selectedComment); selectedComment = null">
+          <button v-if="hasPermission('delete_posts')" class="btn-danger" @click="deleteComment(selectedComment); selectedComment = null">
             <Trash2 :size="14" /> Xóa vĩnh viễn
           </button>
         </div>
@@ -218,30 +232,36 @@
         <div class="modal-header">
           <div class="modal-title-row">
             <ShieldAlert :size="18" class="modal-title-icon" />
-            <h3>Chi tiết báo cáo vi phạm</h3>
+            <h3>Chi tiết báo cáo / Góp ý</h3>
           </div>
           <button class="close-modal" @click="selectedReport = null"><X :size="18" /></button>
         </div>
         <div class="modal-body custom-scrollbar">
           <div class="detail-section">
-            <label class="detail-label">Lý do báo cáo</label>
+            <label class="detail-label">Loại báo cáo / Lý do</label>
             <div class="detail-content-body text-red">{{ selectedReport.reason }}</div>
           </div>
+          
+          <div v-if="selectedReport.content" class="detail-section mt-4">
+            <label class="detail-label">Nội dung chi tiết</label>
+            <div class="detail-content-body">{{ selectedReport.content }}</div>
+          </div>
+
           <div class="detail-meta-grid mt-4">
              <div class="meta-item">
                 <label class="meta-label">Người báo cáo</label>
-                <div class="meta-value">{{ selectedReport.reporter?.fullName }}</div>
+                <div class="meta-value">{{ selectedReport.reporter?.fullName }} ({{ selectedReport.reporter?.role }})</div>
              </div>
              <div class="meta-item">
-                <label class="meta-label">Đối tượng bị báo cáo</label>
-                <div class="meta-value">{{ selectedReport.targetType }} (ID: {{ selectedReport.targetId }})</div>
+                <label class="meta-label">Đối tượng</label>
+                <div class="meta-value">{{ selectedReport.targetType }} {{ selectedReport.targetId ? `(ID: ${selectedReport.targetId})` : '' }}</div>
              </div>
              <div class="meta-item">
                 <label class="meta-label">Ngày báo cáo</label>
                 <div class="meta-value">{{ formatDate(selectedReport.createdAt) }}</div>
              </div>
              <div class="meta-item">
-                <label class="meta-label">Trạng thái xử lý</label>
+                <label class="meta-label">Trạng thái</label>
                 <div class="meta-value">
                    <span class="status" :class="String(selectedReport.status || '').toLowerCase()">
                     {{ formatReportStatus(selectedReport.status) }}
@@ -249,15 +269,30 @@
                 </div>
              </div>
           </div>
+
+          <!-- Admin Response Section -->
+          <div v-if="selectedReport.status === 'PENDING'" class="admin-response-section mt-6">
+            <label class="detail-label">Phản hồi của Admin</label>
+            <textarea 
+              v-model="adminResponseText" 
+              class="form-textarea" 
+              placeholder="Nhập nội dung phản hồi cho người báo cáo..."
+              rows="3"
+            ></textarea>
+          </div>
+          <div v-else-if="selectedReport.adminResponse" class="admin-response-section mt-6">
+            <label class="detail-label">Admin đã phản hồi</label>
+            <div class="detail-content-body response-box">{{ selectedReport.adminResponse }}</div>
+          </div>
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" @click="selectedReport = null">Đóng</button>
-          <template v-if="selectedReport.status === 'PENDING'">
-            <button class="btn-success" @click="handleReport(selectedReport, 'RESOLVED'); selectedReport = null">
-              <Check :size="14" /> Xác nhận xử lý
+          <template v-if="selectedReport.status === 'PENDING' && hasPermission('moderate_posts')">
+            <button class="btn-success" :disabled="loading" @click="handleReport(selectedReport, 'RESOLVED')">
+              <Check :size="14" /> Duyệt & Gửi thông báo
             </button>
-            <button class="btn-danger-outline" @click="handleReport(selectedReport, 'REJECTED'); selectedReport = null">
-              <X :size="14" /> Từ chối báo cáo
+            <button class="btn-danger-outline" :disabled="loading" @click="handleReport(selectedReport, 'REJECTED')">
+              <X :size="14" /> Từ chối
             </button>
           </template>
         </div>
@@ -280,6 +315,12 @@ export default {
 
     const comments = ref([]);
     const reports = ref([]);
+    const currentUser = ref(null);
+
+    const hasPermission = (permissionKey) => {
+      if (currentUser.value?.role === 'ADMIN') return true;
+      return !!currentUser.value?.permissions?.[permissionKey];
+    };
 
     const commentQ = ref('');
     const commentFilter = ref('');
@@ -289,6 +330,7 @@ export default {
 
     const selectedComment = ref(null);
     const selectedReport = ref(null);
+    const adminResponseText = ref('');
 
     const openCommentDetail = (c) => {
       selectedComment.value = c;
@@ -296,6 +338,7 @@ export default {
 
     const openReportDetail = (r) => {
       selectedReport.value = r;
+      adminResponseText.value = '';
     };
 
     const formatDate = (d) => {
@@ -391,11 +434,14 @@ export default {
     };
 
     const handleReport = async (r, status) => {
-      if (!confirm(`Xác nhận xử lý report: ${formatReportStatus(status)}?`)) return;
+      const msg = status === 'RESOLVED' ? 'duyệt' : 'từ chối';
+      if (!confirm(`Xác nhận ${msg} báo cáo này và gửi thông báo cho người dùng?`)) return;
       loading.value = true;
       try {
-        await adminService.handleReport(r.id, status);
+        await adminService.handleReport(r.id, status, adminResponseText.value);
+        adminResponseText.value = '';
         await fetchReports();
+        selectedReport.value = null;
       } catch (e) {
         alert(e?.response?.data?.message || 'Không xử lý được report.');
       } finally {
@@ -403,7 +449,15 @@ export default {
       }
     };
 
-    onMounted(refreshAll);
+    onMounted(() => {
+      try {
+        const stored = localStorage.getItem('user');
+        if (stored) currentUser.value = JSON.parse(stored);
+      } catch (e) {
+        console.error("Error loading user for permissions:", e);
+      }
+      refreshAll();
+    });
 
     return {
       loading,
@@ -424,8 +478,10 @@ export default {
       formatReportStatus,
       selectedComment,
       selectedReport,
+      adminResponseText,
       openCommentDetail,
       openReportDetail,
+      hasPermission
     };
   },
 };
@@ -508,4 +564,11 @@ th { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: v
 .btn-danger { background: #ef4444; color: white; border: none; padding: 0 16px; height: 38px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
 .btn-danger-outline { background: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 0 16px; height: 38px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
 .btn-warning { background: var(--orange); color: white; border: none; padding: 0 16px; height: 38px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+
+.mt-4 { margin-top: 16px; }
+.mt-6 { margin-top: 24px; }
+.admin-response-section { border-top: 1px dashed var(--border); padding-top: 16px; }
+.form-textarea { width: 100%; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 12px; padding: 12px; color: var(--text-primary); font-size: 13px; outline: none; transition: border-color 0.2s; resize: vertical; }
+.form-textarea:focus { border-color: var(--accent); }
+.response-box { border-left: 4px solid var(--accent); background: rgba(79, 110, 247, 0.05); }
 </style>

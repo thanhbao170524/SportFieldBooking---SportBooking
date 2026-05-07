@@ -56,21 +56,8 @@ export const adminService = {
    * @param {string} [endDate]
    */
   getSummary(startDate, endDate) {
-    // return api.get("/admin/summary", {
-    //   params: { startDate, endDate },
-    // });
-    
-    // MOCK for sidebar badges
-    return Promise.resolve({
-      data: {
-        data: {
-          pendingClubs: 3,
-          pendingKyc: 7,
-          violations: 4,
-          totalUsers: 1250,
-          totalRevenue: 850000000
-        }
-      }
+    return api.get("/admin/summary", {
+      params: { startDate, endDate },
     });
   },
 
@@ -189,8 +176,8 @@ export const adminService = {
    * @param {string} reportId
    * @param {'RESOLVED'|'REJECTED'} status
    */
-  handleReport(reportId, status) {
-    return api.patch(`/admin/reports/${reportId}`, { status });
+  handleReport(id, status, adminResponse) {
+    return api.patch("/admin/reports", { id, status, adminResponse });
   },
 
   // ==========================================
@@ -210,45 +197,17 @@ export const adminService = {
   // ==========================================
 
   getPermissionsConfig() {
-    // return api.get("/admin/permissions");
-    
-    // MOCK Permissions Matrix
-    return Promise.resolve({
-      data: {
-        data: {
-          updatedAt: new Date().toISOString(),
-          matrix: {
-            ADMIN: {
-              view_users: true, edit_users: true, lock_users: true, approve_clubs: true,
-              verify_kyc: true, manage_courts: true, view_finance: true, export_reports: true,
-              manage_settings: true, manage_perms: true, moderate_posts: true, moderate_comments: true, view_stats: true,
-            },
-            OWNER: {
-              view_users: false, edit_users: false, lock_users: false, approve_clubs: false,
-              verify_kyc: false, manage_courts: true, view_finance: true, export_reports: false,
-              manage_settings: false, manage_perms: false, moderate_posts: false, moderate_comments: false, view_stats: false,
-            },
-            USER: {
-              view_users: false, edit_users: false, lock_users: false, approve_clubs: false,
-              verify_kyc: false, manage_courts: false, view_finance: false, export_reports: false,
-              manage_settings: false, manage_perms: false, moderate_posts: false, moderate_comments: false, view_stats: false,
-            },
-          }
-        }
-      }
-    });
+    return api.get("/admin/permissions");
   },
 
   savePermissionsConfig(matrix) {
-    // return api.patch("/admin/permissions", { matrix });
-    
-    // MOCK Save Response
-    console.log("Mock Save Permissions:", matrix);
-    return Promise.resolve({
-      data: {
-        message: "Cập nhật phân quyền thành công (Mock)",
-        data: { matrix }
-      }
-    });
+    return api.patch("/admin/permissions", { matrix });
+  },
+
+  /**
+   * Lấy thông tin cá nhân hiện tại (bao gồm permissions mới nhất)
+   */
+  getProfile() {
+    return api.get("/auth/profile");
   },
 };

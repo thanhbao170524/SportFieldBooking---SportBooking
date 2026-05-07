@@ -1,202 +1,215 @@
 <template>
   <div class="page">
-    <div class="page-header">
-      <div class="page-title">
-        <Wallet :size="24" class="title-icon" />
-        Quản lý Tài chính & Hoàn tiền
-        <span class="count">{{ pendingRefunds }} yêu cầu hoàn tiền</span>
-      </div>
-      <div class="page-subtitle">Theo dõi luồng tiền, đối soát giao dịch và xử lý các yêu cầu hoàn trả từ khách hàng</div>
-    </div>
-
-    <!-- Quick Stats -->
-    <div class="finance-stats">
-      <div class="f-stat-card primary">
-        <div class="f-stat-label">Tổng doanh thu hệ thống</div>
-        <div class="f-stat-value">{{ formatPrice(stats.totalRevenue) }}</div>
-        <div class="f-stat-desc">Tổng các đơn thanh toán thành công</div>
-      </div>
-      <div class="f-stat-card success">
-        <div class="f-stat-label">Số lượng giao dịch</div>
-        <div class="f-stat-value">{{ stats.txCount }}</div>
-        <div class="f-stat-desc">Bao gồm cả các đơn đang chờ</div>
-      </div>
-      <div class="f-stat-card warning">
-        <div class="f-stat-label">Yêu cầu rút tiền</div>
-        <div class="f-stat-value">{{ stats.pendingPayouts }}</div>
-        <div class="f-stat-desc">Chủ sân đang chờ sàn chuyển tiền</div>
-      </div>
-    </div>
-
-    <!-- Tabs & Table -->
-    <div class="table-card">
-      <div class="table-toolbar">
-        <div class="tabs">
-          <button 
-            v-for="t in tabs" 
-            :key="t.id" 
-            class="tab-btn" 
-            :class="{active: activeTab === t.id}"
-            @click="activeTab = t.id"
-          >
-            {{ t.label }}
-          </button>
+    <div v-if="hasPermission('view_finance')">
+      <!-- Toàn bộ nội dung hiện tại của trang Tài chính nằm ở đây -->
+      <div class="page-header">
+        <div class="page-title">
+          <Wallet :size="24" class="title-icon" />
+          Quản lý Tài chính & Hoàn tiền
+          <span class="count">{{ pendingRefunds }} yêu cầu hoàn tiền</span>
         </div>
-        <div v-if="activeTab !== 'payout'" class="method-filter">
-          <select v-model="methodFilter" class="method-select">
-            <option value="ALL">Tất cả phương thức</option>
-            <option value="CREDIT_CARD">Thẻ (Stripe)</option>
-            <option value="VNPAY">VNPay</option>
-            <option value="MOMO">MoMo</option>
-          </select>
+        <div class="page-subtitle">Theo dõi luồng tiền, đối soát giao dịch và xử lý các yêu cầu hoàn trả từ khách hàng</div>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="finance-stats">
+        <div class="f-stat-card primary">
+          <div class="f-stat-label">Tổng doanh thu hệ thống</div>
+          <div class="f-stat-value">{{ formatPrice(stats.totalRevenue) }}</div>
+          <div class="f-stat-desc">Tổng các đơn thanh toán thành công</div>
         </div>
-        <div class="search-input ml-auto">
-          <Search :size="14" />
-          <input type="text" v-model="searchQuery" placeholder="Mã giao dịch, tên khách hàng..." />
+        <div class="f-stat-card success">
+          <div class="f-stat-label">Số lượng giao dịch</div>
+          <div class="f-stat-value">{{ stats.txCount }}</div>
+          <div class="f-stat-desc">Bao gồm cả các đơn đang chờ</div>
+        </div>
+        <div class="f-stat-card warning">
+          <div class="f-stat-label">Yêu cầu rút tiền</div>
+          <div class="f-stat-value">{{ stats.pendingPayouts }}</div>
+          <div class="f-stat-desc">Chủ sân đang chờ sàn chuyển tiền</div>
         </div>
       </div>
 
-      <!-- Payments Table -->
-      <div v-if="activeTab !== 'payout'" class="table-responsive">
-        <table>
-          <thead>
-            <tr>
-              <th>Giao dịch</th>
-              <th>Khách hàng / Sân</th>
-              <th>Phương thức</th>
-              <th>Số tiền</th>
-              <th>Trạng thái</th>
-              <th>Ngày GD</th>
-              <th class="text-right">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="p in filteredPayments" :key="p.id">
-              <td>
-                <div class="tx-cell">
-                  <div class="tx-code">{{ p.transactionRef }}</div>
-                  <div class="tx-sub">Booking: {{ p.bookingId }}</div>
-                </div>
-              </td>
-              <td>
-                <div class="user-cell">
-                  <div class="user-name">{{ p.customerName }}</div>
-                  <div class="tx-sub">{{ p.clubName }}</div>
-                </div>
-              </td>
-              <td>
-                <div class="method-pill" :class="String(p.method || '').toLowerCase()">{{ p.method || 'UNKNOWN' }}</div>
-              </td>
-              <td class="font-bold">{{ formatPrice(p.amount) }}</td>
-              <td>
-                <div class="status-badge" :class="p.status.toLowerCase()">
-                   <div class="dot"></div>
-                   {{ statusLabels[p.status] }}
-                </div>
-              </td>
-              <td>{{ p.createdAt.split('T')[0] }}</td>
-              <td>
-                <div class="row-actions justify-end">
-                  <button class="row-btn" title="Chi tiết">
-                    <Eye :size="14" />
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Payouts Table -->
-      <div v-else class="table-responsive">
-        <table>
-          <thead>
-            <tr>
-              <th>ID Yêu cầu</th>
-              <th>Chủ sân / Ngân hàng</th>
-              <th>Số tiền</th>
-              <th>Trạng thái</th>
-              <th>Ngày tạo</th>
-              <th class="text-right">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="r in payoutRequests" :key="r.id">
-              <td><span class="tx-code">#{{ r.id.slice(-6) }}</span></td>
-              <td>
-                <div class="user-cell">
-                  <div class="user-name">{{ r.wallet?.ownerProfile?.user?.fullName }}</div>
-                  <div class="tx-sub">{{ r.bankName }} - {{ r.bankAccountNum }}</div>
-                </div>
-              </td>
-              <td class="font-bold text-danger">{{ formatPrice(r.amount) }}</td>
-              <td>
-                <div class="status-badge" :class="r.status.toLowerCase()">
-                   <div class="dot"></div>
-                   {{ r.status }}
-                </div>
-              </td>
-              <td>{{ r.createdAt.split('T')[0] }}</td>
-              <td>
-                <div class="row-actions justify-end">
-                  <button class="row-btn success" title="Xử lý rút tiền" @click="handlePayout(r)">
-                    <Check :size="14" />
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Payout Details Modal -->
-    <div v-if="showPayoutModal" class="modal-overlay" @click="showPayoutModal = false">
-      <div class="modal-content" @click.stop>
-        <div class="modal-header">
-          <h3>Xử lý yêu cầu rút tiền #{{ selectedPayout?.id.slice(-6) }}</h3>
-          <button class="close-btn" @click="showPayoutModal = false"><X :size="20" /></button>
-        </div>
-        <div class="modal-body">
-          <div class="payout-info-grid">
-            <div class="info-item">
-              <label>Chủ sân:</label>
-              <span>{{ selectedPayout?.wallet?.ownerProfile?.user?.fullName }}</span>
-            </div>
-            <div class="info-item">
-              <label>Số tiền rút:</label>
-              <span class="amount-val">{{ formatPrice(selectedPayout?.amount) }}</span>
-            </div>
+      <!-- Tabs & Table -->
+      <div class="table-card">
+        <div class="table-toolbar">
+          <div class="tabs">
+            <button 
+              v-for="t in tabs" 
+              :key="t.id" 
+              class="tab-btn" 
+              :class="{active: activeTab === t.id}"
+              @click="activeTab = t.id"
+            >
+              {{ t.label }}
+            </button>
           </div>
-          
-          <div class="bank-box mt-4">
-            <div class="r-label">Thông tin ngân hàng thụ hưởng:</div>
-            <div class="bank-details">
-              <p><strong>Ngân hàng:</strong> {{ selectedPayout?.bankName }}</p>
-              <p><strong>STK:</strong> {{ selectedPayout?.bankAccountNum }}</p>
-              <p><strong>Chủ TK:</strong> {{ selectedPayout?.bankAccountName }}</p>
-            </div>
+          <div v-if="activeTab !== 'payout'" class="method-filter">
+            <select v-model="methodFilter" class="method-select">
+              <option value="ALL">Tất cả phương thức</option>
+              <option value="CREDIT_CARD">Thẻ (Stripe)</option>
+              <option value="VNPAY">VNPay</option>
+              <option value="MOMO">MoMo</option>
+            </select>
           </div>
-
-          <div class="input-group mt-4">
-             <label>Ghi chú cho chủ sân (nếu có)</label>
-             <textarea v-model="adminNote" class="form-input" placeholder="Ví dụ: Đã chuyển khoản qua Vietcombank..."></textarea>
+          <div class="search-input ml-auto">
+            <Search :size="14" />
+            <input type="text" v-model="searchQuery" placeholder="Mã giao dịch, tên khách hàng..." />
           </div>
         </div>
-        <div class="modal-footer">
-          <button v-if="selectedPayout?.status === 'PENDING'" class="action-btn danger ghost" @click="processPayout('REJECTED')">Từ chối</button>
-          <button v-if="selectedPayout?.status === 'PENDING'" class="action-btn success shadow" @click="processPayout('COMPLETED')">Xác nhận Đã chuyển tiền</button>
+
+        <!-- Payments Table -->
+        <div v-if="activeTab !== 'payout'" class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Giao dịch</th>
+                <th>Khách hàng / Sân</th>
+                <th>Phương thức</th>
+                <th>Số tiền</th>
+                <th>Trạng thái</th>
+                <th>Ngày GD</th>
+                <th class="text-right">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="p in filteredPayments" :key="p.id">
+                <td>
+                  <div class="tx-cell">
+                    <div class="tx-code">{{ p.transactionRef }}</div>
+                    <div class="tx-sub">Booking: {{ p.bookingId }}</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="user-cell">
+                    <div class="user-name">{{ p.customerName }}</div>
+                    <div class="tx-sub">{{ p.clubName }}</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="method-pill" :class="String(p.method || '').toLowerCase()">{{ p.method || 'UNKNOWN' }}</div>
+                </td>
+                <td class="font-bold">{{ formatPrice(p.amount) }}</td>
+                <td>
+                  <div class="status-badge" :class="p.status.toLowerCase()">
+                     <div class="dot"></div>
+                     {{ statusLabels[p.status] }}
+                  </div>
+                </td>
+                <td>{{ p.createdAt.split('T')[0] }}</td>
+                <td>
+                  <div class="row-actions justify-end">
+                    <button class="row-btn" title="Chi tiết">
+                      <Eye :size="14" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
+
+        <!-- Payouts Table -->
+        <div v-else class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>ID Yêu cầu</th>
+                <th>Chủ sân / Ngân hàng</th>
+                <th>Số tiền</th>
+                <th>Trạng thái</th>
+                <th>Ngày tạo</th>
+                <th class="text-right">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="r in payoutRequests" :key="r.id">
+                <td><span class="tx-code">#{{ r.id.slice(-6) }}</span></td>
+                <td>
+                  <div class="user-cell">
+                    <div class="user-name">{{ r.wallet?.ownerProfile?.user?.fullName }}</div>
+                    <div class="tx-sub">{{ r.bankName }} - {{ r.bankAccountNum }}</div>
+                  </div>
+                </td>
+                <td class="font-bold text-danger">{{ formatPrice(r.amount) }}</td>
+                <td>
+                  <div class="status-badge" :class="r.status.toLowerCase()">
+                     <div class="dot"></div>
+                     {{ r.status }}
+                  </div>
+                </td>
+                <td>{{ r.createdAt.split('T')[0] }}</td>
+                <td>
+                  <div class="row-actions justify-end">
+                    <button class="row-btn success" title="Xử lý rút tiền" @click="handlePayout(r)">
+                      <Check :size="14" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Payout Details Modal -->
+      <div v-if="showPayoutModal" class="modal-overlay" @click="showPayoutModal = false">
+        <div class="modal-content" @click.stop>
+          <div class="modal-header">
+            <h3>Xử lý yêu cầu rút tiền #{{ selectedPayout?.id.slice(-6) }}</h3>
+            <button class="close-btn" @click="showPayoutModal = false"><X :size="20" /></button>
+          </div>
+          <div class="modal-body">
+            <div class="payout-info-grid">
+              <div class="info-item">
+                <label>Chủ sân:</label>
+                <span>{{ selectedPayout?.wallet?.ownerProfile?.user?.fullName }}</span>
+              </div>
+              <div class="info-item">
+                <label>Số tiền rút:</label>
+                <span class="amount-val">{{ formatPrice(selectedPayout?.amount) }}</span>
+              </div>
+            </div>
+            
+            <div class="bank-box mt-4">
+              <div class="r-label">Thông tin ngân hàng thụ hưởng:</div>
+              <div class="bank-details">
+                <p><strong>Ngân hàng:</strong> {{ selectedPayout?.bankName }}</p>
+                <p><strong>STK:</strong> {{ selectedPayout?.bankAccountNum }}</p>
+                <p><strong>Chủ TK:</strong> {{ selectedPayout?.bankAccountName }}</p>
+              </div>
+            </div>
+
+            <div class="input-group mt-4">
+               <label>Ghi chú cho chủ sân (nếu có)</label>
+               <textarea v-model="adminNote" class="form-input" placeholder="Ví dụ: Đã chuyển khoản qua Vietcombank..."></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button v-if="selectedPayout?.status === 'PENDING'" class="action-btn danger ghost" @click="processPayout('REJECTED')">Từ chối</button>
+            <button v-if="selectedPayout?.status === 'PENDING'" class="action-btn success shadow" @click="processPayout('COMPLETED')">Xác nhận Đã chuyển tiền</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Access Denied State -->
+    <div v-else class="denied-state">
+      <div class="denied-content">
+        <div class="lock-icon"><ShieldAlert :size="48" /></div>
+        <h3>Truy cập bị từ chối</h3>
+        <p>Bạn không có quyền xem thông tin tài chính của hệ thống. Vui lòng liên hệ Admin tối cao để được cấp quyền.</p>
+        <router-link to="/admin" class="back-home">Quay lại Dashboard</router-link>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { 
   Wallet, Search, Undo2, Image, FileText, 
-  Eye, Check, X, AlertCircle 
+  Eye, Check, X, AlertCircle, ShieldAlert 
 } from 'lucide-vue-next';
 
 import { adminService } from '@/services/admin.service';
@@ -213,7 +226,13 @@ export default {
     const showRefundModal = ref(false);
     const selectedPayment = ref(null);
     const refundAmount = ref(0);
-    const refundNote = ref('');
+    const refundNote = ref(0);
+    const currentUser = ref(null);
+
+    const hasPermission = (permissionKey) => {
+      if (currentUser.value?.role === 'ADMIN') return true;
+      return !!currentUser.value?.permissions?.[permissionKey];
+    };
 
     const tabs = [
       { id: 'all', label: 'Tất cả giao dịch' },
@@ -324,7 +343,15 @@ export default {
       }
     };
 
-    fetchData();
+    onMounted(() => {
+      try {
+        const stored = localStorage.getItem('user');
+        if (stored) currentUser.value = JSON.parse(stored);
+      } catch (e) {
+        console.error("Error loading user for permissions:", e);
+      }
+      fetchData();
+    });
 
     const showPayoutModal = ref(false);
     const selectedPayout = ref(null);
@@ -357,7 +384,8 @@ export default {
       statusLabels, refundLabels, pendingRefunds, formatPrice,
       showRefundModal, selectedPayment, refundAmount, refundNote,
       handleRefund, approveRefundAction, rejectRefundAction,
-      showPayoutModal, selectedPayout, adminNote, handlePayout, processPayout, stats
+      showPayoutModal, selectedPayout, adminNote, handlePayout, processPayout, stats,
+      hasPermission
     };
   }
 }

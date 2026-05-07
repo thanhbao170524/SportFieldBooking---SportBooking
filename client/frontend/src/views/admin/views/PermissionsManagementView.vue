@@ -181,7 +181,7 @@ export default {
   setup() {
     const loading = ref(false);
     const saving = ref(false);
-    const selectedRole = ref("ADMIN");
+    const selectedRole = ref("STAFF");
     const lastSavedAt = ref(null);
     const savedBanner = ref(false);
     
@@ -189,8 +189,7 @@ export default {
     const originalPermissions = ref({});
     const rolePermissions = ref({
       ADMIN: {},
-      OWNER: {},
-      USER: {},
+      STAFF: {},
     });
 
     const isDirty = computed(() => {
@@ -203,19 +202,9 @@ export default {
 
     const roles = [
       {
-        id: "ADMIN",
-        name: "Admin",
-        desc: "Quyền quản trị tối cao",
-      },
-      {
-        id: "OWNER",
-        name: "Owner",
-        desc: "Chủ cơ sở",
-      },
-      {
-        id: "USER",
-        name: "User",
-        desc: "Người dùng hệ thống",
+        id: "STAFF",
+        name: "Admin mức 2",
+        desc: "Quản trị viên cấp 2",
       },
     ];
 
@@ -226,8 +215,13 @@ export default {
         permissions: [
           {
             id: "view_users",
-            title: "Xem danh sách người dùng",
-            desc: "Cho phép truy cập danh sách tài khoản",
+            title: "Xem Người dùng & Báo cáo",
+            desc: "Cho phép truy cập danh sách tài khoản và báo cáo vi phạm",
+          },
+          {
+            id: "view_owners",
+            title: "Xem hồ sơ chủ sân",
+            desc: "Cho phép xem danh sách chủ Câu lạc bộ",
           },
           {
             id: "edit_users",
@@ -276,42 +270,32 @@ export default {
             title: "Xem thống kê",
             desc: "Truy cập dashboard hệ thống",
           },
-          {
-            id: "export_reports",
-            title: "Xuất báo cáo",
-            desc: "Export Excel / PDF",
-          },
         ],
       },
-      {
-        name: "Cài đặt hệ thống",
-        icon: Settings,
-        permissions: [
-          {
-            id: "manage_settings",
-            title: "Cấu hình hệ thống",
-            desc: "Quản lý tham số hệ thống",
-          },
-          {
-            id: "manage_perms",
-            title: "Quản lý phân quyền",
-            desc: "Cập nhật ma trận phân quyền",
-          },
-        ],
-      },
+      // Nhóm 'Cài đặt hệ thống' đã bị loại bỏ cho Admin mức 2 để đảm bảo bảo mật.
       {
         name: "Quản lý nội dung",
         icon: FileText,
         permissions: [
           {
+            id: "view_posts",
+            title: "Xem cộng đồng",
+            desc: "Truy cập quản lý bài đăng",
+          },
+          {
             id: "moderate_posts",
-            title: "Kiểm duyệt bài đăng",
-            desc: "Ẩn / duyệt bài viết",
+            title: "Ẩn / Hiện bài đăng",
+            desc: "Kiểm duyệt nội dung bài viết",
           },
           {
             id: "moderate_comments",
             title: "Kiểm duyệt bình luận",
-            desc: "Ẩn / xóa bình luận",
+            desc: "Ẩn bình luận vi phạm",
+          },
+          {
+            id: "delete_posts",
+            title: "Xóa bài đăng / bình luận",
+            desc: "Xóa vĩnh viễn nội dung",
           },
         ],
       },
@@ -331,35 +315,48 @@ export default {
 
     const DEFAULT_MATRIX = {
       ADMIN: {
-        view_users: true, edit_users: true, lock_users: true, approve_clubs: true,
+        view_users: true, view_owners: true, edit_users: true, lock_users: true, approve_clubs: true,
         verify_kyc: true, manage_courts: true, view_finance: true, export_reports: true,
         manage_settings: true, manage_perms: true, moderate_posts: true, moderate_comments: true, view_stats: true,
       },
+      STAFF: {
+        view_users: true, view_owners: true, edit_users: false, lock_users: false, approve_clubs: true,
+        verify_kyc: true, manage_courts: true, view_finance: false, export_reports: true,
+        manage_settings: false, manage_perms: false, moderate_posts: true, moderate_comments: true,
+        view_posts: true, delete_posts: false, view_stats: true,
+      },
       OWNER: {
-        view_users: false, edit_users: false, lock_users: false, approve_clubs: false,
-        verify_kyc: false, manage_courts: true, view_finance: true, export_reports: false,
-        manage_settings: false, manage_perms: false, moderate_posts: false, moderate_comments: false, view_stats: false,
+        view_users: false, view_owners: false, edit_users: false, lock_users: false, approve_clubs: false,
+        verify_kyc: false, manage_courts: false, view_finance: false, export_reports: false,
+        manage_settings: false, manage_perms: false, moderate_posts: false, moderate_comments: false,
+        view_posts: true, delete_posts: false, view_stats: false,
       },
       USER: {
-        view_users: false, edit_users: false, lock_users: false, approve_clubs: false,
+        view_users: false, view_owners: false, edit_users: false, lock_users: false, approve_clubs: false,
         verify_kyc: false, manage_courts: false, view_finance: false, export_reports: false,
-        manage_settings: false, manage_perms: false, moderate_posts: false, moderate_comments: false, view_stats: false,
+        manage_settings: false, manage_perms: false, moderate_posts: false, moderate_comments: false,
+        view_posts: true, delete_posts: false, view_stats: false,
       },
     };
 
     const normalizeMatrix = (matrix) => {
-      const normalized = {};
+      const normalized = JSON.parse(JSON.stringify(matrix || {}));
 
-      for (const role of roles) {
-        const source = matrix?.[role.id] || {};
-        normalized[role.id] = {};
+      // 1. Luôn đảm bảo ADMIN tồn tại và có đủ quyền
+      if (!normalized.ADMIN) normalized.ADMIN = {};
+      allPermissionIds.forEach(id => {
+        normalized.ADMIN[id] = true;
+      });
+      normalized.ADMIN.manage_perms = true;
 
-        for (const permissionId of allPermissionIds) {
-          normalized[role.id][permissionId] = !!source[permissionId];
+      // 2. Xử lý các role khác để đảm bảo tính nhất quán của dữ liệu checkbox (boolean)
+      const allRoles = ['STAFF', 'OWNER', 'USER'];
+      for (const rId of allRoles) {
+        if (!normalized[rId]) normalized[rId] = {};
+        for (const pId of allPermissionIds) {
+          normalized[rId][pId] = !!normalized[rId][pId];
         }
       }
-
-      normalized.ADMIN.manage_perms = true;
 
       return normalized;
     };
@@ -403,7 +400,7 @@ export default {
         const response = await adminService.getPermissionsConfig();
         const payload = response.data?.data || {};
 
-        const normalized = normalizeMatrix(payload.matrix);
+        const normalized = normalizeMatrix(payload.matrix || payload);
         rolePermissions.value = JSON.parse(JSON.stringify(normalized));
         originalPermissions.value = JSON.parse(JSON.stringify(normalized));
         

@@ -149,87 +149,82 @@ const routes = [
     path: "/admin",
     name: "admin",
     component: () => import("../views/admin/dashboard/DashboardView.vue"),
-    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN"] },
+    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN", "STAFF"] },
   },
   {
     path: "/admin/courts/:tab?",
     name: "admin-courts",
     component: () => import("../views/admin/views/CourtsAllView.vue"),
-    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN"] },
+    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN", "STAFF"] },
   },
   {
     path: "/admin/owners",
     name: "admin-owners",
     component: () => import("../views/admin/views/ClubOwnersView.vue"),
-    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN"] },
+    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN", "STAFF"] },
   },
   {
     path: "/admin/owners/kyc",
     name: "admin-owners-kyc",
     component: () => import("../views/admin/views/OwnersKycView.vue"),
-    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN"] },
+    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN", "STAFF"] },
   },
   {
     path: "/admin/users",
     name: "admin-users",
     component: () => import("../views/admin/views/UsersManagementView.vue"),
-    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN"] },
+    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN", "STAFF"] },
   },
   {
     path: "/admin/stats",
     name: "admin-stats",
     component: () => import("../views/admin/views/SystemStatsView.vue"),
-    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN"] },
+    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN", "STAFF"] },
   },
   {
     path: "/admin/finance",
     name: "admin-finance",
     component: () => import("../views/admin/views/FinanceManagementView.vue"),
-    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN"] },
+    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN", "STAFF"] },
   },
-  {
-    path: "/admin/reports",
-    name: "admin-reports",
-    component: () => import("../views/admin/views/ReportsManagementView.vue"),
-    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN"] },
-  },
+
   {
     path: "/admin/posts",
     name: "admin-posts",
     component: () => import("../views/admin/views/PostsManagementView.vue"),
-    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN"] },
+    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN", "STAFF"] },
   },
   {
     path: "/admin/community",
     name: "admin-community",
     component: () => import("../views/admin/views/CommunityManagementView.vue"),
-    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN"] },
+    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN", "STAFF"] },
   },
 
   {
     path: "/admin/violations",
     name: "admin-violations",
     component: () => import("../views/admin/views/CommunityManagementView.vue"),
-    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN"] },
+    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN", "STAFF"] },
   },
   {
     path: "/admin/settings",
     name: "admin-settings",
     component: () => import("../views/admin/views/PermissionsManagementView.vue"),
-    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN"] },
+    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN", "STAFF"] },
   },
   {
     path: "/admin/permissions",
     name: "admin-permissions",
     component: () => import("../views/admin/views/PermissionsManagementView.vue"),
-    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN"] },
+    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN", "STAFF"] },
   },
   // Placeholders for other admin routes to avoid 404s when navigating the sidebar
   {
     path: "/admin/:catchAll(.*)",
     name: "admin-placeholder",
     component: () => import("../views/admin/views/ClubOwnersView.vue"),
-    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN"] },
+    meta: { layout: "admin", requiresAuth: true, roles: ["ADMIN", "STAFF"] },
   },
 
   // Page Owner
@@ -361,7 +356,7 @@ router.beforeEach((to, from, next) => {
     if (user && user.role === 'OWNER') {
       return next({ path: "/owner" });
     }
-    if (user && user.role === 'ADMIN') {
+    if (user && (user.role === 'ADMIN' || user.role === 'STAFF')) {
       return next({ path: "/admin" });
     }
     return next({ name: "home" });
@@ -380,7 +375,8 @@ router.beforeEach((to, from, next) => {
 
     if (!isRoleValid) {
       if (userRole === 'OWNER') return next({ path: "/owner" });
-      if (userRole === 'ADMIN') return next({ path: "/admin" });
+      if (userRole === 'OWNER') return next({ path: "/owner" });
+      if (userRole === 'ADMIN' || userRole === 'STAFF') return next({ path: "/admin" });
       return next({ name: "home" });
     }
   }

@@ -1,327 +1,418 @@
 <template>
-  <div class="page">
-    <div class="page-header custom-header">
+  <div class="page stats-page">
+    <!-- Header -->
+    <div class="page-header">
       <div class="header-left">
-         <div class="page-title">Dashboard <span class="count">Tổng quan hệ thống</span></div>
-         <div class="page-subtitle">Chào mừng trở lại, Admin — Cập nhật lần cuối: {{ currentTime }}</div>
+        <div class="page-title">
+          <BarChart3 :size="22" class="title-icon" />
+          Dashboard Thống kê
+        </div>
+        <div class="page-subtitle">Cập nhật hệ thống: {{ lastUpdated }}</div>
       </div>
-      
       <div class="header-actions">
-         <div class="date-period-picker">
-            <button 
-              v-for="p in periods" 
-              :key="p.id" 
-              class="period-btn" 
-              :class="{active: selectedPeriod === p.id}"
-              @click="handlePeriodChange(p.id)"
-            >
-              {{ p.label }}
-            </button>
-            <div class="custom-range" v-if="selectedPeriod === 'custom'">
-               <input type="date" v-model="customDates.start" @change="fetchDashboardData" />
-               <span>→</span>
-               <input type="date" v-model="customDates.end" @change="fetchDashboardData" />
-            </div>
-         </div>
+        <!-- Preset buttons -->
+        <div class="preset-group">
+          <button
+            v-for="p in presets"
+            :key="p.id"
+            class="preset-btn"
+            :class="{ active: preset === p.id }"
+            @click="onPresetClick(p.id)"
+          >{{ p.label }}</button>
+        </div>
+        <!-- Custom date range -->
+        <div v-if="preset === 'custom'" class="date-range">
+          <input id="stats-start-date" type="date" v-model="startDate" class="date-input" @change="fetchDashboard" />
+          <span class="date-sep">—</span>
+          <input id="stats-end-date" type="date" v-model="endDate" class="date-input" @change="fetchDashboard" />
+        </div>
+        <button id="btn-refresh" class="btn-action accent" :disabled="loading" @click="fetchDashboard">
+          <RefreshCw :size="14" :class="{ spinning: loading }" />
+          Làm mới
+        </button>
+        <button id="btn-export-excel" class="btn-action secondary" :disabled="loading" @click="exportExcel">
+          <Download :size="14" /> Excel
+        </button>
       </div>
     </div>
 
-    <div class="stat-grid">
-      <DashboardStatCard 
-        v-for="s in dashboardStats" 
-        :key="s.label" 
-        v-bind="s" 
-      />
-    </div>
-
-    <div class="dashboard-main-grid">
-      <div class="primary-charts">
-        <MonthlyBookingsChart :months="months" :values="chartValues" />
-        
-        <div class="charts-sub-row">
-          <CourtTypeDistribution :data="courtTypeData" />
-          <PendingObjectsWidget :items="pendingItems" />
-        </div>
-      </div>
-      
-      <div class="side-panel">
-        <div class="alert-bar warning">
-          <AlertCircle :size="16" />
-          <span><strong>{{ pendingCourtCount }} sân</strong> đang chờ duyệt</span>
-          <router-link to="/admin/courts" class="btn-link">Duyệt ngay</router-link>
-        </div>
-        
-        <div class="activity-card">
-          <div class="card-title">Hoạt động gần đây</div>
-          <div class="activity-list">
-            <div v-for="a in recentActivities" :key="a.time" class="activity-item">
-              <div class="activity-dot"></div>
-              <div class="activity-content">
-                <div class="activity-text">{{ a.text }}</div>
-                <div class="activity-time">{{ a.time }}</div>
-              </div>
-            </div>
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card" v-for="k in kpiCards" :key="k.label" :style="{ '--card-color': k.color }">
+        <div class="kpi-top">
+          <div class="kpi-label">{{ k.label }}</div>
+          <div class="kpi-icon" :style="{ background: k.bg }">
+            <component :is="k.icon" :size="18" :style="{ color: k.color }" />
           </div>
         </div>
+        <div class="kpi-value">{{ k.value }}</div>
+        <div class="kpi-sub">{{ k.sub }}</div>
+        <div class="kpi-bar"><div class="kpi-bar-fill" :style="{ width: k.pct + '%' }"></div></div>
       </div>
+    </div>
+
+    <!-- Charts row -->
+    <div class="charts-row">
+      <!-- Line chart -->
+      <div class="chart-card wide">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">{{ trendTitle }}</div>
+            <div class="chart-desc">{{ trendDesc }}</div>
+          </div>
+        </div>
+        <div class="chart-body">
+          <Line v-if="lineData" :data="lineData" :options="lineOpts" />
+          <div v-else class="chart-empty">Không có dữ liệu trong khoảng thời gian này</div>
+        </div>
+      </div>
+      <!-- Doughnut -->
+      <div class="chart-card narrow">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Trạng thái đơn</div>
+            <div class="chart-desc">Phân bổ trong kỳ lọc</div>
+          </div>
+        </div>
+        <div class="chart-body doughnut-body">
+          <Doughnut v-if="doughnutData" :data="doughnutData" :options="doughnutOpts" />
+          <div v-else class="chart-empty">Không có dữ liệu</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Secondary stats -->
+    <div class="sec-grid">
+      <div class="sec-card" v-for="s in secondaryStats" :key="s.label">
+        <div class="sec-icon" :style="{ background: s.bg, color: s.color }">
+          <component :is="s.icon" :size="18" />
+        </div>
+        <div class="sec-info">
+          <div class="sec-label">{{ s.label }}</div>
+          <div class="sec-value">{{ s.value }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="data-notice">
+      <Info :size="13" />
+      Toàn bộ dữ liệu được tổng hợp thời gian thực từ cơ sở dữ liệu hệ thống.
     </div>
   </div>
 </template>
 
 <script>
-import { ref, onMounted, reactive } from 'vue';
-import { 
-  Users, MapPin, Calendar, CircleDollarSign, AlertCircle, ShieldCheck
+import { ref, computed, onMounted } from 'vue';
+import {
+  BarChart3, CalendarDays, RefreshCw, Download, FileText, Info,
+  Users, Building2, ShieldAlert, CheckCircle2, TrendingUp,
+  Activity, Eye, MapPin, CircleDollarSign, Percent
 } from 'lucide-vue-next';
-
-// Dashboard Components
-import DashboardStatCard from './components/DashboardStatCard.vue';
-import MonthlyBookingsChart from './components/MonthlyBookingsChart.vue';
-import CourtTypeDistribution from './components/CourtTypeDistribution.vue';
-import PendingObjectsWidget from './components/PendingObjectsWidget.vue';
 import { adminService } from '@/services/admin.service';
+import { Line, Doughnut } from 'vue-chartjs';
+import {
+  Chart as ChartJS, Title, Tooltip, Legend, LineElement,
+  PointElement, CategoryScale, LinearScale, ArcElement, Filler
+} from 'chart.js';
+
+ChartJS.register(Title, Tooltip, Legend, LineElement, PointElement, CategoryScale, LinearScale, ArcElement, Filler);
+
+const FMT_VND = (v) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(v || 0));
+const FMT_NUM = (v) => new Intl.NumberFormat('vi-VN').format(Number(v || 0));
+
+const STATUS_MAP = {
+  CONFIRMED: { label: 'Thành công', color: '#22c55e' },
+  PENDING:   { label: 'Chờ xử lý', color: '#f59e0b' },
+  CANCELLED: { label: 'Đã hủy',    color: '#ef4444' },
+  COMPLETED: { label: 'Hoàn tất',  color: '#3b82f6' },
+};
 
 export default {
   name: 'DashboardAdmin',
   components: {
-    AlertCircle,
-    DashboardStatCard,
-    MonthlyBookingsChart,
-    CourtTypeDistribution,
-    PendingObjectsWidget
+    BarChart3, CalendarDays, RefreshCw, Download, FileText, Info,
+    Users, Building2, ShieldAlert, CheckCircle2, TrendingUp, Activity,
+    Eye, MapPin, CircleDollarSign, Percent,
+    Line, Doughnut,
   },
   setup() {
-    const currentTime = ref('');
-    const months = ref(['T10', 'T11', 'T12', 'T1', 'T2', 'T3']);
-    const chartValues = ref([55, 70, 62, 80, 74, 90]);
-    const loading = ref(false);
+    const loading   = ref(false);
+    const preset    = ref('this_month');
+    const startDate = ref('');
+    const endDate   = ref('');
+    const lastUpdated = ref('');
+    const currentUser = ref(null);
 
-    const periods = [
-      { id: 'today', label: 'Hôm nay' },
-      { id: 'week', label: 'Tuần này' },
-      { id: 'month', label: 'Tháng này' },
-      { id: 'custom', label: 'Tùy chọn' }
-    ];
-    const selectedPeriod = ref('today');
-    const customDates = reactive({
-      start: '',
-      end: ''
-    });
-
-    const dashboardStats = ref([
-      { label: 'Người dùng', iconComponent: Users, value: '...', change: '0%', trend: 'up', bg: 'var(--accent-soft)', color: 'var(--accent)' },
-      { label: 'Cơ sở hoạt động', iconComponent: MapPin, value: '...', change: '0%', trend: 'up', bg: 'var(--green-soft)', color: 'var(--green)' },
-      { label: 'Lượt đặt (Lọc)', iconComponent: Calendar, value: '0', change: '0%', trend: 'up', bg: 'var(--orange-soft)', color: 'var(--orange)' },
-      { label: 'Doanh thu admin (Phí nền tảng)', iconComponent: CircleDollarSign, value: '₫0', change: '0%', trend: 'up', bg: 'var(--purple-soft)', color: 'var(--purple)' }
-    ]);
-
-    const courtTypeData = ref([
-      { label: 'Bóng đá', value: 0, color: '#4f6ef7' },
-      { label: 'Cầu lông', value: 0, color: '#22c55e' },
-      { label: 'Tennis', value: 0, color: '#f97316' }
-    ]);
-
-    const pendingItems = ref([]);
-    const pendingCourtCount = ref(0);
-
-    const handlePeriodChange = (pid) => {
-      selectedPeriod.value = pid;
-      if (pid !== 'custom') {
-        fetchDashboardData();
-      }
+    const hasPermission = (permissionKey) => {
+      if (currentUser.value?.role === 'ADMIN') return true;
+      return !!currentUser.value?.permissions?.[permissionKey];
     };
 
-    const fetchDashboardData = async () => {
+    const presets = [
+      { id: 'last_week',   label: 'Tuần trước'  },
+      { id: 'this_month',  label: 'Tháng này'   },
+      { id: 'last_month',  label: 'Tháng trước' },
+      { id: 'custom',      label: 'Tùy chọn'    },
+    ];
+
+    const dash = ref({
+      users:      { totalUsers: 0, newUsers: 0, activeUsers: 0 },
+      clubs:      { activeClubs: 0, totalClubs: 0 },
+      courts:     { totalCourts: 0, activeCourts: 0, fillRate: 0 },
+      bookings:   { totalBookings: 0, confirmedBookings: 0, cancelledBookings: 0 },
+      revenue:    { totalRevenue: 0, platformCommission: 0, commissionRate: 0.1, averageBookingValue: 0 },
+      payments:   { successRate: 0 },
+      moderation: { pendingReports: 0 },
+      visits:     { totalVisits: 0, uniqueUsers: 0 },
+      approvals:  { pendingClubs: 0, pendingKyc: 0 },
+      charts:     { monthly: [], bookingStatus: [] },
+    });
+
+    const kpiCards = computed(() => {
+      const cards = [
+        {
+          label: 'Người dùng mới',
+          value: FMT_NUM(dash.value.users.newUsers),
+          sub: `Tổng: ${FMT_NUM(dash.value.users.totalUsers)} người dùng`,
+          icon: Users,
+          color: '#4f6ef7',
+          bg: 'rgba(79,110,247,0.12)',
+          pct: Math.min(100, (dash.value.users.newUsers / Math.max(dash.value.users.totalUsers, 1)) * 100),
+        },
+        {
+          label: 'Lượt truy cập',
+          value: FMT_NUM(dash.value.visits.totalVisits),
+          sub: `${FMT_NUM(dash.value.visits.uniqueUsers)} người dùng`,
+          icon: Eye,
+          color: '#8b5cf6',
+          bg: 'rgba(139,92,246,0.12)',
+          pct: 70,
+        },
+        {
+          label: 'Sân hoạt động',
+          value: FMT_NUM(dash.value.courts.activeCourts),
+          sub: `Tỷ lệ lấp đầy: ${dash.value.courts.fillRate}%`,
+          icon: MapPin,
+          color: '#22c55e',
+          bg: 'rgba(34,197,94,0.12)',
+          pct: dash.value.courts.fillRate,
+        }
+      ];
+
+      if (hasPermission('view_finance')) {
+        cards.push({
+          label: 'Tổng doanh thu',
+          value: FMT_VND(dash.value.revenue.totalRevenue),
+          sub: `Hoa hồng: ${FMT_VND(dash.value.revenue.platformCommission)}`,
+          icon: CircleDollarSign,
+          color: '#f59e0b',
+          bg: 'rgba(245,158,11,0.12)',
+          pct: Math.min(100, dash.value.revenue.platformCommission / Math.max(dash.value.revenue.totalRevenue, 1) * 100),
+        });
+      }
+
+      return cards;
+    });
+
+    const secondaryStats = computed(() => {
+      const stats = [
+        { label: 'Tổng đơn đặt',       value: FMT_NUM(dash.value.bookings.totalBookings),    icon: Activity,      bg: 'rgba(79,110,247,0.1)',  color: '#4f6ef7' },
+        { label: 'Đơn thành công',      value: FMT_NUM(dash.value.bookings.confirmedBookings), icon: CheckCircle2,  bg: 'rgba(34,197,94,0.1)',   color: '#22c55e' },
+        { label: 'Đơn đã hủy',          value: FMT_NUM(dash.value.bookings.cancelledBookings), icon: ShieldAlert,   bg: 'rgba(239,68,68,0.1)',   color: '#ef4444' },
+        { label: 'Tỷ lệ thành công',    value: dash.value.payments.successRate + '%',          icon: Percent,       bg: 'rgba(16,185,129,0.1)',  color: '#10b981' },
+      ];
+
+      if (hasPermission('view_finance')) {
+        stats.push(
+          { label: 'Hoa hồng nền tảng',   value: FMT_VND(dash.value.revenue.platformCommission), icon: TrendingUp,    bg: 'rgba(139,92,246,0.1)', color: '#8b5cf6' },
+          { label: 'Giá trị TB / đơn',    value: FMT_VND(dash.value.revenue.averageBookingValue),icon: CircleDollarSign, bg: 'rgba(79,110,247,0.1)', color: '#4f6ef7' }
+        );
+      }
+      return stats;
+    });
+
+    const trendTitle = computed(() => {
+      if (preset.value === 'last_week') return 'Xu hướng tuần trước';
+      if (preset.value === 'this_month') return 'Xu hướng tháng này';
+      if (preset.value === 'last_month') return 'Xu hướng tháng trước';
+      return 'Xu hướng tùy chỉnh';
+    });
+
+    const trendDesc = computed(() => {
+      const monthly = dash.value.charts.monthly;
+      if (!monthly?.length) return 'Không có dữ liệu';
+      const isDaily = monthly[0].month.length === 5;
+      return isDaily ? 'Số đơn đặt theo từng ngày' : 'Số đơn đặt theo từng tháng';
+    });
+
+    const lineData = computed(() => {
+      const monthly = dash.value.charts.monthly;
+      if (!monthly?.length) return null;
+      return {
+        labels: monthly.map(i => i.month),
+        datasets: [{
+          label: 'Số đơn đặt',
+          data: monthly.map(i => i.count),
+          borderColor: '#4f6ef7',
+          backgroundColor: 'rgba(79,110,247,0.08)',
+          tension: 0.45,
+          fill: true,
+          pointBackgroundColor: '#4f6ef7',
+          pointBorderColor: '#fff',
+          pointRadius: 5,
+        }],
+      };
+    });
+
+    const lineOpts = {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { mode: 'index', intersect: false, backgroundColor: '#1e293b', padding: 12 },
+      },
+      scales: {
+        y: { beginAtZero: true, grid: { color: 'rgba(148,163,184,0.08)' }, ticks: { color: '#64748b', font: { size: 11 } } },
+        x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 11 } } },
+      },
+    };
+
+    const doughnutData = computed(() => {
+      const bs = dash.value.charts.bookingStatus;
+      if (!bs?.length) return null;
+      return {
+        labels: bs.map(i => STATUS_MAP[i.status]?.label || i.status),
+        datasets: [{
+          data: bs.map(i => i.count),
+          backgroundColor: bs.map(i => STATUS_MAP[i.status]?.color || '#94a3b8'),
+          borderWidth: 0, hoverOffset: 8,
+        }],
+      };
+    });
+
+    const doughnutOpts = {
+      responsive: true, maintainAspectRatio: false, cutout: '68%',
+      plugins: {
+        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 16, color: '#94a3b8', font: { size: 11, weight: '600' } } },
+      },
+    };
+
+    const fetchDashboard = async () => {
       loading.value = true;
       try {
-        let start = undefined;
-        let end = undefined;
-
-        if (selectedPeriod.value === 'today') {
-           const d = new Date();
-           start = d.toISOString().split('T')[0];
-        } else if (selectedPeriod.value === 'week') {
-           const d = new Date();
-           d.setDate(d.getDate() - 7);
-           start = d.toISOString().split('T')[0];
-        } else if (selectedPeriod.value === 'month') {
-           const d = new Date();
-           d.setMonth(d.getMonth() - 1);
-           start = d.toISOString().split('T')[0];
-        } else if (selectedPeriod.value === 'custom') {
-           start = customDates.start;
-           end = customDates.end;
+        const params = {};
+        if (preset.value !== 'custom') {
+          params.preset = preset.value;
+        } else {
+          if (startDate.value) params.startDate = startDate.value;
+          if (endDate.value)   params.endDate   = endDate.value;
+        }
+        
+        const res = await adminService.getStatsDashboard(params);
+        if (res.data?.data) {
+          dash.value = res.data.data;
         }
 
-        // 1. Lấy dữ liệu tổng quan (Counts) với filter
-        const summaryRes = await adminService.getSummary(start, end);
-        const summary = summaryRes.data.data;
-
-        // Cập nhật các thẻ thống kê chính
-        dashboardStats.value[0].value = (summary.totalUsers || 0).toString();
-        dashboardStats.value[1].value = (summary.activeClubs || 0).toString();
-        dashboardStats.value[2].value = (summary.todayBookings || 0).toString(); 
-        const commission = summary.platformCommission ?? Math.round((summary.totalRevenue || 0) * 0.1);
-        dashboardStats.value[3].value = `₫${Number(commission || 0).toLocaleString('vi-VN')}`;
-
-        // Cập nhật dữ liệu biểu đồ (Charts)
-        if (summary.monthlyStats && summary.monthlyStats.length > 0) {
-           months.value = summary.monthlyStats.map(s => `T${parseInt(s.month.split('/')[0])}`);
-           chartValues.value = summary.monthlyStats.map(s => s.count);
-        }
-
-        // 2. Lấy dữ liệu chi tiết cho Widgets
-        const [clubsRes, kycRes] = await Promise.all([
-          adminService.getAllClubs(),
-          adminService.getAllKyc()
-        ]);
-        
-        const clubs = clubsRes.data.data || [];
-        const kyc = kycRes.data.data || [];
-
-        const pendingClubs = clubs.filter(c => c.approvalStatus === 'PENDING');
-        const pendingKyc = kyc.filter(k => k.kycStatus === 'PENDING');
-        pendingCourtCount.value = pendingClubs.length;
-
-        // Cập nhật danh sách "Pending Items" Widget
-        const items = [];
-        pendingClubs.slice(0, 2).forEach(c => {
-          items.push({ id: `c-${c.id}`, type: 'court', icon: MapPin, name: c.name, subtitle: 'Cơ sở mới', time: 'Đang chờ' });
-        });
-        pendingKyc.slice(0, 2).forEach(k => {
-          items.push({ id: `k-${k.id}`, type: 'kyc', icon: ShieldCheck, name: k.user?.fullName || 'Chủ sân', subtitle: 'Xác minh KYC', time: 'Đang chờ' });
-        });
-        pendingItems.value = items;
-
-        // Phân bổ loại hình thể thao (Sport Distribution)
-        const counts = clubs.reduce((acc, club) => {
-           club.courts?.forEach(court => {
-              const type = court.sportType === 'FOOTBALL' ? 'Bóng đá' : 
-                          court.sportType === 'BADMINTON' ? 'Cầu lông' : 
-                          court.sportType === 'TENNIS' ? 'Tennis' : 
-                          court.sportType === 'PICKLEBALL' ? 'Pickleball' : 
-                          court.sportType === 'BASKETBALL' ? 'Bóng rổ' : 'Khác';
-              acc[type] = (acc[type] || 0) + 1;
-           });
-           return acc;
-        }, {});
-        
-        courtTypeData.value = [
-          { label: 'Bóng đá', value: counts['Bóng đá'] || 0, color: '#4f6ef7' },
-          { label: 'Cầu lông', value: counts['Cầu lông'] || 0, color: '#22c55e' },
-          { label: 'Tennis', value: counts['Tennis'] || 0, color: '#f97316' },
-          { label: 'Pickleball', value: counts['Pickleball'] || 0, color: '#ec4899' },
-          { label: 'Bóng rổ', value: counts['Bóng rổ'] || 0, color: '#eab308' }
-        ];
-
-      } catch (error) {
-        console.error("Lỗi khi tải dữ liệu dashboard:", error);
+        const now = new Date();
+        lastUpdated.value = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}, ${now.toLocaleDateString('vi-VN')}`;
+      } catch (e) {
+        console.error('Lỗi dashboard:', e);
       } finally {
         loading.value = false;
       }
     };
 
-    const recentActivities = [
-      { text: 'Hệ thống đã sẵn sàng cho ngày mới.', time: 'vừa xong' },
-      { text: 'Admin đã đăng nhập vào hệ thống.', time: 'vừa xong' }
-    ];
+    const onPresetClick = (id) => {
+      preset.value = id;
+      if (id === 'custom') {
+        const now = new Date();
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        startDate.value = firstDay.toISOString().split('T')[0];
+        endDate.value = now.toISOString().split('T')[0];
+      }
+      fetchDashboard();
+    };
 
-    const updateTime = () => {
-      const now = new Date();
-      currentTime.value = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}, ${now.toLocaleDateString()}`;
+    const exportExcel = async () => {
+       alert("Tính năng xuất báo cáo Excel đang được chuẩn bị...");
     };
 
     onMounted(() => {
-      updateTime();
-      fetchDashboardData();
+      const stored = localStorage.getItem('user');
+      if (stored) currentUser.value = JSON.parse(stored);
+      fetchDashboard();
     });
 
     return {
-      dashboardStats,
-      currentTime,
-      months,
-      chartValues,
-      courtTypeData,
-      pendingItems,
-      recentActivities,
-      pendingCourtCount,
-      loading,
-      periods,
-      selectedPeriod,
-      customDates,
-      handlePeriodChange,
-      fetchDashboardData
+      loading, preset, startDate, endDate, lastUpdated, presets, dash,
+      kpiCards, secondaryStats, trendTitle, trendDesc,
+      lineData, lineOpts, doughnutData, doughnutOpts,
+      onPresetClick, fetchDashboard, exportExcel, FMT_NUM, FMT_VND
     };
-  }
-}
+  },
+};
 </script>
 
 <style scoped>
-.custom-header { display: flex; justify-content: space-between; align-items: flex-start; }
-.date-period-picker { display: flex; align-items: center; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 4px; gap: 4px; }
-.period-btn { 
-  padding: 8px 14px; border-radius: 9px; border: none; background: transparent; 
-  color: var(--text-secondary); font-size: 13px; font-weight: 700; cursor: pointer; 
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.period-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.03); }
-.period-btn.active { background: var(--accent); color: white; box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.3); }
+.stats-page { display: flex; flex-direction: column; gap: 24px; }
 
-.custom-range { display: flex; align-items: center; gap: 8px; padding: 0 10px; margin-left: 6px; border-left: 1px solid var(--border); }
-.custom-range input { background: transparent; border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 12px; color: var(--text-primary); cursor: pointer; }
-.custom-range input:focus { outline: none; border-color: var(--accent); }
-.custom-range span { color: var(--text-muted); font-size: 14px; }
+/* Header */
+.page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.title-icon { color: var(--accent); }
+.header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
-.stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+/* Preset buttons */
+.preset-group { display: flex; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; padding: 3px; gap: 3px; }
+.preset-btn { padding: 7px 14px; border: none; border-radius: 8px; background: transparent; color: var(--text-secondary); font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+.preset-btn:hover { color: var(--text-primary); }
+.preset-btn.active { background: var(--accent); color: #fff; box-shadow: 0 3px 10px rgba(79,110,247,0.35); }
 
-.dashboard-main-grid { display: grid; grid-template-columns: 1fr 300px; gap: 24px; }
+.date-range { display: flex; align-items: center; gap: 6px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; padding: 0 10px; height: 38px; }
+.date-input { background: transparent; border: none; outline: none; color: var(--text-primary); font-size: 12px; }
+.date-sep { color: var(--text-muted); }
 
-.primary-charts { display: flex; flex-direction: column; gap: 24px; }
-.charts-sub-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.btn-action { display: flex; align-items: center; gap: 6px; padding: 0 14px; height: 38px; border: none; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+.btn-action.accent { background: var(--accent); color: #fff; }
+.btn-action.secondary { background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-primary); }
+.btn-action:disabled { opacity: 0.5; cursor: not-allowed; }
+.spinning { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-.side-panel { display: flex; flex-direction: column; gap: 24px; }
+/* KPI Grid */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.kpi-card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; transition: all 0.2s; position: relative; overflow: hidden; }
+.kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--card-color, var(--accent)); }
+.kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+.kpi-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+.kpi-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); }
+.kpi-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+.kpi-value { font-size: 26px; font-weight: 900; color: var(--text-primary); line-height: 1; margin-bottom: 6px; }
+.kpi-sub { font-size: 11px; color: var(--text-muted); margin-bottom: 14px; }
+.kpi-bar { height: 4px; background: var(--bg-tertiary); border-radius: 2px; overflow: hidden; }
+.kpi-bar-fill { height: 100%; background: var(--card-color, var(--accent)); border-radius: 2px; transition: width 0.6s ease; }
 
-.alert-bar { 
-  display: flex; 
-  flex-direction: column; 
-  gap: 12px; 
-  padding: 20px; 
-  border-radius: var(--radius-lg); 
-  font-size: 13px; 
-  border: 1px solid; 
-  background: var(--orange-soft); 
-  border-color: rgba(249,115,22,0.2); 
-  color: var(--orange); 
-}
-.alert-bar .btn-link { 
-  display: inline-block; 
-  background: var(--orange); 
-  color: #fff; 
-  padding: 8px 16px; 
-  border-radius: 6px; 
-  text-decoration: none; 
-  font-weight: 600; 
-  text-align: center; 
-}
+/* Charts */
+.charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+.chart-card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; display: flex; flex-direction: column; }
+.chart-header { margin-bottom: 20px; }
+.chart-title { font-size: 14px; font-weight: 800; color: var(--text-primary); }
+.chart-desc { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+.chart-body { flex: 1; min-height: 260px; position: relative; }
+.doughnut-body { min-height: 220px; }
+.chart-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--text-muted); }
 
-.activity-card { 
-  background: var(--bg-secondary); 
-  border: 1px solid var(--border); 
-  border-radius: var(--radius-lg); 
-  padding: 20px; 
-}
-.card-title { font-size: 14px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary); }
+/* Secondary Stats */
+.sec-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.sec-card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; align-items: center; gap: 14px; transition: all 0.2s; }
+.sec-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.sec-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; }
+.sec-value { font-size: 18px; font-weight: 800; color: var(--text-primary); margin-top: 2px; }
 
-.activity-list { display: flex; flex-direction: column; gap: 16px; position: relative; }
-.activity-item { display: flex; gap: 12px; position: relative; }
-.activity-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-top: 5px; flex-shrink: 0; }
-.activity-content { flex: 1; }
-.activity-text { font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
-.activity-time { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+/* Notice */
+.data-notice { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: rgba(79,110,247,0.06); border: 1px solid rgba(79,110,247,0.15); border-radius: 10px; font-size: 12px; color: var(--text-muted); }
 
 @media (max-width: 1200px) {
-  .dashboard-main-grid { grid-template-columns: 1fr; }
-  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .charts-row { grid-template-columns: 1fr; }
+  .sec-grid { grid-template-columns: repeat(2, 1fr); }
 }
 </style>
-

@@ -19,7 +19,7 @@
 </template>
 
 <script>
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { Search, Bell, User } from 'lucide-vue-next';
 

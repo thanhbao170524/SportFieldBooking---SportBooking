@@ -129,11 +129,11 @@
                 </td>
                 <td>
                   <div class="row-actions justify-end">
-                    <template v-if="c.approvalStatus === 'PENDING'">
+                    <template v-if="c.approvalStatus === 'PENDING' && hasPermission('approve_clubs')">
                       <button class="row-btn success glow" @click="handleApproval(c, 'APPROVED')"><Check :size="14" /></button>
                       <button class="row-btn danger-hover" @click="handleApproval(c, 'REJECTED')"><X :size="14" /></button>
                     </template>
-                    <template v-else-if="c.approvalStatus === 'APPROVED'">
+                    <template v-else-if="c.approvalStatus === 'APPROVED' && hasPermission('manage_courts')">
                       <button class="row-btn" :class="c.isActive ? 'warning-hover' : 'success-hover'" @click="handleToggleStatus(c)">
                         <component :is="c.isActive ? 'Lock' : 'Unlock'" :size="14" />
                       </button>
@@ -157,7 +157,7 @@
                           <div class="status-indicator" :class="court.status.toLowerCase()">
                             {{ court.status === 'ACTIVE' ? 'Hoạt động' : 'Đình chỉ' }}
                           </div>
-                          <button class="mini-action-btn" :title="court.status === 'ACTIVE' ? 'Khóa sân này' : 'Mở lại sân này'" @click.stop="handleToggleCourt(court)">
+                          <button v-if="hasPermission('manage_courts')" class="mini-action-btn" :title="court.status === 'ACTIVE' ? 'Khóa sân này' : 'Mở lại sân này'" @click.stop="handleToggleCourt(court)">
                              <component :is="court.status === 'ACTIVE' ? 'Lock' : 'Unlock'" :size="12" />
                           </button>
                         </div>
@@ -244,7 +244,7 @@
 
         <div class="modal-footer">
           <button class="modal-btn secondary" @click="selectedCourt = null">Đóng</button>
-          <button class="modal-btn" :class="selectedCourt.status === 'ACTIVE' ? 'danger' : 'success'" @click="handleToggleCourt(selectedCourt)">
+          <button v-if="hasPermission('manage_courts')" class="modal-btn" :class="selectedCourt.status === 'ACTIVE' ? 'danger' : 'success'" @click="handleToggleCourt(selectedCourt)">
             {{ selectedCourt.status === 'ACTIVE' ? 'Đình chỉ hoạt động' : 'Kích hoạt lại' }}
           </button>
         </div>
@@ -322,12 +322,12 @@
         <div class="modal-footer">
           <button class="modal-btn secondary" @click="selectedClub = null">Đóng hồ sơ</button>
           
-          <template v-if="selectedClub.approvalStatus === 'PENDING'">
+          <template v-if="selectedClub.approvalStatus === 'PENDING' && hasPermission('approve_clubs')">
             <button class="modal-btn danger" @click="handleApproval(selectedClub, 'REJECTED')">Từ chối</button>
             <button class="modal-btn success" @click="handleApproval(selectedClub, 'APPROVED')">Phê duyệt ngay</button>
           </template>
           
-          <button v-else class="modal-btn" :class="selectedClub.isActive ? 'warning' : 'success'" @click="handleToggleStatus(selectedClub)">
+          <button v-if="selectedClub.approvalStatus === 'APPROVED' && hasPermission('manage_courts')" class="modal-btn" :class="selectedClub.isActive ? 'warning' : 'success'" @click="handleToggleStatus(selectedClub)">
             {{ selectedClub.isActive ? 'Tạm đình chỉ CLB' : 'Kích hoạt lại CLB' }}
           </button>
         </div>
@@ -365,6 +365,12 @@ export default {
     const expandedRows = ref([]); // Quản lý các dòng đang mở rộng
     const selectedCourt = ref(null); // Sân đang được chọn để xem chi tiết
     const selectedClub = ref(null); // Câu lạc bộ đang được chọn để xem chi tiết
+    const currentUser = ref(null);
+
+    const hasPermission = (permissionKey) => {
+      if (currentUser.value?.role === 'ADMIN') return true;
+      return !!currentUser.value?.permissions?.[permissionKey];
+    };
 
     const openCourtModal = (court) => {
       selectedCourt.value = court;
@@ -517,6 +523,12 @@ export default {
     });
 
     onMounted(() => {
+      try {
+        const stored = localStorage.getItem('user');
+        if (stored) currentUser.value = JSON.parse(stored);
+      } catch (e) {
+        console.error("Error loading user for permissions:", e);
+      }
       syncTabFromRoute();
       fetchClubs();
     });
@@ -542,7 +554,8 @@ export default {
       handleTabChange,
       formatDate,
       formatTime,
-      formatCurrency
+      formatCurrency,
+      hasPermission
     };
   }
 }

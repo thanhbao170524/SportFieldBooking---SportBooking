@@ -80,12 +80,14 @@
               </td>
               <td>
                 <div class="row-actions justify-end">
-                  <button v-if="o.kycStatus === 'PENDING'" class="row-btn success" title="Duyệt hồ sơ" @click="approveKyc(o)">
-                    <Check :size="14" />
-                  </button>
-                  <button v-if="o.kycStatus === 'PENDING'" class="row-btn danger" title="Từ chối" @click="rejectKyc(o)">
-                    <X :size="14" />
-                  </button>
+                  <template v-if="o.kycStatus === 'PENDING' && hasPermission('verify_kyc')">
+                    <button class="row-btn success" title="Duyệt hồ sơ" @click="approveKyc(o)">
+                      <Check :size="14" />
+                    </button>
+                    <button class="row-btn danger" title="Từ chối" @click="rejectKyc(o)">
+                      <X :size="14" />
+                    </button>
+                  </template>
                   <button class="row-btn" title="Xem chi tiết" @click="viewDocs(o)">
                     <Eye :size="14" />
                   </button>
@@ -205,7 +207,7 @@
 
         <div class="modal-footer">
           <button class="footer-btn ghost" @click="showDocModal = false">Đóng cửa sổ</button>
-          <template v-if="selectedOwner?.kycStatus === 'PENDING'">
+          <template v-if="selectedOwner?.kycStatus === 'PENDING' && hasPermission('verify_kyc')">
             <button class="footer-btn danger" @click="rejectKyc(selectedOwner)">
                <X :size="16" /> Từ chối hồ sơ
             </button>
@@ -241,6 +243,12 @@ export default {
     const selectedOwner = ref(null);
     const owners = ref([]);
     const loading = ref(false);
+    const currentUser = ref(null);
+
+    const hasPermission = (permissionKey) => {
+      if (currentUser.value?.role === 'ADMIN') return true;
+      return !!currentUser.value?.permissions?.[permissionKey];
+    };
 
     const tabs = [
       { id: 'pending', label: 'Chờ duyệt', icon: 'Clock' },
@@ -327,13 +335,22 @@ export default {
        if (url) window.open(url, '_blank');
     }
 
-    onMounted(fetchOwners);
+    onMounted(() => {
+      try {
+        const stored = localStorage.getItem('user');
+        if (stored) currentUser.value = JSON.parse(stored);
+      } catch (e) {
+        console.error("Error loading user for permissions:", e);
+      }
+      fetchOwners();
+    });
 
     return {
       activeTab, searchQuery, tabs, filteredOwners, 
       statusLabels, pendingCount, showDocModal, selectedOwner,
       loading,
-      viewDocs, approveKyc, rejectKyc, formatDate, openImage
+      viewDocs, approveKyc, rejectKyc, formatDate, openImage,
+      hasPermission
     };
   }
 }

@@ -5,7 +5,7 @@ import { successResponse, serverErrorResponse } from "@/lib/response";
 
 export async function GET(req: NextRequest) {
   try {
-    const auth = await requireAdminPermissions(req, ["view_users"]);
+    const auth = await requireAdminPermissions(req, ["view_owners"]);
     if (auth.error) return auth.error;
 
     const owners = await getAllOwnersAdmin();

@@ -9,14 +9,16 @@ export type PermissionKey =
   | "verify_kyc"
   | "manage_courts"
   | "view_finance"
-  | "export_reports"
   | "manage_settings"
   | "manage_perms"
   | "moderate_posts"
   | "moderate_comments"
-  | "view_stats";
+  | "view_posts"
+  | "delete_posts"
+  | "view_stats"
+  | "view_owners";
 
-export type RoleKey = "ADMIN" | "OWNER" | "USER";
+export type RoleKey = "ADMIN" | "STAFF" | "OWNER" | "USER";
 
 export type PermissionsMatrix = Record<RoleKey, Record<PermissionKey, boolean>>;
 
@@ -31,12 +33,31 @@ export const DEFAULT_PERMISSIONS_MATRIX: PermissionsMatrix = {
     verify_kyc: true,
     manage_courts: true,
     view_finance: true,
-    export_reports: true,
     manage_settings: true,
     manage_perms: true,
     moderate_posts: true,
     moderate_comments: true,
+    view_posts: true,
+    delete_posts: true,
     view_stats: true,
+    view_owners: true,
+  },
+  STAFF: {
+    view_users: true,
+    edit_users: false,
+    lock_users: false,
+    approve_clubs: true,
+    verify_kyc: true,
+    manage_courts: true,
+    view_finance: false,
+    manage_settings: false,
+    manage_perms: false,
+    moderate_posts: true,
+    moderate_comments: true,
+    view_posts: true,
+    delete_posts: false,
+    view_stats: true,
+    view_owners: true,
   },
   OWNER: {
     view_users: false,
@@ -44,14 +65,16 @@ export const DEFAULT_PERMISSIONS_MATRIX: PermissionsMatrix = {
     lock_users: false,
     approve_clubs: false,
     verify_kyc: false,
-    manage_courts: true,
-    view_finance: true,
-    export_reports: false,
+    manage_courts: false,
+    view_finance: false,
     manage_settings: false,
     manage_perms: false,
     moderate_posts: false,
     moderate_comments: false,
+    view_posts: true,
+    delete_posts: false,
     view_stats: false,
+    view_owners: false,
   },
   USER: {
     view_users: false,
@@ -61,17 +84,19 @@ export const DEFAULT_PERMISSIONS_MATRIX: PermissionsMatrix = {
     verify_kyc: false,
     manage_courts: false,
     view_finance: false,
-    export_reports: false,
     manage_settings: false,
     manage_perms: false,
     moderate_posts: false,
     moderate_comments: false,
+    view_posts: true,
+    delete_posts: false,
     view_stats: false,
+    view_owners: false,
   },
 };
 
 export function normalizePermissionsMatrix(input: unknown): PermissionsMatrix {
-  const src = (input && typeof input === "object" ? (input as Record<string, any>) : {}) as Record<
+  const src = (input && typeof input === "object" ? (input as Record<string, unknown>) : {}) as Record<
     string,
     Record<string, boolean>
   >;
@@ -79,7 +104,7 @@ export function normalizePermissionsMatrix(input: unknown): PermissionsMatrix {
   // start from defaults to guarantee all keys exist
   const out: PermissionsMatrix = JSON.parse(JSON.stringify(DEFAULT_PERMISSIONS_MATRIX));
 
-  const roles: RoleKey[] = ["ADMIN", "OWNER", "USER"];
+  const roles: RoleKey[] = ["ADMIN", "STAFF", "OWNER", "USER"];
   const perms: PermissionKey[] = [
     "view_users",
     "edit_users",
@@ -88,12 +113,14 @@ export function normalizePermissionsMatrix(input: unknown): PermissionsMatrix {
     "verify_kyc",
     "manage_courts",
     "view_finance",
-    "export_reports",
     "manage_settings",
     "manage_perms",
     "moderate_posts",
     "moderate_comments",
+    "view_posts",
+    "delete_posts",
     "view_stats",
+    "view_owners",
   ];
 
   for (const role of roles) {
@@ -110,16 +137,28 @@ export function normalizePermissionsMatrix(input: unknown): PermissionsMatrix {
 }
 
 export async function getPermissionsMatrix(): Promise<PermissionsMatrix> {
-  const row = await prisma.systemConfig.findUnique({
-    where: { key: CONFIG_KEY },
-    select: { value: true },
-  });
-
-  if (!row?.value) return DEFAULT_PERMISSIONS_MATRIX;
-
   try {
-    return normalizePermissionsMatrix(JSON.parse(row.value));
-  } catch {
+    console.log("DEBUG: Querying systemConfig for RBAC_PERMISSIONS");
+    const row = await prisma.systemConfig.findUnique({
+      where: { key: CONFIG_KEY },
+      select: { value: true },
+    });
+
+    if (!row?.value) {
+      console.log("DEBUG: No RBAC_PERMISSIONS found in DB, using defaults");
+      return DEFAULT_PERMISSIONS_MATRIX;
+    }
+
+    try {
+      const result = normalizePermissionsMatrix(JSON.parse(row.value));
+      console.log("DEBUG: RBAC matrix normalized successfully");
+      return result;
+    } catch (parseError) {
+      console.error("DEBUG: Failed to parse RBAC_PERMISSIONS JSON:", parseError);
+      return DEFAULT_PERMISSIONS_MATRIX;
+    }
+  } catch (dbError) {
+    console.error("DEBUG: Database error in getPermissionsMatrix:", dbError);
     return DEFAULT_PERMISSIONS_MATRIX;
   }
 }

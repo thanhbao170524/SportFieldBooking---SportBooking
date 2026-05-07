@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllReportsAdmin } from "@/modules/admin/admin.service";
+import { getAllReportsAdmin, handleReportAdmin } from "@/modules/admin/admin.service";
 import { successResponse, serverErrorResponse } from "@/lib/response";
 import { requireAdminPermissions } from "@/middleware/admin-rbac.middleware";
 
@@ -27,6 +27,28 @@ export async function GET(_: NextRequest): Promise<NextResponse> {
     );
   } catch (error: unknown) {
     console.error("GET Reports Error:", error);
+    return serverErrorResponse(error);
+  }
+}
+
+export async function PATCH(req: NextRequest): Promise<NextResponse> {
+  try {
+    const auth = await requireAdminPermissions(req, ["moderate_posts"]);
+    if (auth.error) return auth.error;
+
+    const body = await req.json();
+    const { id, status, adminResponse } = body;
+    console.log("DEBUG: Handling report:", { id, status, adminResponse });
+
+    if (!id || !status) {
+      return serverErrorResponse("Thiếu thông tin xử lý");
+    }
+
+    const report = await handleReportAdmin(id, status, adminResponse);
+
+    return successResponse("Cập nhật báo cáo thành công", report);
+  } catch (error: unknown) {
+    console.error("PATCH Reports Error:", error);
     return serverErrorResponse(error);
   }
 }

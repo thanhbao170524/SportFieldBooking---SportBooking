@@ -62,7 +62,7 @@
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
               <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
             </svg>
-            Quản trị viên
+            Quản trị
           </label>
         </div>
 
@@ -219,20 +219,26 @@ export default {
 
         // 2. Điều hướng dựa trên Role từ BE
         const userRole = response.data.data.user.role;
-        if(this.role === userRole){
-        if (userRole === 'OWNER') {
-          this.$router.push('/owner');
-        } else if(userRole === 'USER') {
-          this.$router.push('/');
-        } else if(userRole === 'ADMIN') {
-          this.$router.push('/admin');
+        
+        // Kiểm tra xem vai trò thực tế có khớp với lựa chọn không
+        // Đặc biệt: STAFF được phép đăng nhập qua tùy chọn ADMIN
+        let isCompatible = this.role === userRole;
+        if (this.role === 'ADMIN' && userRole === 'STAFF') {
+          isCompatible = true;
         }
-        }
-        else {
-            alert("Sai quyền tài khoản");
-            this.role = "";
-            this.form.email = "";
-            this.form.password = "";
+
+        if (isCompatible) {
+          if (userRole === 'OWNER') {
+            this.$router.push('/owner');
+          } else if (userRole === 'USER') {
+            this.$router.push('/');
+          } else if (userRole === 'ADMIN' || userRole === 'STAFF') {
+            this.$router.push('/admin');
+          }
+        } else {
+          alert("Sai quyền tài khoản");
+          this.form.email = "";
+          this.form.password = "";
         }
       } catch (error) {
         console.error('Login error:', error);
@@ -329,10 +335,22 @@ export default {
         localStorage.setItem('user', JSON.stringify(response.data.data.user));
 
         const userRole = response.data.data.user.role;
-        if (userRole === 'OWNER') {
-          this.$router.push('/admin');
+        
+        let isCompatible = this.role === userRole;
+        if (this.role === 'ADMIN' && userRole === 'STAFF') {
+          isCompatible = true;
+        }
+
+        if (isCompatible) {
+          if (userRole === 'OWNER') {
+            this.$router.push('/owner'); // Should this be /owner? The original had /admin for OWNER in social login, let's fix it to be consistent.
+          } else if (userRole === 'USER') {
+            this.$router.push('/');
+          } else if (userRole === 'ADMIN' || userRole === 'STAFF') {
+            this.$router.push('/admin');
+          }
         } else {
-          this.$router.push('/');
+          alert("Sai quyền tài khoản");
         }
       } catch (error) {
         console.error(`${provider} Login error:`, error);

@@ -57,7 +57,12 @@
                   </button>
                 </nav>
 
-                <div class="mt-4 pt-2 mb-2 px-3">
+                <div class="mt-4 pt-2 mb-2 px-3 d-flex flex-column gap-2">
+                  <button class="btn-report-p" @click="showReportModal = true">
+                    <span class="material-icons">report_problem</span>
+                    <span>Góp ý / Báo cáo</span>
+                  </button>
+
                   <button class="btn-logout" @click="handleLogout">
                     <span class="material-icons">logout</span>
                     <span>Đăng xuất</span>
@@ -67,6 +72,9 @@
             </div>
           </aside>
         </div>
+
+        <!-- REPORT MODAL -->
+        <ReportModal :is-open="showReportModal" @close="showReportModal = false" />
 
         <!-- ── MAIN CONTENT AREA ── -->
         <main class="col-lg-8 col-xl-9">
@@ -413,13 +421,15 @@ import { clubService } from '@/services/club.service';
 import { notificationService } from '@/services/notification.service';
 import { toast } from 'vue3-toastify';
 import VenueCard from '@/components/client/booking/VenueCard.vue';
+import ReportModal from '@/components/common/ReportModal.vue';
 
 const phoneVN = /^(0|\+84)[0-9]{9}$/;
 
 export default {
   name: 'ProfileView',
   components: {
-    VenueCard
+    VenueCard,
+    ReportModal
   },
   data() {
     return {
@@ -431,6 +441,7 @@ export default {
       loadingFavorites: false,
       loadingNotifications: false,
       showMatchModal: false,
+      showReportModal: false,
       userPosts: [],
       favoriteVenues: [],
       notifications: [],
@@ -848,6 +859,20 @@ export default {
 /* --- Common Utility --- */
 .text-emerald { color: #10b981 !important; }
 .bg-emerald { background-color: #10b981 !important; }
+.btn-text-emerald {
+  background: transparent;
+  border: none;
+  color: #10b981;
+  font-weight: 700;
+  font-size: 0.875rem;
+  padding: 4px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-text-emerald:hover {
+  background: rgba(16, 185, 129, 0.08);
+}
 .border-top-dashed { border-top: 1px dashed #e2e8f0; }
 
 /* --- Sidebar Styles --- */
@@ -1459,11 +1484,50 @@ export default {
   transform: translateX(-10px);
 }
 
-@media (max-width: 991px) {
-  .sticky-sidebar {
-    position: relative;
-    top: 0;
-  }
+.btn-report-p {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px dashed rgba(16, 185, 129, 0.4);
+  border-radius: 12px;
+  color: #10b981;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 8px;
+}
+
+.btn-report-p:hover {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: #10b981;
+}
+
+.btn-logout {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: transparent;
+  border: 1px solid #f1f5f9;
+  border-radius: 12px;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-logout:hover {
+  background: #fff5f5;
+  color: #ef4444;
+  border-color: #fee2e2;
 }
 </style>
 

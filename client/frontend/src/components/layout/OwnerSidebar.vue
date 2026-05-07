@@ -29,6 +29,7 @@
 
     <!-- Sidebar Footer: Trạng thái hồ sơ -->
     <div class="sidebar-footer">
+
       <router-link to="/owner/settings" class="profile-status" :class="{ locked: isLocked, verified: isKycApproved, trial: !isLocked && !isKycApproved }">
         <span class="material-icons">{{ isKycApproved ? 'verified_user' : (isLocked ? 'warning_amber' : 'timer') }}</span>
         <div class="status-text" v-if="!isCollapsed">
@@ -38,7 +39,7 @@
       </router-link>
       <button class="logout-btn" @click="logout">
         <span class="material-icons nav-icon">logout</span>
-        <span class="nav-label">Đăng xuất</span>
+        <span class="nav-label" v-if="!isCollapsed">Đăng xuất</span>
       </button>
     </div>
   </aside>
@@ -47,6 +48,8 @@
 <script>
 export default {
   name: 'OwnerSidebar',
+  components: {
+  },
   props: {
     isCollapsed: Boolean,
     /** Trên mobile: mở drawer điều hướng (đồng bộ với nút menu header) */
@@ -238,6 +241,7 @@ export default {
 
 .logout-btn:hover { background-color: #fef2f2; color: #ef4444; }
 .sidebar-wrapper.collapsed .logout-btn { padding-left: 14px; }
+
 
 @media (max-width: 1024px) {
   .sidebar-wrapper {

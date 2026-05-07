@@ -1,0 +1,8 @@
+-- AlterEnum
+ALTER TYPE "ReportTarget" ADD VALUE 'SYSTEM';
+
+-- AlterTable
+ALTER TABLE "Report" ADD COLUMN     "adminResponse" TEXT,
+ADD COLUMN     "content" TEXT,
+ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ALTER COLUMN "targetId" DROP NOT NULL;

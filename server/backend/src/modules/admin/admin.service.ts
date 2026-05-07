@@ -101,7 +101,11 @@ export async function toggleClubActiveStatus(clubId: string, isActive: boolean) 
       data: { isActive }
     });
 
-    // 2. Cập nhật tất cả sân của CLB đó tương ứng
+    console.log(`DEBUG: toggleClubActiveStatus - Club ${clubId} updated to isActive=${isActive}`);
+
+    // 2. Cập nhật tất cả sân thuộc CLB
+    // Nếu CLB bị khóa, tất cả sân bị treo (SUSPENDED)
+    // Nếu CLB mở lại, tất cả sân về hoạt động (ACTIVE) 
     await tx.court.updateMany({
       where: { clubId },
       data: {
@@ -109,7 +113,7 @@ export async function toggleClubActiveStatus(clubId: string, isActive: boolean) 
       }
     });
 
-    // Notify update
+    // 3. Thông báo Real-time
     notifyNewBooking(clubId, {
       club,
       type: `club-toggled-${isActive ? 'active' : 'inactive'}`
@@ -205,15 +209,20 @@ export async function updateOwnerKYCStatus(profileId: string, status: ApprovalSt
  */
 export async function getAdminSummary(startDate?: string, endDate?: string) {
   const now = new Date();
-  const start = startDate ? new Date(startDate) : new Date(now.setHours(0, 0, 0, 0));
+  const start = startDate ? new Date(startDate) : new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
   const end = endDate ? new Date(endDate) : new Date();
+  
+  if (endDate) {
+    end.setHours(23, 59, 59, 999);
+  }
 
+  console.log("DEBUG: getAdminSummary - Starting Promise.all for stats", { start, end });
   const [
     pendingClubs, pendingKyc, totalUsers, activeClubs,
     totalBookings, filteredBookings, filteredRevenue,
     confirmedBookings, cancelledBookings,
     userStats, courtStats,
-    monthlyStats, bookingStatusBreakdown,
+    trendStats, bookingStatusBreakdown,
     pendingReports, totalClubs,
     visitStats
   ] = await Promise.all([
@@ -231,7 +240,7 @@ export async function getAdminSummary(startDate?: string, endDate?: string) {
     prisma.booking.count({ where: { status: 'CANCELLED', createdAt: { gte: start, lte: end } } }),
     getUserStatsAdmin(startDate, endDate),
     getCourtStatsAdmin(),
-    getMonthlyStatsAdmin(),
+    getTrendStatsAdmin(startDate, endDate),
     prisma.booking.groupBy({
       by: ["status"],
       _count: { _all: true },
@@ -241,6 +250,7 @@ export async function getAdminSummary(startDate?: string, endDate?: string) {
     prisma.club.count(),
     getVisitStatsAdmin(startDate, endDate),
   ]);
+  console.log("DEBUG: getAdminSummary - Promise.all completed");
 
   // Derived calculations
   const totalRevenue = Number(filteredRevenue._sum.finalAmount || 0);
@@ -294,37 +304,111 @@ export async function getAdminSummary(startDate?: string, endDate?: string) {
       totalVisits: visitStats.totalVisits,
       uniqueUsers: visitStats.uniqueUsers,
     },
+    violations: pendingReports,
     charts: {
-      monthly: monthlyStats,
+      monthly: trendStats,
       bookingStatus: bookingStatusBreakdown.map(item => ({
         status: item.status,
         count: item._count._all,
       })),
     },
-    violations: pendingReports,
     periodDays,
   };
 }
 
 /**
- * Lấy thống kê số lượng đơn đặt sân theo tháng (6 tháng gần nhất)
+ * Lấy thống kê xu hướng (trend) theo ngày hoặc tháng tùy vào khoảng thời gian
+ */
+export async function getTrendStatsAdmin(startDate?: string, endDate?: string) {
+  const now = new Date();
+  const start = startDate ? new Date(startDate) : new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  const end = endDate ? new Date(endDate) : new Date();
+  
+  if (endDate) {
+    end.setHours(23, 59, 59, 999);
+  }
+
+  const diffMs = end.getTime() - start.getTime();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+  let interval = 'month';
+  let format = 'MM/YYYY';
+
+  if (diffDays <= 32) {
+    interval = 'day';
+    format = 'DD/MM';
+  }
+
+  // Raw query with dynamic interval
+  const stats: any[] = await prisma.$queryRawUnsafe(`
+    SELECT 
+      TO_CHAR(date_trunc('${interval}', "createdAt"), '${format}') as month_label,
+      date_trunc('${interval}', "createdAt") as date_bucket,
+      COUNT(id)::int as count
+    FROM bookings
+    WHERE "createdAt" >= $1 AND "createdAt" <= $2 AND "deletedAt" IS NULL
+    GROUP BY month_label, date_bucket
+    ORDER BY date_bucket ASC
+  `, start, end);
+
+  // Fill in zero values for days/months with no bookings
+  const filledStats = [];
+  const current = new Date(start);
+  
+  if (interval === 'day') {
+    current.setHours(0, 0, 0, 0);
+    const endBound = new Date(end);
+    endBound.setHours(0, 0, 0, 0);
+
+    while (current <= endBound) {
+      const label = `${current.getDate().toString().padStart(2, '0')}/${(current.getMonth() + 1).toString().padStart(2, '0')}`;
+      const match = stats.find(s => s.month_label === label);
+      filledStats.push({
+        month: label,
+        count: match ? match.count : 0
+      });
+      current.setDate(current.getDate() + 1);
+    }
+  } else {
+    // month interval
+    current.setDate(1);
+    current.setHours(0, 0, 0, 0);
+    const endBound = new Date(end);
+    endBound.setDate(1);
+    endBound.setHours(0, 0, 0, 0);
+
+    while (current <= endBound) {
+      const label = `${(current.getMonth() + 1).toString().padStart(2, '0')}/${current.getFullYear()}`;
+      const match = stats.find(s => s.month_label === label);
+      filledStats.push({
+        month: label,
+        count: match ? match.count : 0
+      });
+      current.setMonth(current.getMonth() + 1);
+    }
+  }
+
+  return filledStats;
+}
+
+/**
+ * Lấy thống kê theo tháng (12 tháng gần nhất)
  */
 export async function getMonthlyStatsAdmin() {
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
-  sixMonthsAgo.setDate(1);
-  sixMonthsAgo.setHours(0, 0, 0, 0);
+  const start = new Date();
+  start.setFullYear(start.getFullYear() - 1);
+  start.setDate(1);
+  start.setHours(0, 0, 0, 0);
 
-  // Group by tháng dùng Raw Query để lấy đúng định dạng trên DB
-  const stats = await prisma.$queryRaw`
+  const stats = await prisma.$queryRawUnsafe(`
     SELECT 
       TO_CHAR(date_trunc('month', "createdAt"), 'MM/YYYY') as month,
       COUNT(id)::int as count
     FROM bookings
-    WHERE "createdAt" >= ${sixMonthsAgo}
-    GROUP BY month
-    ORDER BY MIN("createdAt") ASC
-  `;
+    WHERE "createdAt" >= $1
+    GROUP BY month, date_trunc('month', "createdAt")
+    ORDER BY date_trunc('month', "createdAt") ASC
+  `, start);
 
   return stats;
 }
@@ -553,7 +637,8 @@ export async function getAllReportsAdmin() {
         select: {
           id: true,
           fullName: true,
-          email: true
+          email: true,
+          role: true,
         }
       }
     },
@@ -562,16 +647,68 @@ export async function getAllReportsAdmin() {
 }
 
 /**
+ * Tạo báo cáo mới (từ người dùng/chủ sân)
+ */
+export async function createReport(data: {
+  reporterId: string;
+  reason: string;
+  content: string;
+}) {
+  return prisma.report.create({
+    data: {
+      reporterId: data.reporterId,
+      reason: data.reason,
+      content: data.content,
+      targetType: "SYSTEM",
+      status: "PENDING",
+    }
+  });
+}
+
+/**
  * Xử lý report
  */
 export async function handleReportAdmin(
   reportId: string,
-  status: "RESOLVED" | "REJECTED"
+  status: "RESOLVED" | "REJECTED",
+  adminResponse?: string
 ) {
-  return prisma.report.update({
-    where: { id: reportId },
-    data: { status }
-  });
+  try {
+    console.log("DEBUG: handleReportAdmin - Updating report:", reportId, status);
+    
+    // 1. Cập nhật trạng thái báo cáo
+    const report = await prisma.report.update({
+      where: { id: reportId },
+      data: { 
+        status,
+        adminResponse,
+        updatedAt: new Date()
+      }
+    });
+
+    console.log("DEBUG: handleReportAdmin - Creating notification for user:", report.reporterId);
+    
+    // 2. Gửi thông báo về cho người báo cáo (bọc trong try-catch riêng để không làm hỏng flow chính)
+    try {
+      await prisma.notification.create({
+        data: {
+          userId: report.reporterId,
+          type: "SYSTEM",
+          title: status === "RESOLVED" ? "Báo cáo của bạn đã được xử lý" : "Báo cáo của bạn đã bị từ chối",
+          body: adminResponse || (status === "RESOLVED" ? "Admin đã duyệt báo cáo của bạn." : "Yêu cầu báo cáo không phù hợp."),
+        }
+      });
+      console.log("DEBUG: handleReportAdmin - Notification sent successfully");
+    } catch (notifError) {
+      console.error("ERROR: handleReportAdmin - Failed to create notification:", notifError);
+      // Vẫn tiếp tục vì report đã được cập nhật xong
+    }
+
+    return report;
+  } catch (error) {
+    console.error("ERROR: handleReportAdmin - Global failure:", error);
+    throw error;
+  }
 }
 
 /**

@@ -6,6 +6,7 @@ import axios from "axios";
 import crypto from "crypto";
 import { OAuth2Client } from "google-auth-library";
 import type { RegisterInput, LoginInput, ResetPasswordInput } from "@/validations/auth.schema";
+import { getPermissionsMatrix } from "@/modules/admin/rbac";
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -157,6 +158,10 @@ export async function loginUser(input: LoginInput, ip?: string, userAgent?: stri
     sid: session.id,
   });
 
+  // E. Fetch permissions for the response
+  const matrix = await getPermissionsMatrix();
+  const permissions = (matrix as any)[user.role] || {};
+
   return {
     token,
     user: {
@@ -166,8 +171,8 @@ export async function loginUser(input: LoginInput, ip?: string, userAgent?: stri
       role: user.role,
       avatarUrl: user.avatarUrl,
       isVerified: user.isVerified,
-      // kycStatus: PENDING = đã nộp chờ duyệt, APPROVED = đã duyệt mở khóa, REJECTED = bị từ chối
       kycStatus: user.ownerProfile?.kycStatus ?? null,
+      permissions, 
     },
   };
 }

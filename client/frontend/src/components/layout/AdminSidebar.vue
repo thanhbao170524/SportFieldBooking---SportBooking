@@ -8,74 +8,68 @@
       </div>
     </div>
 
-    <div class="sidebar-section">
-      <div class="sidebar-label">Tổng quan</div>
+    <div v-if="hasPermission('view_stats')" class="sidebar-section">
+      <div class="sidebar-label">Thống kê & Dashboard</div>
       <router-link to="/admin" class="nav-item" active-class="active">
         <span class="nav-icon"><LayoutDashboard :size="16" /></span> Dashboard
       </router-link>
     </div>
 
-    <div class="sidebar-section">
+    <div v-if="hasPermission('manage_courts') || hasPermission('approve_clubs')" class="sidebar-section">
       <div class="sidebar-label">Câu lạc bộ & Sân</div>
-      <router-link to="/admin/courts" class="nav-item" active-class="active">
+      <router-link v-if="hasPermission('manage_courts')" to="/admin/courts" class="nav-item" active-class="active">
         <span class="nav-icon"><Home :size="16" /></span> Danh sách cơ sở
       </router-link>
-      <router-link to="/admin/courts/pending" class="nav-item" active-class="active">
+      <router-link v-if="hasPermission('approve_clubs')" to="/admin/courts/pending" class="nav-item" active-class="active">
         <span class="nav-icon"><Clock :size="16" /></span> Duyệt câu lạc bộ 
         <span v-if="stats.pendingClubs > 0" class="nav-badge orange">{{ stats.pendingClubs }}</span>
       </router-link>
-      <router-link to="/admin/courts/locked" class="nav-item" active-class="active">
+      <router-link v-if="hasPermission('manage_courts')" to="/admin/courts/locked" class="nav-item" active-class="active">
         <span class="nav-icon"><Lock :size="16" /></span> Cơ sở bị khóa
       </router-link>
     </div>
 
-    <div class="sidebar-section">
+    <div v-if="hasPermission('view_users') || hasPermission('view_owners') || hasPermission('verify_kyc')" class="sidebar-section">
       <div class="sidebar-label">Quản lý tài khoản</div>
-      <router-link to="/admin/users" class="nav-item" active-class="active">
+      <router-link v-if="hasPermission('view_users')" to="/admin/users" class="nav-item" active-class="active">
         <span class="nav-icon"><Users :size="16" /></span> Người dùng
       </router-link>
-      <router-link to="/admin/owners" class="nav-item" active-class="active">
+      <router-link v-if="hasPermission('view_owners')" to="/admin/owners" class="nav-item" active-class="active">
         <span class="nav-icon"><Building2 :size="16" /></span> Hồ sơ chủ Câu lạc bộ
       </router-link>
-      <router-link to="/admin/owners/kyc" class="nav-item" active-class="active">
+      <router-link v-if="hasPermission('verify_kyc')" to="/admin/owners/kyc" class="nav-item" active-class="active">
         <span class="nav-icon"><ShieldCheck :size="16" /></span> Duyệt định danh (KYC)
         <span v-if="stats.pendingKyc > 0" class="nav-badge orange">{{ stats.pendingKyc }}</span>
       </router-link>
-      <router-link to="/admin/violations" class="nav-item" active-class="active">
-        <span class="nav-icon"><ShieldAlert :size="16" /></span> Vi phạm 
+      <router-link v-if="hasPermission('view_users')" to="/admin/violations" class="nav-item" active-class="active">
+        <span class="nav-icon"><ShieldAlert :size="16" /></span> Báo cáo
         <span v-if="stats.violations > 0" class="nav-badge">{{ stats.violations }}</span>
       </router-link>
     </div>
 
-    <div class="sidebar-section">
+    <div v-if="hasPermission('moderate_posts') || hasPermission('moderate_comments')" class="sidebar-section">
       <div class="sidebar-label">Quản lý nội dung</div>
-      <router-link to="/admin/posts" class="nav-item" active-class="active">
+      <router-link v-if="hasPermission('moderate_posts')" to="/admin/posts" class="nav-item" active-class="active">
         <span class="nav-icon"><FileText :size="16" /></span> Bài đăng
       </router-link>
-      <router-link to="/admin/community" class="nav-item" active-class="active">
+      <router-link v-if="hasPermission('moderate_posts')" to="/admin/community" class="nav-item" active-class="active">
         <span class="nav-icon"><MessageSquare :size="16" /></span> Cộng đồng
       </router-link>
     </div>
 
-    <div class="sidebar-section">
-      <div class="sidebar-label">Thống kê & Báo cáo</div>
-      <router-link to="/admin/stats" class="nav-item" active-class="active">
-        <span class="nav-icon"><BarChart3 :size="16" /></span> Thống kê hệ thống
-      </router-link>
-      <router-link to="/admin/finance" class="nav-item" active-class="active">
+    <div v-if="hasPermission('view_stats') || hasPermission('view_finance')" class="sidebar-section">
+      <div class="sidebar-label">Thống kê & Tài chính</div>
+      <router-link v-if="hasPermission('view_finance')" to="/admin/finance" class="nav-item" active-class="active">
         <span class="nav-icon"><Wallet :size="16" /></span> Tài chính
-      </router-link>
-      <router-link to="/admin/reports" class="nav-item" active-class="active">
-        <span class="nav-icon"><FilePieChart :size="16" /></span> Báo cáo
       </router-link>
     </div>
 
-    <div class="sidebar-section">
+    <div v-if="user?.role === 'ADMIN'" class="sidebar-section">
       <div class="sidebar-label">Hệ thống</div>
-      <router-link to="/admin/permissions" class="nav-item" active-class="active">
+      <router-link v-if="hasPermission('manage_perms')" to="/admin/permissions" class="nav-item" active-class="active">
         <span class="nav-icon"><Key :size="16" /></span> Phân quyền
       </router-link>
-      <router-link to="/admin/settings" class="nav-item" active-class="active">
+      <router-link v-if="hasPermission('manage_settings')" to="/admin/settings" class="nav-item" active-class="active">
         <span class="nav-icon"><Settings :size="16" /></span> Cài đặt
       </router-link>
     </div>
@@ -84,17 +78,18 @@
       <div class="user-card" @click="handleLogout">
         <div class="user-avatar"><User :size="16" stroke-width="2.5" /></div>
         <div class="user-info">
-          <div class="user-name">Admin</div>
-          <div class="user-role">Quản trị viên hệ thống</div>
+          <div class="user-name">{{ user?.fullName || 'Admin' }}</div>
+          <div class="user-role">{{ userRoleLabel }}</div>
         </div>
         <LogOut :size="14" class="logout-icon" />
       </div>
     </div>
+
   </aside>
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { 
   Activity, LayoutDashboard, Home, Clock, Lock, 
@@ -119,15 +114,23 @@ export default {
       pendingKyc: 0,
       violations: 0
     });
+    const user = ref(null);
+
+    const userRoleLabel = computed(() => {
+      if (!user.value) return '...';
+      if (user.value.role === 'ADMIN') return 'Quản trị viên';
+      if (user.value.role === 'STAFF') return 'Admin mức 2';
+      return user.value.role;
+    });
 
     const fetchStats = async () => {
       try {
         const response = await adminService.getSummary();
         const data = response.data.data;
         stats.value = {
-          pendingClubs: data.pendingClubs || 0,
-          pendingKyc: data.pendingKyc || 0,
-          violations: data.violations || 0
+          pendingClubs: data.approvals?.pendingClubs || 0,
+          pendingKyc: data.approvals?.pendingKyc || 0,
+          violations: data.moderation?.pendingReports || 0
         };
       } catch (error) {
         console.error("Lỗi khi tải thông báo sidebar:", error);
@@ -142,12 +145,39 @@ export default {
       }
     };
 
-    onMounted(() => {
+    const hasPermission = (permissionKey) => {
+      // Admin luôn có tất cả quyền
+      if (user.value?.role === 'ADMIN') return true;
+      // Kiểm tra trong object permissions của user
+      return !!user.value?.permissions?.[permissionKey];
+    };
+
+    onMounted(async () => {
+      try {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          user.value = JSON.parse(storedUser);
+        }
+        
+        // Gọi API lấy thông tin mới nhất để cập nhật quyền (nếu đã đăng nhập)
+        if (localStorage.getItem('token')) {
+          const res = await adminService.getProfile(); // Giả sử dùng chung adminService hoặc authService
+          if (res.data?.data) {
+             user.value = res.data.data;
+             localStorage.setItem('user', JSON.stringify(user.value));
+          }
+        }
+      } catch (e) {
+        console.error("Lỗi cập nhật thông tin user:", e);
+      }
       fetchStats();
     });
 
     return {
       stats,
+      user,
+      userRoleLabel,
+      hasPermission,
       handleLogout
     };
   }
@@ -258,7 +288,7 @@ export default {
 }
 .nav-badge.orange { background: var(--orange); }
 
-.sidebar-bottom { margin-top: auto; padding: 12px 10px; border-top: 1px solid var(--border); }
+.sidebar-bottom { margin-top: auto; padding: 12px 10px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
 
 .user-card { 
   display: flex; 
