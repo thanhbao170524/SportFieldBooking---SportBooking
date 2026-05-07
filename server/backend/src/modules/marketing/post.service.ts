@@ -257,7 +257,7 @@ export async function getPosts(filters: {
 
   /* User feed — lọc slot còn trống */
   const candidateLimit = usePaging ? Math.min(500, Math.max(limit * page, limit * 5)) : undefined;
-  let posts = await prisma.post.findMany({
+  const posts = await prisma.post.findMany({
     where,
     include: includeClub,
     orderBy: { createdAt: "desc" },
