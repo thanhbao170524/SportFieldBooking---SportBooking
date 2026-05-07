@@ -16,7 +16,8 @@ interface ReportItem {
 
 export async function GET(_: NextRequest): Promise<NextResponse> {
   try {
-    const auth = await requireAdminPermissions(_, ["moderate_posts"]);
+    // Viewing reports should require view permission; moderation is enforced on PATCH.
+    const auth = await requireAdminPermissions(_, ["view_posts"]);
     if (auth.error) return auth.error;
 
     const reports: ReportItem[] = await getAllReportsAdmin();

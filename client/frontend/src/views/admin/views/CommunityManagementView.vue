@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <div v-if="hasPermission('view_posts')">
+    <div v-if="hasPermission('view_posts') || hasPermission('moderate_posts') || hasPermission('moderate_comments')">
       <div class="page-header">
         <div class="header-left">
           <div class="page-title">
@@ -298,6 +298,52 @@
         </div>
       </div>
     </div>
+
+    <!-- ═══════════════ CONFIRM ACTION MODAL ═══════════════ -->
+    <div v-if="confirmAction" class="modal-overlay" @click.self="confirmAction = null">
+      <div class="modal-content glass-modal confirm-modal" @click.stop>
+        <div class="modal-header">
+          <div class="modal-title-row">
+            <ShieldAlert :size="18" class="modal-title-icon" />
+            <h3>Xác nhận thao tác</h3>
+          </div>
+          <button class="close-modal" @click="confirmAction = null"><X :size="18" /></button>
+        </div>
+        <div class="modal-body custom-scrollbar">
+          <div class="detail-section">
+            <label class="detail-label">Bạn có chắc chắn?</label>
+            <div class="detail-content-body">
+              {{ confirmAction.type === 'HANDLE_REPORT'
+                ? (confirmAction.status === 'RESOLVED'
+                    ? 'Duyệt báo cáo này và gửi thông báo cho người dùng.'
+                    : 'Từ chối báo cáo này.')
+                : (confirmAction.type === 'TOGGLE_COMMENT'
+                    ? `Bạn có chắc muốn ${confirmAction.next ? 'ẩn' : 'hiện'} comment này?`
+                    : 'Xóa comment này?') }}
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" :disabled="loading" @click="confirmAction = null">Hủy</button>
+          <button
+            v-if="confirmAction.type === 'HANDLE_REPORT' && confirmAction.status === 'RESOLVED'"
+            class="btn-success"
+            :disabled="loading"
+            @click="confirmAndExecute()"
+          >
+            <Check :size="14" /> Xác nhận duyệt
+          </button>
+          <button
+            v-else
+            class="btn-danger-outline"
+            :disabled="loading"
+            @click="confirmAndExecute()"
+          >
+            <X :size="14" /> Xác nhận
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -331,6 +377,7 @@ export default {
     const selectedComment = ref(null);
     const selectedReport = ref(null);
     const adminResponseText = ref('');
+    const confirmAction = ref(null); // { type, ...payload }
 
     const openCommentDetail = (c) => {
       selectedComment.value = c;
@@ -408,7 +455,10 @@ export default {
 
     const toggleComment = async (c) => {
       const next = !c.isHidden;
-      if (!confirm(`Bạn có chắc muốn ${next ? 'ẩn' : 'hiện'} comment này?`)) return;
+      confirmAction.value = { type: 'TOGGLE_COMMENT', comment: c, next };
+    };
+
+    const doToggleComment = async (c, next) => {
       loading.value = true;
       try {
         await adminService.updateCommentHidden(c.id, next);
@@ -421,7 +471,10 @@ export default {
     };
 
     const deleteComment = async (c) => {
-      if (!confirm('Xóa comment này?')) return;
+      confirmAction.value = { type: 'DELETE_COMMENT', comment: c };
+    };
+
+    const doDeleteComment = async (c) => {
       loading.value = true;
       try {
         await adminService.deleteComment(c.id);
@@ -434,8 +487,10 @@ export default {
     };
 
     const handleReport = async (r, status) => {
-      const msg = status === 'RESOLVED' ? 'duyệt' : 'từ chối';
-      if (!confirm(`Xác nhận ${msg} báo cáo này và gửi thông báo cho người dùng?`)) return;
+      confirmAction.value = { type: 'HANDLE_REPORT', report: r, status };
+    };
+
+    const doHandleReport = async (r, status) => {
       loading.value = true;
       try {
         await adminService.handleReport(r.id, status, adminResponseText.value);
@@ -447,6 +502,16 @@ export default {
       } finally {
         loading.value = false;
       }
+    };
+
+    const confirmAndExecute = async () => {
+      const action = confirmAction.value;
+      if (!action) return;
+      confirmAction.value = null;
+
+      if (action.type === 'HANDLE_REPORT') return await doHandleReport(action.report, action.status);
+      if (action.type === 'TOGGLE_COMMENT') return await doToggleComment(action.comment, action.next);
+      if (action.type === 'DELETE_COMMENT') return await doDeleteComment(action.comment);
     };
 
     onMounted(() => {
@@ -474,6 +539,8 @@ export default {
       toggleComment,
       deleteComment,
       handleReport,
+      confirmAction,
+      confirmAndExecute,
       formatDate,
       formatReportStatus,
       selectedComment,
@@ -571,4 +638,6 @@ th { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: v
 .form-textarea { width: 100%; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 12px; padding: 12px; color: var(--text-primary); font-size: 13px; outline: none; transition: border-color 0.2s; resize: vertical; }
 .form-textarea:focus { border-color: var(--accent); }
 .response-box { border-left: 4px solid var(--accent); background: rgba(79, 110, 247, 0.05); }
+
+.confirm-modal { width: 520px; max-width: 92vw; }
 </style>

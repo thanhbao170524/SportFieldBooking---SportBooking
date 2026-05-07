@@ -75,16 +75,16 @@ async function main() {
 
   // 3. Create Users
   console.log("👤 Creating users...");
-  const hashedPassword = await bcrypt.hash("password123", SALT_ROUNDS);
+  const hashedPassword = await bcrypt.hash("14112004", SALT_ROUNDS);
 
   // Admin
   await prisma.user.create({
     data: {
-      email: "admin@sportplatform.com",
-      fullName: "Hệ thống Admin",
+      email: "staff@gmail.com",
+      fullName: "Staff Test",
       passwordHash: hashedPassword,
-      role: "ADMIN",
-      profile: { create: { bio: "Quản trị viên hệ thống" } },
+      role: "STAFF",
+      profile: { create: { bio: "Staff Test" } },
     },
   });
 

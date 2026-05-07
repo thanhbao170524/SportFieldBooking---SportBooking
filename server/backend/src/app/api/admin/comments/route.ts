@@ -19,7 +19,8 @@ interface CommentItem {
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
-    const auth = await requireAdminPermissions(req, ["moderate_comments"]);
+    // Viewing comments should require view permission; moderation is enforced on PATCH/DELETE.
+    const auth = await requireAdminPermissions(req, ["view_posts"]);
     if (auth.error) return auth.error;
 
     console.log("DEBUG: Fetching comments for admin");
