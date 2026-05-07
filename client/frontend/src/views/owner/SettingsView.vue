@@ -12,7 +12,7 @@
           <span class="material-icons">{{ kycStatusIcon }}</span>
           <span>{{ kycStatusLabel }}</span>
         </div>
-        <button v-if="currentTab !== 'billing'" class="save-btn" @click="saveChanges">
+        <button v-if="currentTab === 'profile'" class="save-btn" @click="saveChanges">
           <span class="material-icons">save</span>
           <span>Lưu thay đổi</span>
         </button>
@@ -291,41 +291,84 @@
         <!-- Tab: Notifications -->
         <div v-if="currentTab === 'notifications'" class="tab-pane fade-in card">
           <div class="pane-header">
-            <h3>Tùy chọn Thông báo</h3>
-            <p>Chọn các thông báo bạn muốn nhận qua Email hoặc Trình duyệt.</p>
+            <div class="pane-header-row">
+              <div>
+                <h3>Thông báo hệ thống</h3>
+                <p>Danh sách thông báo từ hệ thống gửi tới tài khoản của bạn.</p>
+              </div>
+              <div class="pane-actions">
+                <button type="button" class="btn-outline-sm" @click="loadSystemNotifications" :disabled="notifLoading">
+                  <span class="material-icons">{{ notifLoading ? 'hourglass_top' : 'refresh' }}</span>
+                  Làm mới
+                </button>
+                <button
+                  type="button"
+                  class="btn-primary-sm"
+                  @click="markAllNotificationsRead"
+                  :disabled="notifLoading || !systemNotifications.length || unreadCount === 0"
+                >
+                  <span class="material-icons">done_all</span>
+                  Đã đọc tất cả ({{ unreadCount }})
+                </button>
+              </div>
+            </div>
           </div>
           
-          <div class="notification-list">
-            <div class="notif-item">
-              <div class="notif-text">
-                <h4>Có đơn đặt sân mới</h4>
-                <p>Nhận thông báo ngay khi có khách Đặt sân & Đặt cọc thành công.</p>
-              </div>
-              <div class="toggle-switch">
-                <input type="checkbox" id="n1" class="switch-input" v-model="notifications.newBooking" />
-                <label for="n1" class="switch-label"></label>
-              </div>
+          <div v-if="notifLoading" class="notif-loading">
+            <div class="nl-row" v-for="n in 5" :key="n">
+              <div class="nl-skel-title"></div>
+              <div class="nl-skel-body"></div>
             </div>
-            
-             <div class="notif-item">
-              <div class="notif-text">
-                <h4>Yêu cầu hủy sân</h4>
-                <p>Khi khách hàng gởi yêu cầu hoặc hệ thống tự động hủy đơn do quá hạn.</p>
-              </div>
-              <div class="toggle-switch">
-                <input type="checkbox" id="n2" class="switch-input" v-model="notifications.cancelBooking" />
-                <label for="n2" class="switch-label"></label>
-              </div>
-            </div>
+          </div>
 
-             <div class="notif-item">
+          <div v-else-if="!systemNotifications.length" class="notif-empty">
+            <span class="material-icons">notifications_off</span>
+            <p>Chưa có thông báo nào.</p>
+          </div>
+
+          <div v-else class="notification-list">
+            <div
+              v-for="n in systemNotifications"
+              :key="n.id"
+              class="notif-item notif-msg"
+              :class="{ unread: !n.isRead }"
+              @click="openNotification(n)"
+              role="button"
+              tabindex="0"
+            >
               <div class="notif-text">
-                <h4>Báo cáo doanh thu hàng tuần</h4>
-                <p>Nhận báo cáo tổng hợp doanh thu gửi qua Email mỗi tối Chủ Nhật.</p>
+                <div class="notif-topline">
+                  <h4 class="notif-title">
+                    <span v-if="!n.isRead" class="unread-dot"></span>
+                    {{ n.title || 'Thông báo' }}
+                  </h4>
+                  <span class="notif-time">{{ formatNotifTime(n.createdAt) }}</span>
+                </div>
+                <p class="notif-body">{{ n.body }}</p>
+                <div class="notif-meta">
+                  <span class="notif-badge" :class="String(n.type || '').toLowerCase()">{{ n.type }}</span>
+                  <span v-if="n.booking?.bookingCode" class="notif-link">Mã đơn: {{ n.booking.bookingCode }}</span>
+                </div>
               </div>
-              <div class="toggle-switch">
-                <input type="checkbox" id="n3" class="switch-input" v-model="notifications.weeklyReport" />
-                <label for="n3" class="switch-label"></label>
+
+              <div class="notif-actions" @click.stop>
+                <button
+                  v-if="!n.isRead"
+                  type="button"
+                  class="icon-action"
+                  title="Đánh dấu đã đọc"
+                  @click="markNotificationRead(n.id)"
+                >
+                  <span class="material-icons">done</span>
+                </button>
+                <button
+                  type="button"
+                  class="icon-action danger"
+                  title="Xóa thông báo"
+                  @click="deleteSystemNotification(n.id)"
+                >
+                  <span class="material-icons">delete_outline</span>
+                </button>
               </div>
             </div>
           </div>
@@ -348,6 +391,7 @@
 import api from '@/api/axios';
 import { useOwnerTrial } from '@/composables/useOwnerTrial.js';
 import { clubService } from '@/services/club.service';
+import { notificationService } from '@/services/notification.service';
 import OwnerBillingIntroModal from '@/components/owner/OwnerBillingIntroModal.vue';
 import { toast } from 'vue3-toastify';
 
@@ -408,6 +452,9 @@ export default {
       };
       return ids.map((id) => labels[id] || id).join(', ');
     },
+    unreadCount() {
+      return (this.systemNotifications || []).filter((n) => !n.isRead).length;
+    },
   },
   data() {
     const user = (() => { try { return JSON.parse(localStorage.getItem('user')) || {}; } catch { return {}; } })();
@@ -433,6 +480,8 @@ export default {
       ownerClubs: [],
       notifications: { newBooking: true, cancelBooking: true, weeklyReport: false },
       uploadingAvatar: false,
+      systemNotifications: [],
+      notifLoading: false,
       billing: {
         subscriptionPlanKey: null,
         subscriptionAddons: [],
@@ -452,6 +501,16 @@ export default {
     }
     this.loadProfile();
     this.loadOwnerClubs();
+    if (this.currentTab === 'notifications') {
+      this.loadSystemNotifications();
+    }
+  },
+  watch: {
+    currentTab(val) {
+      if (val === 'notifications' && !this.systemNotifications.length) {
+        this.loadSystemNotifications();
+      }
+    },
   },
   methods: {
     // Load dữ liệu đầy đủ từ API khi vào trang
@@ -565,14 +624,6 @@ export default {
             phone,
             bio,
           };
-        } else if (this.currentTab === 'notifications') {
-          payload = {
-            notificationSettings: {
-              newBooking: !!this.notifications.newBooking,
-              cancelBooking: !!this.notifications.cancelBooking,
-              weeklyReport: !!this.notifications.weeklyReport,
-            },
-          };
         } else {
           alert('Thay đổi đã được lưu!');
           return;
@@ -615,6 +666,84 @@ export default {
       } catch (err) {
         alert('Lỗi: ' + (err.response?.data?.message || 'Không thể đổi mật khẩu lúc này.'));
       }
+    },
+
+    async loadSystemNotifications() {
+      this.notifLoading = true;
+      try {
+        const res = await notificationService.getMyNotifications();
+        const list = res?.data?.data || [];
+        this.systemNotifications = Array.isArray(list) ? list : [];
+      } catch (err) {
+        const msg = err?.response?.data?.message || 'Không thể tải thông báo.';
+        toast.error(msg);
+      } finally {
+        this.notifLoading = false;
+      }
+    },
+
+    async markAllNotificationsRead() {
+      try {
+        await notificationService.markAsRead(null);
+        const now = new Date().toISOString();
+        this.systemNotifications = (this.systemNotifications || []).map((n) => ({
+          ...n,
+          isRead: true,
+          readAt: n.readAt || now,
+        }));
+        toast.success('Đã đánh dấu tất cả thông báo là đã đọc.');
+      } catch (err) {
+        const msg = err?.response?.data?.message || 'Không thể cập nhật thông báo.';
+        toast.error(msg);
+      }
+    },
+
+    async markNotificationRead(id) {
+      if (!id) return;
+      try {
+        await notificationService.markAsRead(id);
+        const now = new Date().toISOString();
+        this.systemNotifications = (this.systemNotifications || []).map((n) =>
+          n.id === id ? { ...n, isRead: true, readAt: n.readAt || now } : n
+        );
+      } catch (err) {
+        const msg = err?.response?.data?.message || 'Không thể cập nhật thông báo.';
+        toast.error(msg);
+      }
+    },
+
+    async deleteSystemNotification(id) {
+      if (!id) return;
+      try {
+        await notificationService.deleteNotification(id);
+        this.systemNotifications = (this.systemNotifications || []).filter((n) => n.id !== id);
+        toast.success('Đã xóa thông báo.');
+      } catch (err) {
+        const msg = err?.response?.data?.message || 'Không thể xóa thông báo.';
+        toast.error(msg);
+      }
+    },
+
+    openNotification(n) {
+      if (!n) return;
+      if (!n.isRead) this.markNotificationRead(n.id);
+      const bookingId = n?.booking?.id || n?.bookingId;
+      if (bookingId) {
+        this.$router.push({ path: '/owner/bookings', query: { bookingId: String(bookingId) } });
+      }
+    },
+
+    formatNotifTime(ts) {
+      if (!ts) return '';
+      const d = new Date(ts);
+      if (Number.isNaN(d.getTime())) return '';
+      return d.toLocaleString('vi-VN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
     },
 
     async submitKYC() {
@@ -1079,24 +1208,46 @@ export default {
 .status-badge.verified { background: #ecfdf5; color: #059669; }
 .status-badge span { font-size: 14px; }
 
-/* Notification Switch List */
+/* Notifications */
 .notification-list { display: flex; flex-direction: column; gap: 20px; }
-.notif-item { display: flex; justify-content: space-between; align-items: center; padding: 16px; border: 1px solid #f1f5f9; border-radius: 14px; }
-.notif-text h4 { font-size: 15px; font-weight: 700; color: #1e293b; margin: 0 0 6px 0; }
-.notif-text p { font-size: 13px; color: #64748b; margin: 0; }
+.notif-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; padding: 16px; border: 1px solid #f1f5f9; border-radius: 14px; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+.notif-item:hover { background: #f8fafc; border-color: #e2e8f0; }
+.notif-item.unread { background: #f0fdf4; border-color: rgba(22,163,74,0.25); }
+.notif-text { flex: 1; min-width: 0; }
+.notif-topline { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.notif-title { font-size: 15px; font-weight: 800; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 8px; }
+.unread-dot { width: 8px; height: 8px; border-radius: 50%; background: #16a34a; box-shadow: 0 0 0 3px rgba(22,163,74,0.16); flex-shrink: 0; }
+.notif-time { font-size: 12px; color: #94a3b8; font-weight: 700; white-space: nowrap; }
+.notif-body { font-size: 13px; color: #475569; margin: 0; line-height: 1.5; white-space: pre-line; }
+.notif-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; font-size: 12px; color: #64748b; font-weight: 700; }
+.notif-badge { padding: 4px 10px; border-radius: 999px; border: 1px solid #e2e8f0; background: #fff; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; }
+.notif-badge.system { background: #eff6ff; border-color: rgba(59,130,246,0.25); color: #2563eb; }
+.notif-badge.promotion { background: #fff7ed; border-color: rgba(249,115,22,0.25); color: #ea580c; }
+.notif-badge.news_feed { background: #fdf2f8; border-color: rgba(236,72,153,0.25); color: #db2777; }
+.notif-link { color: #0f172a; }
+.notif-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.icon-action { width: 36px; height: 36px; border-radius: 12px; border: 1px solid #e2e8f0; background: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.icon-action:hover { background: #f8fafc; }
+.icon-action .material-icons { font-size: 18px; color: #0f172a; }
+.icon-action.danger { border-color: rgba(239,68,68,0.25); }
+.icon-action.danger .material-icons { color: #dc2626; }
+.notif-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 22px 10px; color: #94a3b8; gap: 10px; text-align: center; }
+.notif-empty .material-icons { font-size: 34px; }
+.notif-empty p { margin: 0; font-weight: 700; }
+.notif-loading { display: flex; flex-direction: column; gap: 12px; }
+.nl-row { border: 1px solid #f1f5f9; border-radius: 14px; padding: 16px; background: linear-gradient(90deg, #f8fafc, #ffffff, #f8fafc); background-size: 200% 100%; animation: shimmer 1.3s infinite; }
+.nl-skel-title { height: 12px; width: 55%; border-radius: 8px; background: rgba(148,163,184,0.25); margin-bottom: 10px; }
+.nl-skel-body { height: 10px; width: 85%; border-radius: 8px; background: rgba(148,163,184,0.18); }
+@keyframes shimmer { 0% { background-position: 0% 0; } 100% { background-position: 200% 0; } }
 
-.toggle-switch { position: relative; width: 44px; height: 24px; }
-.switch-input { opacity: 0; width: 0; height: 0; }
-.switch-label {
-  position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-  background-color: #cbd5e1; border-radius: 34px; transition: .4s;
-}
-.switch-label:before {
-  position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
-  background-color: white; border-radius: 50%; transition: .4s;
-}
-.switch-input:checked + .switch-label { background-color: #16a34a; }
-.switch-input:checked + .switch-label:before { transform: translateX(20px); }
+.pane-header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.pane-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn-outline-sm, .btn-primary-sm { display: inline-flex; align-items: center; gap: 6px; border-radius: 12px; padding: 10px 12px; font-size: 13px; font-weight: 800; border: 1px solid #e2e8f0; cursor: pointer; background: #fff; color: #0f172a; }
+.btn-outline-sm .material-icons, .btn-primary-sm .material-icons { font-size: 18px; }
+.btn-primary-sm { background: #16a34a; border-color: #16a34a; color: #fff; }
+.btn-primary-sm:disabled, .btn-outline-sm:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-outline-sm:hover:not(:disabled) { background: #f8fafc; }
+.btn-primary-sm:hover:not(:disabled) { background: #15803d; border-color: #15803d; }
 
 /* Billing / Subscription tab */
 .billing-tab .billing-summary {
