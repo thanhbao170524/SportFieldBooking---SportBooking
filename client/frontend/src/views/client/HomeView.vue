@@ -157,8 +157,8 @@ import PublicNewsFeed from "@/components/client/home/PublicNewsFeed.vue";
 import MobileAppPromo from "@/components/client/home/MobileAppPromo.vue";
 import VenueCard      from "@/components/client/booking/VenueCard.vue";
 import { clubService } from "@/services/club.service.js";
-import mapboxgl        from "mapbox-gl";
-import 'mapbox-gl/dist/mapbox-gl.css';
+import maplibregl       from "maplibre-gl";
+import 'maplibre-gl/dist/maplibre-gl.css';
 import MapStyleControl from "@/components/common/MapStyleControl.vue";
 
 // ── Default fallback coords: Đà Nẵng ──
@@ -193,7 +193,7 @@ export default {
 
       // Map state
       homeMap: null,
-      homeMapStyle: 'mapbox://styles/mapbox/light-v11',
+      homeMapStyle: `https://maps.vietmap.vn/api/maps/raster/styles/osm-bright/style.json?apikey=${import.meta.env.VITE_VIETMAP_TILEMAP_KEY}`,
       homeMarkers: [],
       mapLoading: false,
     };
@@ -297,17 +297,16 @@ export default {
     },
 
     initMap() {
-      const token = import.meta.env.VITE_MAPBOX_TOKEN;
-      if (!token || !this.$refs.homeMapEl || this.homeMap) return;
+      const key = import.meta.env.VITE_VIETMAP_TILEMAP_KEY;
+      if (!key || !this.$refs.homeMapEl || this.homeMap) return;
 
-      mapboxgl.accessToken = token;
       this.mapLoading = true;
 
       const center = this.userCoords 
         ? [this.userCoords.lng, this.userCoords.lat]
         : [DEFAULT_LNG, DEFAULT_LAT];
 
-      this.homeMap = new mapboxgl.Map({
+      this.homeMap = new maplibregl.Map({
         container: this.$refs.homeMapEl,
         style: this.homeMapStyle,
         center,
@@ -315,7 +314,7 @@ export default {
         attributionControl: false,
       });
 
-      this.homeMap.addControl(new mapboxgl.NavigationControl(), 'top-right');
+      this.homeMap.addControl(new maplibregl.NavigationControl(), 'top-right');
       
       this.homeMap.on('load', () => {
         this.mapLoading = false;
@@ -333,7 +332,7 @@ export default {
       if (this.userCoords) {
         const el = document.createElement('div');
         el.className = 'user-marker';
-        const m = new mapboxgl.Marker(el)
+        const m = new maplibregl.Marker(el)
           .setLngLat([this.userCoords.lng, this.userCoords.lat])
           .addTo(this.homeMap);
         this.homeMarkers.push(m);
@@ -355,10 +354,10 @@ export default {
         el.className = 'home-venue-marker';
         el.innerHTML = `<i class="${SPORT_ICON_CLASS[v.sportType?.toUpperCase()] || 'bx bx-map-pin'} home-venue-marker__icon" aria-hidden="true"></i>`;
         
-        const popup = new mapboxgl.Popup({ offset: 10, closeButton: false })
+        const popup = new maplibregl.Popup({ offset: 10, closeButton: false })
           .setHTML(`<div class="map-p-name">${v.name}</div><div class="map-p-addr">${v.address}</div>`);
 
-        const m = new mapboxgl.Marker(el)
+        const m = new maplibregl.Marker(el)
           .setLngLat([v.longitude, v.latitude])
           .setPopup(popup)
           .addTo(this.homeMap);
@@ -369,7 +368,7 @@ export default {
 
     updateMapBounds() {
       if (!this.homeMap || this.danhSachSan.length === 0) return;
-      const bounds = new mapboxgl.LngLatBounds();
+      const bounds = new maplibregl.LngLatBounds();
       if (this.userCoords) bounds.extend([this.userCoords.lng, this.userCoords.lat]);
       this.danhSachSan.forEach(v => {
         if (v.latitude && v.longitude) bounds.extend([v.longitude, v.latitude]);
