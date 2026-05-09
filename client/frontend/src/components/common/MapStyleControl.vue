@@ -39,38 +39,21 @@ export default {
   },
   emits: ['update:modelValue'],
   data() {
+    const key = import.meta.env.VITE_VIETMAP_TILEMAP_KEY;
     return {
       isOpen: false,
       styles: [
-        { 
-          id: 'streets', 
-          label: 'Đường phố', 
-          url: 'mapbox://styles/mapbox/streets-v12',
-          preview: 'https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/106.6297,10.8231,12,0/120x80?access_token=' + import.meta.env.VITE_MAPBOX_TOKEN
+        {
+          id: 'tm',
+          label: 'Bản đồ vector',
+          url: `https://maps.vietmap.vn/maps/styles/tm/style.json?apikey=${key}`,
+          preview: 'https://maps.vietmap.vn/maps/styles/tm/9/441/231.png?apikey=' + key
         },
-        { 
-          id: 'satellite', 
-          label: 'Vệ tinh', 
-          url: 'mapbox://styles/mapbox/satellite-streets-v12',
-          preview: 'https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/106.6297,10.8231,12,0/120x80?access_token=' + import.meta.env.VITE_MAPBOX_TOKEN
-        },
-        { 
-          id: 'light', 
-          label: 'Sáng', 
-          url: 'mapbox://styles/mapbox/light-v11',
-          preview: 'https://api.mapbox.com/styles/v1/mapbox/light-v11/static/106.6297,10.8231,12,0/120x80?access_token=' + import.meta.env.VITE_MAPBOX_TOKEN
-        },
-        { 
-          id: 'dark', 
-          label: 'Tối', 
-          url: 'mapbox://styles/mapbox/dark-v11',
-          preview: 'https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/106.6297,10.8231,12,0/120x80?access_token=' + import.meta.env.VITE_MAPBOX_TOKEN
-        },
-        { 
-          id: 'outdoors', 
-          label: 'Ngoài trời', 
-          url: 'mapbox://styles/mapbox/outdoors-v12',
-          preview: 'https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/106.6297,10.8231,12,0/120x80?access_token=' + import.meta.env.VITE_MAPBOX_TOKEN
+        {
+          id: 'raster',
+          label: 'Bản đồ raster',
+          url: `https://maps.vietmap.vn/api/maps/raster/styles/osm-bright/style.json?apikey=${key}`,
+          preview: 'https://maps.vietmap.vn/maps/styles/tm/9/441/231.png?apikey=' + key
         }
       ]
     };

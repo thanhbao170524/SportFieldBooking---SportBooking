@@ -13,7 +13,7 @@
               <p class="page-subtitle-p d-none d-md-block">Quản lý các đơn đặt sân và theo dõi lịch trình của bạn</p>
             </div>
           </div>
-          
+
           <div class="user-pill-p d-none d-md-flex">
             <div class="user-pill-p__info">
               <span class="user-pill-p__name">{{ userName }}</span>
@@ -116,7 +116,8 @@
       <div v-else>
         <div class="row g-4">
           <transition-group name="stagger">
-            <div v-for="(order, index) in paginatedOrders" :key="order.id" class="col-lg-6 col-xl-4" :style="{ '--delay': index * 0.1 + 's' }">
+            <div v-for="(order, index) in paginatedOrders" :key="order.id" class="col-lg-6 col-xl-4"
+              :style="{ '--delay': index * 0.1 + 's' }">
               <div class="order-card-p" @click="openDetail(order)">
                 <div class="order-card-p__header">
                   <div class="order-code">#{{ order.bookingCode }}</div>
@@ -124,7 +125,7 @@
                     {{ statusLabel(order.status) }}
                   </div>
                 </div>
-                
+
                 <div class="order-card-p__body">
                   <div class="venue-info">
                     <h3 class="venue-name">{{ order.club?.name || 'Sân bóng' }}</h3>
@@ -132,7 +133,7 @@
                       <span class="material-icons">location_on</span> {{ order.club.address }}
                     </p>
                   </div>
-                  
+
                   <div class="booking-meta">
                     <div class="meta-item">
                       <div class="meta-icon"><span class="material-icons">event</span></div>
@@ -150,7 +151,7 @@
                     </div>
                   </div>
                 </div>
-                
+
                 <div class="order-card-p__footer">
                   <div class="price-wrap">
                     <span class="price-label">Tổng cộng</span>
@@ -161,10 +162,11 @@
                     <span>{{ payLabel(order.payment?.method) }}</span>
                   </div>
                 </div>
-                
+
                 <div class="order-card-p__actions">
                   <button class="action-btn-p detail">Chi tiết</button>
-                  <button v-if="order.status === 'WAITING_PAYMENT'" class="action-btn-p cancel" @click.stop="confirmCancel(order)">Hủy đơn</button>
+                  <button v-if="order.status === 'WAITING_PAYMENT'" class="action-btn-p cancel"
+                    @click.stop="confirmCancel(order)">Hủy đơn</button>
                 </div>
               </div>
             </div>
@@ -177,7 +179,8 @@
             <span class="material-icons">chevron_left</span>
           </button>
           <div class="pag-numbers">
-            <button v-for="p in totalPages" :key="p" :class="['pag-btn num', { active: currentPage === p }]" @click="currentPage = p">
+            <button v-for="p in totalPages" :key="p" :class="['pag-btn num', { active: currentPage === p }]"
+              @click="currentPage = p">
               {{ p }}
             </button>
           </div>
@@ -204,7 +207,7 @@
               <span class="material-icons">close</span>
             </button>
           </div>
-          
+
           <div class="modal-card__body-p">
             <div class="row g-4">
               <!-- Left Column: Booking Details -->
@@ -219,7 +222,7 @@
                         <div class="venue-addr-inner">{{ detailOrder.club?.address }}</div>
                       </div>
                     </div>
-                    
+
                     <div class="slots-list mt-3">
                       <div v-for="item in detailOrder.items" :key="item.id" class="slot-item-p">
                         <div class="slot-info">
@@ -230,14 +233,14 @@
                       </div>
                     </div>
                   </div>
-                  
+
                   <div v-if="detailOrder.note" class="note-section-p">
                     <h4 class="section-title-p">Ghi chú từ khách hàng</h4>
                     <div class="note-box-p">{{ detailOrder.note }}</div>
                   </div>
                 </div>
               </div>
-              
+
               <!-- Right Column: Payment & Summary -->
               <div class="col-md-5">
                 <div class="detail-section">
@@ -260,7 +263,7 @@
                       <span class="method-tag">{{ payLabel(detailOrder.payment?.method) }}</span>
                     </div>
                   </div>
-                  
+
                   <div v-if="detailOrder.payment?.proofImageUrl" class="proof-section mt-4">
                     <h4 class="section-title-p">Minh chứng thanh toán</h4>
                     <div class="proof-card-p" @click="openImage(detailOrder.payment.proofImageUrl)">
@@ -275,12 +278,14 @@
               </div>
             </div>
           </div>
-          
+
           <div class="modal-card__footer-p px-4 pb-4">
-             <button v-if="detailOrder.status === 'WAITING_PAYMENT'" class="btn-premium btn-premium--light text-danger w-100 mb-2" @click="confirmCancel(detailOrder)">
-               Hủy đơn đặt sân
-             </button>
-             <button class="btn-premium btn-premium--emerald shadow-emerald w-100" @click="detailOrder = null">Đóng chi tiết</button>
+            <button v-if="detailOrder.status === 'WAITING_PAYMENT'"
+              class="btn-premium btn-premium--light text-danger w-100 mb-2" @click="confirmCancel(detailOrder)">
+              Hủy đơn đặt sân
+            </button>
+            <button class="btn-premium btn-premium--emerald shadow-emerald w-100" @click="detailOrder = null">Đóng chi
+              tiết</button>
           </div>
         </div>
       </div>
@@ -293,8 +298,9 @@
           <div class="cancel-modal-content py-4 text-center">
             <div class="alert-icon-p"><span class="material-icons">warning_amber</span></div>
             <h3 class="modal-title-p mt-3">Xác nhận hủy đơn</h3>
-            <p class="modal-text-p px-4">Bạn có chắc muốn hủy đơn đặt sân <strong>#{{ cancelTarget.bookingCode }}</strong>? Hành động này không thể hoàn tác.</p>
-            
+            <p class="modal-text-p px-4">Bạn có chắc muốn hủy đơn đặt sân <strong>#{{ cancelTarget.bookingCode
+                }}</strong>? Hành động này không thể hoàn tác.</p>
+
             <div class="d-flex gap-2 px-4 mt-4">
               <button class="btn-premium btn-premium--light flex-grow-1" @click="cancelTarget = null">Quay lại</button>
               <button class="btn-premium btn-premium--dark flex-grow-1" @click="proceedCancel" :disabled="isProcessing">
@@ -335,11 +341,11 @@ export default {
     userName() { return this.user?.fullName || 'Người dùng'; },
     userPhone() { return this.user?.phone || ''; },
     userInitials() { return this.userName.split(' ').map(n => n[0]).join('').slice(0, 2); },
-    
-    totalSpent() { 
+
+    totalSpent() {
       return this.orders
         .filter(o => o.status === 'COMPLETED' || o.status === 'CONFIRMED')
-        .reduce((s, o) => s + Number(o.finalAmount), 0); 
+        .reduce((s, o) => s + Number(o.finalAmount), 0);
     },
     pendingCount() { return this.orders.filter(o => ['WAITING_PAYMENT', 'PENDING'].includes(o.status)).length; },
     cancelledCount() { return this.orders.filter(o => o.status === 'CANCELLED').length; },
@@ -358,7 +364,7 @@ export default {
       }
       return list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     },
-    
+
     totalPages() { return Math.ceil(this.filteredOrders.length / this.pageSize); },
     paginatedOrders() {
       const start = (this.currentPage - 1) * this.pageSize;
@@ -387,7 +393,7 @@ export default {
     },
 
     formatPrice(v) { return new Intl.NumberFormat('vi-VN').format(v); },
-    formatDate(d) { 
+    formatDate(d) {
       if (!d) return '—';
       return new Date(d).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
     },
@@ -398,9 +404,9 @@ export default {
     },
     formatTimeRange(items) {
       if (!items?.length) return '—';
-      const sorted = [...items].sort((a,b) => new Date(a.timeSlot.startTime) - new Date(b.timeSlot.startTime));
+      const sorted = [...items].sort((a, b) => new Date(a.timeSlot.startTime) - new Date(b.timeSlot.startTime));
       const start = new Date(sorted[0].timeSlot.startTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-      const end = new Date(sorted[sorted.length-1].timeSlot.endTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+      const end = new Date(sorted[sorted.length - 1].timeSlot.endTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
       return `${start} – ${end}`;
     },
 
@@ -424,10 +430,10 @@ export default {
       this.dateFilter = '';
       this.currentPage = 1;
     },
-    
+
     openDetail(o) { this.detailOrder = o; },
     confirmCancel(o) { this.cancelTarget = o; },
-    
+
     async proceedCancel() {
       if (this.isProcessing) return;
       this.isProcessing = true;

@@ -13,8 +13,11 @@
 </template>
 
 <script>
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+
+const VIETMAP_KEY = import.meta.env.VITE_VIETMAP_TILEMAP_KEY;
+const VIETMAP_STYLE = `https://maps.vietmap.vn/api/maps/raster/styles/osm-bright/style.json?apikey=${VIETMAP_KEY}`;
 
 export default {
   name: 'LocationPicker',
@@ -31,23 +34,21 @@ export default {
     };
   },
   mounted() {
-    mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
-
     // Default to a central coordinate if null (e.g. Da Nang)
     const initLng = this.longitude || 108.2022;
     const initLat = this.latitude || 16.0544;
 
-    this.map = new mapboxgl.Map({
+    this.map = new maplibregl.Map({
       container: this.$refs.mapContainer,
-      style: 'mapbox://styles/mapbox/streets-v12',
+      style: VIETMAP_STYLE,
       center: [initLng, initLat],
       zoom: 12
     });
 
-    this.map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    this.map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
     if (this.latitude && this.longitude) {
-      this.marker = new mapboxgl.Marker({ color: '#10b981' })
+      this.marker = new maplibregl.Marker({ color: '#10b981' })
         .setLngLat([this.longitude, this.latitude])
         .addTo(this.map);
     }
@@ -58,7 +59,7 @@ export default {
       this.longitude = lng;
       
       if (!this.marker) {
-        this.marker = new mapboxgl.Marker({ color: '#10b981' })
+        this.marker = new maplibregl.Marker({ color: '#10b981' })
           .setLngLat([lng, lat])
           .addTo(this.map);
       } else {
@@ -87,7 +88,7 @@ export default {
       if (!this.map) return;
       if (this.latitude && this.longitude) {
         if (!this.marker) {
-          this.marker = new mapboxgl.Marker({ color: '#10b981' })
+          this.marker = new maplibregl.Marker({ color: '#10b981' })
             .setLngLat([this.longitude, this.latitude])
             .addTo(this.map);
         } else {

@@ -259,8 +259,8 @@
 </template>
 
 <script>
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import BookingFilters from "@/components/client/booking/BookingFilters.vue";
 import VenueCard      from "@/components/client/booking/VenueCard.vue";
 import LoadingView    from "@/components/common/LoadingView.vue";
@@ -294,7 +294,7 @@ export default {
       userCoords:         null, // { lat: number, lng: number }
       // Map state
       bookingMap:         null,
-      bookingMapStyle:    'mapbox://styles/mapbox/streets-v12',
+      bookingMapStyle:    `https://maps.vietmap.vn/api/maps/raster/styles/osm-bright/style.json?apikey=${import.meta.env.VITE_VIETMAP_TILEMAP_KEY}`,
       bookingMarkers:     [],
       bookingPopups:      {},
       mapLoading:         false,
@@ -576,17 +576,17 @@ export default {
         // Re-fit in case bounds changed or weren't calculated on 0 size
         const withCoords = this.venues.filter(v => v.latitude && v.longitude);
         if (withCoords.length > 1) {
-          const bounds = new mapboxgl.LngLatBounds();
+          const bounds = new maplibregl.LngLatBounds();
           withCoords.forEach(v => bounds.extend([v.longitude, v.latitude]));
           this.bookingMap.fitBounds(bounds, { padding: 50, maxZoom: 14, duration: 400 });
         }
       }
     },
 
-    // ── Init Mapbox map in booking page ──
+    // ── Init VietMap map in booking page ──
     initBookingMap() {
-      const token = import.meta.env.VITE_MAPBOX_TOKEN;
-      if (!token || !this.$refs.bookingMapEl) return;
+      const key = import.meta.env.VITE_VIETMAP_TILEMAP_KEY;
+      if (!key || !this.$refs.bookingMapEl) return;
 
       if (this.bookingMap) {
         // Map đã tồn tại, chỉ cần render lại markers
@@ -594,7 +594,6 @@ export default {
         return;
       }
 
-      mapboxgl.accessToken = token;
       this.mapLoading = true;
 
       // Tính center từ danh sách venues có toạ độ
@@ -603,7 +602,7 @@ export default {
         ? [withCoords[0].longitude, withCoords[0].latitude]
         : [106.6297, 10.8231]; // fallback HCM
 
-      this.bookingMap = new mapboxgl.Map({
+      this.bookingMap = new maplibregl.Map({
         container: this.$refs.bookingMapEl,
         style: this.bookingMapStyle,
         center,
@@ -612,7 +611,7 @@ export default {
       });
 
       this.bookingMap.addControl(
-        new mapboxgl.AttributionControl({ compact: true }), 'bottom-right'
+        new maplibregl.AttributionControl({ compact: true }), 'bottom-right'
       );
 
       this.bookingMap.on('load', () => {
@@ -620,7 +619,7 @@ export default {
         this.renderBookingMarkers();
         // Fit map to show all markers
         if (withCoords.length > 1) {
-          const bounds = new mapboxgl.LngLatBounds();
+          const bounds = new maplibregl.LngLatBounds();
           withCoords.forEach(v => bounds.extend([v.longitude, v.latitude]));
           this.bookingMap.fitBounds(bounds, { padding: 50, maxZoom: 14, duration: 800 });
         }
@@ -663,7 +662,7 @@ export default {
         const imgSrc = venue.image || 'https://images.unsplash.com/photo-1562552476-3f8e2f59a2b7?w=600&q=80';
         const distStr = venue.distance ? ` · ${venue.distance} km` : '';
 
-        const popup = new mapboxgl.Popup({
+        const popup = new maplibregl.Popup({
           offset: 12,
           closeButton: false,
           maxWidth: '260px',
@@ -689,7 +688,7 @@ export default {
 
         this.bookingPopups[venue.id] = popup;
 
-        const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+        const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
           .setLngLat([venue.longitude, venue.latitude])
           .setPopup(popup)
           .addTo(this.bookingMap);
