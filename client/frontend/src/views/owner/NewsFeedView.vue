@@ -135,7 +135,8 @@
             <div class="form-grid">
               <div class="field full">
                 <label>Tiêu đề bài đăng <span class="req">*</span> (tối đa {{ POST_TITLE_MAX }} ký tự)</label>
-                <input v-model="form.title" :maxlength="POST_TITLE_MAX" placeholder="VD: Khung giờ vàng tối nay đang trống!" />
+                <input v-model="form.title" :maxlength="POST_TITLE_MAX" :class="{ 'is-invalid-owner': errors.title }" placeholder="VD: Khung giờ vàng tối nay đang trống!" @input="validateField('title')" />
+                <span v-if="errors.title" class="error-text-owner">{{ errors.title }}</span>
                 <span class="field-hint">{{ form.title.length }} / {{ POST_TITLE_MAX }}</span>
               </div>
 
@@ -152,12 +153,14 @@
 
               <div class="field">
                 <label>Hết hạn vào</label>
-                <input type="datetime-local" v-model="form.expiresAt" />
+                <input type="datetime-local" v-model="form.expiresAt" :class="{ 'is-invalid-owner': errors.expiresAt }" @input="validateField('expiresAt')" />
+                <span v-if="errors.expiresAt" class="error-text-owner">{{ errors.expiresAt }}</span>
               </div>
 
               <div class="field full">
                 <label>Nội dung chi tiết <span class="req">*</span> (tối đa {{ POST_CONTENT_MAX }} ký tự)</label>
-                <textarea v-model="form.content" :maxlength="POST_CONTENT_MAX" rows="6" placeholder="Nhập nội dung bài đăng..."></textarea>
+                <textarea v-model="form.content" :maxlength="POST_CONTENT_MAX" :class="{ 'is-invalid-owner': errors.content }" rows="6" placeholder="Nhập nội dung bài đăng..." @input="validateField('content')"></textarea>
+                <span v-if="errors.content" class="error-text-owner">{{ errors.content }}</span>
                 <span class="field-hint">{{ form.content.length }} / {{ POST_CONTENT_MAX }}</span>
               </div>
 
@@ -179,7 +182,8 @@
 
               <div class="field" v-if="form.linkedCourtId">
                 <label>Ngày áp dụng</label>
-                <input type="date" v-model="form.linkedDate" />
+                <input type="date" v-model="form.linkedDate" :class="{ 'is-invalid-owner': errors.linkedDate }" @input="validateField('linkedDate')" />
+                <span v-if="errors.linkedDate" class="error-text-owner">{{ errors.linkedDate }}</span>
               </div>
             </div>
           </div>
@@ -225,6 +229,12 @@ export default {
         content: '',
         imageUrl: '',
         linkedCourtId: undefined,
+        linkedDate: '',
+        expiresAt: ''
+      },
+      errors: {
+        title: '',
+        content: '',
         linkedDate: '',
         expiresAt: ''
       }
@@ -290,6 +300,43 @@ export default {
         this.loading = false;
       }
     },
+    validateField(field) {
+      const val = String(this.form[field] || '').trim();
+      const titleRegex = /^[a-zA-Z0-9\sÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠƯẠ-ỹ!?,.\[\]()\-]+$/;
+
+      switch (field) {
+        case 'title':
+          if (!val) this.errors.title = 'Vui lòng nhập tiêu đề';
+          else if (val.length < 5) this.errors.title = 'Tiêu đề phải có ít nhất 5 ký tự';
+          else if (!titleRegex.test(val)) this.errors.title = 'Tiêu đề không được chứa ký tự lạ';
+          else this.errors.title = '';
+          break;
+        case 'content':
+          if (!val) this.errors.content = 'Vui lòng nhập nội dung';
+          else if (val.length < 10) this.errors.content = 'Nội dung phải có ít nhất 10 ký tự';
+          else this.errors.content = '';
+          break;
+        case 'linkedDate':
+          if (val) {
+            const d = new Date(val);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (d < today) this.errors.linkedDate = 'Ngày không được ở quá khứ';
+            else this.errors.linkedDate = '';
+          } else {
+            this.errors.linkedDate = '';
+          }
+          break;
+        case 'expiresAt':
+          if (val) {
+            if (new Date(val) < new Date()) this.errors.expiresAt = 'Thời gian không được ở quá khứ';
+            else this.errors.expiresAt = '';
+          } else {
+            this.errors.expiresAt = '';
+          }
+          break;
+      }
+    },
     openAddModal() {
       this.editingPostId = null;
       this.resetForm();
@@ -322,14 +369,20 @@ export default {
     async submitPost() {
       const t = (this.form.title || '').trim();
       const c = (this.form.content || '').trim();
-      if (!t || !c) {
-        toast.warning('Vui lòng nhập tiêu đề và nội dung');
+      const linkedDate = this.form.linkedDate;
+      const expiresAt = this.form.expiresAt;
+
+      // Final validation
+      this.validateField('title');
+      this.validateField('content');
+      this.validateField('linkedDate');
+      this.validateField('expiresAt');
+
+      if (this.errors.title || this.errors.content || this.errors.linkedDate || this.errors.expiresAt) {
+        toast.error('Vui lòng kiểm tra lại thông tin bài đăng');
         return;
       }
-      if (t.length > this.POST_TITLE_MAX || c.length > this.POST_CONTENT_MAX) {
-        toast.warning(`Tiêu đề tối đa ${this.POST_TITLE_MAX} ký tự, nội dung tối đa ${this.POST_CONTENT_MAX} ký tự`);
-        return;
-      }
+
       this.submitting = true;
       try {
         const basePayload = {
@@ -596,4 +649,24 @@ select { flex: 1; border: none; background: transparent; font-family: inherit; f
 .empty-state .material-icons { font-size: 64px; color: #e2e8f0; margin-bottom: 16px; }
 .empty-state h3 { font-size: 20px; font-weight: 800; color: #0f172a; margin: 0 0 8px; }
 .empty-state p { font-size: 15px; color: #94a3b8; }
+.error-text-owner {
+  display: block;
+  font-size: 12px;
+  color: #ef4444;
+  margin-top: -5px;
+  margin-bottom: 5px;
+  font-weight: 600;
+  animation: fadeInOwner 0.2s ease-out;
+}
+
+.is-invalid-owner {
+  border-color: #ef4444 !important;
+  background-color: #fff1f2 !important;
+}
+
+@keyframes fadeInOwner {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 </style>

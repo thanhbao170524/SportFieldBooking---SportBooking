@@ -629,20 +629,36 @@ export default {
         if (this.currentTab === 'profile') {
           const fullName = String(this.profile.fullName || '').trim();
           const phone = String(this.profile.phone || '').trim();
-          const bio = String(this.profile.bio || '');
+          const bio = String(this.profile.bio || '').trim();
 
+          const nameRegex = /^[a-zA-Z0-9\sÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠƯẠ-ỹ]+$/;
+          const numericRegex = /^\d+$/;
+
+          if (!fullName) {
+            toast.error('Vui lòng nhập họ và tên');
+            return;
+          }
           if (fullName.length < 2) {
             toast.error('Họ và tên phải có ít nhất 2 ký tự');
             return;
           }
-          if (fullName.length > 100) {
-            toast.error('Họ và tên tối đa 100 ký tự');
+          if (!nameRegex.test(fullName)) {
+            toast.error('Họ và tên không được chứa ký tự đặc biệt');
             return;
           }
-          if (phone && !phoneVN.test(phone)) {
-            toast.error('Số điện thoại không hợp lệ (VD: 0901234567 hoặc +84901234567)');
-            return;
+
+          if (phone) {
+            const normalizedPhone = phone.replace(/\s/g, '');
+            if (!numericRegex.test(normalizedPhone)) {
+              toast.error('Số điện thoại chỉ được chứa chữ số');
+              return;
+            }
+            if (!phoneVN.test(normalizedPhone)) {
+              toast.error('Số điện thoại không hợp lệ (phải đủ 10 số và bắt đầu bằng 0 hoặc +84)');
+              return;
+            }
           }
+
           if (bio && bio.length > 500) {
             toast.error('Tiểu sử tối đa 500 ký tự');
             return;

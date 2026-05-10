@@ -308,18 +308,21 @@
                <div class="form-grid">
                   <div class="form-field full">
                     <label>Tiêu đề bài viết</label>
-                    <div class="input-with-icon-p">
+                    <div class="input-with-icon-p" :class="{ 'is-invalid-social': createErrors.title }">
                       <span class="material-icons">title</span>
-                      <input v-model="createForm.title" type="text" placeholder="Tìm đối thủ, tìm bạn chơi..." />
+                      <input v-model="createForm.title" type="text" placeholder="Tìm đối thủ, tìm bạn chơi..." @input="validateCreateField('title')" />
                     </div>
+                    <span v-if="createErrors.title" class="error-text-social">{{ createErrors.title }}</span>
                   </div>
                   <div class="form-field full">
                     <label>Nội dung chi tiết</label>
-                    <textarea v-model="createForm.content" rows="4" placeholder="Mô tả trình độ, phí chia sẻ, yêu cầu..."></textarea>
+                    <textarea v-model="createForm.content" :class="{ 'is-invalid-social': createErrors.content }" rows="4" placeholder="Mô tả trình độ, phí chia sẻ, yêu cầu..." @input="validateCreateField('content')"></textarea>
+                    <span v-if="createErrors.content" class="error-text-social">{{ createErrors.content }}</span>
                   </div>
                   <div class="form-field">
                     <label>Ngày dự kiến</label>
-                    <input v-model="createForm.linkedDate" type="date" />
+                    <input v-model="createForm.linkedDate" type="date" :class="{ 'is-invalid-social': createErrors.linkedDate }" @input="validateCreateField('linkedDate')" />
+                    <span v-if="createErrors.linkedDate" class="error-text-social">{{ createErrors.linkedDate }}</span>
                   </div>
                   <div class="form-field">
                     <label>Trình độ</label>
@@ -411,8 +414,13 @@ export default {
         title: '',
         content: '',
         clubId: '',
-        linkedDate: new Date().toISOString().split('T')[0],
-        skillSelection: 'BEGINNER'
+        linkedDate: '',
+        skillSelection: 'INTERMEDIATE'
+      },
+      createErrors: {
+        title: '',
+        content: '',
+        linkedDate: ''
       },
       levels: [
         { val: 'BEGINNER', label: 'Giao lưu' },
@@ -546,10 +554,20 @@ export default {
       } catch (e) { console.error(e); }
     },
     async handleCreatePost() {
-      if (!this.createForm.title || !this.createForm.content) {
-        toast.warning("Vui lòng điền đủ thông tin bài đăng");
+      const title = (this.createForm.title || '').trim();
+      const content = (this.createForm.content || '').trim();
+      const linkedDate = this.createForm.linkedDate;
+
+      // Final check
+      this.validateCreateField('title');
+      this.validateCreateField('content');
+      this.validateCreateField('linkedDate');
+
+      if (this.createErrors.title || this.createErrors.content || this.createErrors.linkedDate) {
+        toast.error("Vui lòng sửa các lỗi trong form");
         return;
       }
+
       this.saving = true;
       try {
         const contentWithSkill = `[${this.createForm.skillSelection}] ${this.createForm.content}`;
@@ -565,6 +583,35 @@ export default {
         toast.error(e.response?.data?.message || "Lỗi khi đăng bài");
       } finally {
         this.saving = false;
+      }
+    },
+    validateCreateField(field) {
+      const val = String(this.createForm[field] || '').trim();
+      const titleRegex = /^[a-zA-Z0-9\sÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠƯẠ-ỹ!?,.\[\]()\-]+$/;
+
+      switch (field) {
+        case 'title':
+          if (!val) this.createErrors.title = 'Vui lòng nhập tiêu đề';
+          else if (val.length < 5) this.createErrors.title = 'Tiêu đề phải có ít nhất 5 ký tự';
+          else if (!titleRegex.test(val)) this.createErrors.title = 'Tiêu đề không được chứa ký tự lạ';
+          else this.createErrors.title = '';
+          break;
+        case 'content':
+          if (!val) this.createErrors.content = 'Vui lòng nhập nội dung';
+          else if (val.length < 10) this.createErrors.content = 'Nội dung phải có ít nhất 10 ký tự';
+          else this.createErrors.content = '';
+          break;
+        case 'linkedDate':
+          if (val) {
+            const d = new Date(val);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (d < today) this.createErrors.linkedDate = 'Ngày không được ở quá khứ';
+            else this.createErrors.linkedDate = '';
+          } else {
+            this.createErrors.linkedDate = '';
+          }
+          break;
       }
     },
     async toggleLike(post) {
@@ -983,4 +1030,26 @@ export default {
   .header-actions { width: 100%; }
   .btn-create { width: 100%; justify-content: center; }
 }
+.error-text-social {
+  display: block;
+  font-size: 12px;
+  color: #ef4444;
+  margin-top: 5px;
+  font-weight: 500;
+  animation: fadeInSocial 0.2s ease-out;
+}
+
+.is-invalid-social {
+  border-color: #ef4444 !important;
+}
+
+.input-with-icon-p.is-invalid-social {
+  border-color: #ef4444 !important;
+}
+
+@keyframes fadeInSocial {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 </style>

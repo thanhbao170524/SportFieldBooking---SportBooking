@@ -98,27 +98,31 @@
                     <div class="col-md-6">
                       <div class="form-group-p">
                         <label class="form-label-p">Họ và tên</label>
-                        <input v-model="form.fullName" type="text" class="form-control-p" placeholder="Nguyễn Văn A" required />
+                        <input v-model="form.fullName" type="text" class="form-control-p" :class="{ 'is-invalid-p': errors.fullName }" placeholder="Nguyễn Văn A" @input="validateField('fullName')" required />
+                        <span v-if="errors.fullName" class="error-text-p">{{ errors.fullName }}</span>
                       </div>
                     </div>
                     <div class="col-md-6">
                       <div class="form-group-p">
                         <label class="form-label-p">Số điện thoại</label>
-                        <input v-model="form.phone" type="tel" class="form-control-p" placeholder="0123 456 789" />
+                        <input v-model="form.phone" type="tel" class="form-control-p" :class="{ 'is-invalid-p': errors.phone }" placeholder="0123 456 789" @input="validateField('phone')" />
+                        <span v-if="errors.phone" class="error-text-p">{{ errors.phone }}</span>
                       </div>
                     </div>
                     <div class="col-12">
                       <div class="form-group-p">
                         <label class="form-label-p">Địa chỉ hiện tại</label>
-                        <textarea v-model="form.address" class="form-control-p" rows="2" placeholder="Số nhà, tên đường, Phường/Xã..."></textarea>
+                        <textarea v-model="form.address" class="form-control-p" :class="{ 'is-invalid-p': errors.address }" rows="2" placeholder="Số nhà, tên đường, Phường/Xã..." @input="validateField('address')"></textarea>
+                        <span v-if="errors.address" class="error-text-p">{{ errors.address }}</span>
                       </div>
                     </div>
                     <div class="col-md-6">
                       <div class="form-group-p">
                         <label class="form-label-p">Ngày sinh nhật</label>
                         <div class="input-with-icon">
-                          <input v-model="form.dateOfBirth" type="date" class="form-control-p" />
+                          <input v-model="form.dateOfBirth" type="date" class="form-control-p" :class="{ 'is-invalid-p': errors.dateOfBirth }" @input="validateField('dateOfBirth')" />
                         </div>
+                        <span v-if="errors.dateOfBirth" class="error-text-p">{{ errors.dateOfBirth }}</span>
                       </div>
                     </div>
                     <div class="col-md-6">
@@ -136,7 +140,8 @@
                     <div class="col-12">
                       <div class="form-group-p">
                         <label class="form-label-p">Tiểu sử & Giới thiệu</label>
-                        <textarea v-model="form.bio" class="form-control-p" rows="4" placeholder="Chia sẻ về sở thích, trình độ chơi thể thao của bạn..."></textarea>
+                        <textarea v-model="form.bio" class="form-control-p" :class="{ 'is-invalid-p': errors.bio }" rows="4" placeholder="Chia sẻ về sở thích, trình độ chơi thể thao của bạn..." @input="validateField('bio')"></textarea>
+                        <span v-if="errors.bio" class="error-text-p">{{ errors.bio }}</span>
                       </div>
                     </div>
                   </div>
@@ -473,6 +478,18 @@ export default {
         clubId: '',
         type: 'TEAM_MATCHING',
         linkedDate: ''
+      },
+      errors: {
+        fullName: '',
+        phone: '',
+        address: '',
+        dateOfBirth: '',
+        bio: ''
+      },
+      postErrors: {
+        title: '',
+        content: '',
+        linkedDate: ''
       }
     };
   },
@@ -599,32 +616,125 @@ export default {
          console.error("Lỗi khi tải danh sách CLB:", e); 
        }
     },
+    validateField(field) {
+      const val = String(this.form[field] || '').trim();
+      const phoneVN = /^(0|\+84)[0-9]{9}$/;
+      const nameRegex = /^[a-zA-Z0-9\sÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠƯẠ-ỹ]+$/;
+      const addressRegex = /^[a-zA-Z0-9\sÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠƯẠ-ỹ,./-]+$/;
+
+      switch (field) {
+        case 'fullName':
+          if (!val) this.errors.fullName = 'Vui lòng nhập họ và tên';
+          else if (val.length < 2) this.errors.fullName = 'Họ và tên phải có ít nhất 2 ký tự';
+          else if (!nameRegex.test(val)) this.errors.fullName = 'Không được chứa ký tự đặc biệt';
+          else this.errors.fullName = '';
+          break;
+        case 'phone':
+          if (val) {
+            const normalized = val.replace(/\s/g, '');
+            if (!/^\d+$/.test(normalized)) this.errors.phone = 'Số điện thoại chỉ được chứa chữ số';
+            else if (!phoneVN.test(normalized)) this.errors.phone = 'Số điện thoại không hợp lệ';
+            else this.errors.phone = '';
+          } else {
+            this.errors.phone = '';
+          }
+          break;
+        case 'address':
+          if (val && !addressRegex.test(val)) this.errors.address = 'Địa chỉ chứa ký tự không hợp lệ';
+          else this.errors.address = '';
+          break;
+        case 'dateOfBirth':
+          if (val) {
+            const d = new Date(val);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (d > today) this.errors.dateOfBirth = 'Ngày sinh không được ở tương lai';
+            else this.errors.dateOfBirth = '';
+          } else {
+            this.errors.dateOfBirth = '';
+          }
+          break;
+        case 'bio':
+          if (val.length > 500) this.errors.bio = 'Tối đa 500 ký tự';
+          else this.errors.bio = '';
+          break;
+      }
+    },
+    validatePostField(field) {
+      const val = String(this.matchForm[field] || '').trim();
+      const titleRegex = /^[a-zA-Z0-9\sÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠƯẠ-ỹ!?,.\[\]()\-]+$/;
+
+      switch (field) {
+        case 'title':
+          if (!val) this.postErrors.title = 'Vui lòng nhập tiêu đề';
+          else if (val.length < 5) this.postErrors.title = 'Tiêu đề phải có ít nhất 5 ký tự';
+          else if (!titleRegex.test(val)) this.postErrors.title = 'Tiêu đề chứa ký tự không hợp lệ';
+          else this.postErrors.title = '';
+          break;
+        case 'content':
+          if (!val) this.postErrors.content = 'Vui lòng nhập nội dung';
+          else if (val.length < 10) this.postErrors.content = 'Nội dung phải có ít nhất 10 ký tự';
+          else this.postErrors.content = '';
+          break;
+        case 'linkedDate':
+          if (val) {
+            const d = new Date(val);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (d < today) this.postErrors.linkedDate = 'Ngày thi đấu không được ở quá khứ';
+            else this.postErrors.linkedDate = '';
+          } else {
+            this.postErrors.linkedDate = '';
+          }
+          break;
+      }
+    },
     async updateProfile() {
       const fullName = String(this.form.fullName || '').trim();
       const phone = String(this.form.phone || '').trim();
-      const address = String(this.form.address || '');
-      const bio = String(this.form.bio || '');
+      const address = String(this.form.address || '').trim();
+      const bio = String(this.form.bio || '').trim();
 
+      // Validation Regex
+      const nameRegex = /^[a-zA-Z0-9\sÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠƯẠ-ỹ]+$/;
+      const addressRegex = /^[a-zA-Z0-9\sÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠƯẠ-ỹ,./-]+$/; // Allow , . / - for address
+      const numericRegex = /^\d+$/;
+
+      if (!fullName) {
+        toast.error("Vui lòng nhập họ và tên");
+        return;
+      }
       if (fullName.length < 2) {
         toast.error("Họ và tên phải có ít nhất 2 ký tự");
         return;
       }
-      if (fullName.length > 100) {
-        toast.error("Họ và tên tối đa 100 ký tự");
+      if (!nameRegex.test(fullName)) {
+        toast.error("Họ và tên không được chứa ký tự đặc biệt");
         return;
       }
-      if (phone && !phoneVN.test(phone)) {
-        toast.error("Số điện thoại không hợp lệ (VD: 0901234567 hoặc +84901234567)");
+
+      if (phone) {
+        const normalizedPhone = phone.replace(/\s/g, '');
+        if (!numericRegex.test(normalizedPhone)) {
+          toast.error("Số điện thoại chỉ được chứa chữ số");
+          return;
+        }
+        if (!phoneVN.test(normalizedPhone)) {
+          toast.error("Số điện thoại không hợp lệ (phải đủ 10 số và bắt đầu bằng 0 hoặc +84)");
+          return;
+        }
+      }
+
+      if (address && !addressRegex.test(address)) {
+        toast.error("Địa chỉ không được chứa ký tự đặc biệt (ngoại trừ dấu phẩy, chấm, gạch chéo)");
         return;
       }
-      if (address && address.length > 255) {
-        toast.error("Địa chỉ tối đa 255 ký tự");
-        return;
-      }
+
       if (bio && bio.length > 500) {
         toast.error("Tiểu sử tối đa 500 ký tự");
         return;
       }
+
       if (this.form.dateOfBirth) {
         const d = new Date(this.form.dateOfBirth);
         if (isNaN(d.getTime())) {
@@ -816,10 +926,44 @@ export default {
       return "Vừa xong";
     },
     async handleCreateMatch() {
-       if (!this.matchForm.title || !this.matchForm.content) {
-         toast.warning("Vui lòng nhập đủ thông tin kèo");
+       const title = (this.matchForm.title || '').trim();
+       const content = (this.matchForm.content || '').trim();
+       const linkedDate = this.matchForm.linkedDate;
+
+       if (!title) {
+         toast.error("Vui lòng nhập tiêu đề bài viết");
          return;
        }
+       if (title.length < 5) {
+         toast.error("Tiêu đề phải có ít nhất 5 ký tự");
+         return;
+       }
+       // Regex cho phép chữ, số, tiếng Việt và một số ký tự câu thông dụng
+       const titleRegex = /^[a-zA-Z0-9\sÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠƯẠ-ỹ!?,.\[\]()\-]+$/;
+       if (!titleRegex.test(title)) {
+         toast.error("Tiêu đề không được chứa ký tự đặc biệt lạ");
+         return;
+       }
+
+       if (!content) {
+         toast.error("Vui lòng nhập nội dung chi tiết");
+         return;
+       }
+       if (content.length < 10) {
+         toast.error("Nội dung bài viết phải có ít nhất 10 ký tự");
+         return;
+       }
+
+       if (linkedDate) {
+         const d = new Date(linkedDate);
+         const today = new Date();
+         today.setHours(0, 0, 0, 0);
+         if (d < today) {
+           toast.error("Ngày thi đấu không được trong quá khứ");
+           return;
+         }
+       }
+
        this.saving = true;
        try {
          const payload = {
@@ -1569,5 +1713,28 @@ export default {
   color: #ef4444;
   border-color: #fee2e2;
 }
+.error-text-p {
+  display: block;
+  font-size: 12px;
+  color: #ef4444;
+  margin-top: 5px;
+  font-weight: 500;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.form-control-p.is-invalid-p {
+  border-color: #ef4444 !important;
+  background-color: #fef2f2;
+}
+
+.form-control-p.is-invalid-p:focus {
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1) !important;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 </style>
 

@@ -289,6 +289,7 @@ export default {
   methods: {
     clearError(field) {
       this.errors[field] = ''
+      this.valid[field] = false
     },
 
     updateStrength() {
@@ -315,13 +316,21 @@ export default {
         if (!v) { this.errors.fullName = 'Vui lòng nhập họ và tên.'; return }
         if (v.length < 2) { this.errors.fullName = 'Họ và tên phải có ít nhất 2 ký tự.'; return }
         if (v.length > 100) { this.errors.fullName = 'Họ và tên không quá 100 ký tự.'; return }
+        if (!/^[a-zA-Z0-9\sÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠƯẠ-ỹ]+$/.test(v)) {
+          this.errors.fullName = 'Họ và tên không được chứa ký tự đặc biệt.';
+          return;
+        }
         this.valid.fullName = true
       }
 
       if (field === 'email') {
         const v = this.form.email.trim()
         if (!v) { this.errors.email = 'Vui lòng nhập địa chỉ email.'; return }
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { this.errors.email = 'Địa chỉ email không hợp lệ.'; return }
+        // Thắt chặt regex email: Chỉ cho phép chữ cái, số và dấu chấm (.) ở phần tên người dùng
+        if (!/^[a-zA-Z0-9.]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(v)) { 
+          this.errors.email = 'Địa chỉ email không hợp lệ (không được chứa ký tự đặc biệt ngoài dấu @ và .)'; 
+          return 
+        }
         this.valid.email = true
       }
 

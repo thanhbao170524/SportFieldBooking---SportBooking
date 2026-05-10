@@ -80,11 +80,10 @@
                 <label>Phí dịch vụ (VNĐ)</label>
                 <div class="input-with-unit">
                   <input 
-                    type="number" 
-                    v-model.number="service.price" 
+                    type="text" 
+                    v-model="service.price" 
                     placeholder="0" 
-                    min="0"
-                    step="1000"
+                    @input="e => service.price = e.target.value.replace(/[^0-9]/g, '')"
                   />
                   <span class="unit">đ</span>
                 </div>
@@ -132,24 +131,28 @@
                 v-model.trim="createAmenityForm.name"
                 type="text"
                 class="form-input"
+                :class="{ 'is-invalid': createErrors.name }"
                 placeholder="Ví dụ: Thuê bóng, Nước uống, Wifi..."
                 maxlength="60"
                 autocomplete="off"
+                @input="validateCreateForm('name')"
               />
+              <span v-if="createErrors.name" class="error-msg">{{ createErrors.name }}</span>
             </div>
             <div class="form-row">
               <label class="form-label">Phí dịch vụ (VNĐ)</label>
               <div class="input-with-unit">
                 <input
-                  v-model.number="createAmenityForm.price"
-                  type="number"
+                  v-model="createAmenityForm.price"
+                  type="text"
                   class="form-input"
+                  :class="{ 'is-invalid': createErrors.price }"
                   placeholder="0"
-                  min="0"
-                  step="1000"
+                  @input="onPriceInput"
                 />
                 <span class="unit">đ</span>
               </div>
+              <span v-if="createErrors.price" class="error-msg">{{ createErrors.price }}</span>
               <p class="form-hint">
                 Nhập 0 nếu đây là tiện ích miễn phí.
               </p>
@@ -191,6 +194,10 @@ export default {
       createAmenityForm: {
         name: '',
         price: 0,
+      },
+      createErrors: {
+        name: '',
+        price: '',
       },
     };
   },
@@ -298,7 +305,37 @@ export default {
 
     openCreateAmenity() {
       this.createAmenityForm = { name: '', price: 0 };
+      this.createErrors = { name: '', price: '' };
       this.showCreateAmenity = true;
+    },
+    validateCreateForm(field) {
+      if (field === 'name') {
+        const val = this.createAmenityForm.name.trim();
+        if (!val) {
+          this.createErrors.name = 'Vui lòng nhập tên dịch vụ';
+        } else if (val.length < 2) {
+          this.createErrors.name = 'Tên phải có ít nhất 2 ký tự';
+        } else if (!/^[a-zA-Z0-9\sÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠƯẠ-ỹ]+$/.test(val)) {
+          this.createErrors.name = 'Không được chứa ký tự đặc biệt';
+        } else {
+          this.createErrors.name = '';
+        }
+      }
+      if (field === 'price') {
+        const val = String(this.createAmenityForm.price);
+        if (val === '') {
+          this.createErrors.price = 'Vui lòng nhập phí dịch vụ';
+        } else if (!/^\d+$/.test(val)) {
+          this.createErrors.price = 'Chỉ được chứa chữ số';
+        } else {
+          this.createErrors.price = '';
+        }
+      }
+    },
+    onPriceInput(e) {
+      const val = e.target.value.replace(/[^0-9]/g, '');
+      this.createAmenityForm.price = val;
+      this.validateCreateForm('price');
     },
     closeCreateAmenity() {
       if (this.creatingAmenity) return;
@@ -324,8 +361,8 @@ export default {
         toast.error('Tên dịch vụ không được chứa ký tự đặc biệt');
         return;
       }
-      if (isNaN(price) || price < 0) {
-        toast.error('Phí dịch vụ không hợp lệ (phải ≥ 0)');
+      if (isNaN(price) || price < 0 || !/^\d+$/.test(String(this.createAmenityForm.price))) {
+        toast.error('Phí dịch vụ không hợp lệ (phải là số và không chứa chữ)');
         return;
       }
 
@@ -1022,4 +1059,23 @@ export default {
     text-align: center;
   }
 }
+.error-msg {
+  display: block;
+  font-size: 12px;
+  color: #ef4444;
+  margin-top: 5px;
+  font-weight: 500;
+  animation: slideDown 0.2s ease-out;
+}
+
+.is-invalid {
+  border-color: #ef4444 !important;
+  background-color: #fef2f2 !important;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 </style>

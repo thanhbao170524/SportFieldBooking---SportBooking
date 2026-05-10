@@ -140,15 +140,18 @@
             <div class="form-grid">
               <div class="form-group">
                 <label>Ngân hàng</label>
-                <input type="text" v-model="clubTransfer.transferBankName" placeholder="Ví dụ: Vietcombank" />
+                <input type="text" v-model="clubTransfer.transferBankName" :class="{ 'is-invalid-pay': transferErrors.bankName }" placeholder="Ví dụ: Vietcombank" @input="validateTransferField('bankName')" />
+                <span v-if="transferErrors.bankName" class="error-text-pay">{{ transferErrors.bankName }}</span>
               </div>
               <div class="form-group">
                 <label>Số tài khoản</label>
-                <input type="text" v-model="clubTransfer.transferAccountNumber" placeholder="Số TK nhận tiền" />
+                <input type="text" v-model="clubTransfer.transferAccountNumber" :class="{ 'is-invalid-pay': transferErrors.accountNumber }" placeholder="Số TK nhận tiền" @input="onAccountNumberInput" />
+                <span v-if="transferErrors.accountNumber" class="error-text-pay">{{ transferErrors.accountNumber }}</span>
               </div>
               <div class="form-group full-width">
                 <label>Chủ tài khoản</label>
-                <input type="text" v-model="clubTransfer.transferBeneficiaryName" placeholder="Họ tên chủ TK" />
+                <input type="text" v-model="clubTransfer.transferBeneficiaryName" :class="{ 'is-invalid-pay': transferErrors.beneficiaryName }" placeholder="Họ tên chủ TK" @input="validateTransferField('beneficiaryName')" />
+                <span v-if="transferErrors.beneficiaryName" class="error-text-pay">{{ transferErrors.beneficiaryName }}</span>
               </div>
             </div>
 
@@ -330,6 +333,11 @@ export default {
         transferBeneficiaryName: '',
         transferQrImageUrl: '',
       },
+      transferErrors: {
+        bankName: '',
+        accountNumber: '',
+        beneficiaryName: ''
+      },
       uploadingTransferQr: false,
       applyTransferToAllClubs: false,
       saving: false,
@@ -376,12 +384,40 @@ export default {
     },
     async loadProfile() {
       try {
-        const res = await api.get('/owner/profile');
+        const res = await userService.getProfile();
         const data = res.data?.data || {};
         this.stripeConnectAccountId = data.ownerProfile?.stripeConnectAccountId || '';
       } catch (e) {
         console.warn('loadProfile(payment)', e?.response?.status);
       }
+    },
+    validateTransferField(field) {
+      const val = String(this.clubTransfer[field] || '').trim();
+      const nameRegex = /^[a-zA-Z0-9\sÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠƯẠ-ỹ]+$/;
+
+      switch (field) {
+        case 'bankName':
+          if (!val) this.transferErrors.bankName = 'Vui lòng nhập tên ngân hàng';
+          else if (!nameRegex.test(val)) this.transferErrors.bankName = 'Tên ngân hàng không hợp lệ';
+          else this.transferErrors.bankName = '';
+          break;
+        case 'accountNumber':
+          if (!val) this.transferErrors.accountNumber = 'Vui lòng nhập số tài khoản';
+          else if (!/^\d+$/.test(val)) this.transferErrors.accountNumber = 'Số tài khoản chỉ chứa chữ số';
+          else if (val.length < 6) this.transferErrors.accountNumber = 'Số tài khoản quá ngắn';
+          else this.transferErrors.accountNumber = '';
+          break;
+        case 'beneficiaryName':
+          if (!val) this.transferErrors.beneficiaryName = 'Vui lòng nhập chủ tài khoản';
+          else if (!nameRegex.test(val)) this.transferErrors.beneficiaryName = 'Chủ tài khoản không hợp lệ';
+          else this.transferErrors.beneficiaryName = '';
+          break;
+      }
+    },
+    onAccountNumberInput(e) {
+      const val = e.target.value.replace(/[^0-9]/g, '');
+      this.clubTransfer.transferAccountNumber = val;
+      this.validateTransferField('accountNumber');
     },
     async loadStripeConnectStatus() {
       this.stripeConnect.loading = true;
@@ -608,6 +644,26 @@ export default {
     },
     async saveChanges() {
       try {
+        // Validation for payment info
+        if (this.ownerClubs.length) {
+          const { transferBankName, transferAccountNumber, transferBeneficiaryName } = this.clubTransfer;
+          const specialCharRegex = /^[a-zA-Z0-9\sÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠƯẠ-ỹ]*$/;
+          const numericRegex = /^\d+$/;
+
+          if (transferBankName && !specialCharRegex.test(transferBankName)) {
+            alert('Tên ngân hàng không được chứa ký tự đặc biệt.');
+            return;
+          }
+          if (transferAccountNumber && !numericRegex.test(transferAccountNumber)) {
+            alert('Số tài khoản chỉ được chứa chữ số.');
+            return;
+          }
+          if (transferBeneficiaryName && !specialCharRegex.test(transferBeneficiaryName)) {
+            alert('Tên chủ tài khoản không được chứa ký tự đặc biệt.');
+            return;
+          }
+        }
+
         // 1) Save stripe connect id
         const rawStripe = String(this.stripeConnectAccountId || '').trim();
         if (rawStripe && !rawStripe.startsWith('acct_')) {
@@ -783,5 +839,24 @@ code { background: #f1f5f9; padding: 2px 6px; border-radius: 8px; }
   .config-grid { grid-template-columns: 1fr; }
   .summary-row { grid-template-columns: 1fr 1fr; }
 }
+.error-text-pay {
+  display: block;
+  font-size: 12px;
+  color: #ef4444;
+  margin-top: 5px;
+  font-weight: 500;
+  animation: fadeInPay 0.2s ease-out;
+}
+
+.is-invalid-pay {
+  border-color: #ef4444 !important;
+  background-color: #fef2f2 !important;
+}
+
+@keyframes fadeInPay {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 </style>
 
