@@ -660,7 +660,7 @@ export default {
       return labels[status] || status;
     },
     courtCoverUrl(c) {
-      const fallback = 'https://images.unsplash.com/photo-1554062614-6da3d3b7625e?w=800&q=80';
+      const fallback = 'https://images.unsplash.com/photo-1554062614-6da3d3b7625e?w=1200&q=90';
       return c.images?.length ? c.images[0].url : fallback;
     },
 
@@ -850,9 +850,11 @@ export default {
     },
     isoToHm(iso) {
       if (!iso) return '08:00';
-      const d = new Date(iso);
-      if (isNaN(d.getTime())) return typeof iso === 'string' ? iso.slice(0,5) : '08:00';
-      return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      const s = String(iso);
+      const tMatch = s.match(/T(\d{2}):(\d{2})/);
+      if (tMatch) return `${tMatch[1]}:${tMatch[2]}`;
+      const hmMatch = s.match(/(\d{2}):(\d{2})/);
+      return hmMatch ? `${hmMatch[1]}:${hmMatch[2]}` : '08:00';
     },
     closeEditDrawer() { this.showEditDrawer = false; document.body.style.overflow = ''; },
 
@@ -1109,17 +1111,17 @@ export default {
 .c-header-sport{padding:24px;display:flex;align-items:center;gap:15px;flex:1;position:relative;overflow:hidden;z-index:1;}
 .c-header-sport::before{content:'';position:absolute;inset:0;opacity:0.1;z-index:0;}
 
-.FOOTBALL{background:rgba(236,253,245,0.93);color:#065f46;}
+.FOOTBALL{background:rgba(236,253,245,0.25);color:#065f46;backdrop-filter:blur(2px);}
 .FOOTBALL::before{background:radial-gradient(circle at 20% 20%, rgba(16,185,129,0.35) 0%, transparent 55%);}
-.BADMINTON{background:rgba(245,243,255,0.93);color:#5b21b6;}
+.BADMINTON{background:rgba(245,243,255,0.25);color:#5b21b6;backdrop-filter:blur(2px);}
 .BADMINTON::before{background:radial-gradient(circle at 20% 20%, rgba(139,92,246,0.35) 0%, transparent 55%);}
-.TENNIS{background:rgba(254,252,232,0.93);color:#854d0e;}
+.TENNIS{background:rgba(254,252,232,0.25);color:#854d0e;backdrop-filter:blur(2px);}
 .TENNIS::before{background:radial-gradient(circle at 20% 20%, rgba(234,179,8,0.35) 0%, transparent 55%);}
-.PICKLEBALL{background:rgba(255,247,237,0.93);color:#9a3412;}
+.PICKLEBALL{background:rgba(255,247,237,0.25);color:#9a3412;backdrop-filter:blur(2px);}
 .PICKLEBALL::before{background:radial-gradient(circle at 20% 20%, rgba(249,115,22,0.35) 0%, transparent 55%);}
-.BASKETBALL{background:rgba(255,247,237,0.93);color:#c2410c;}
+.BASKETBALL{background:rgba(255,247,237,0.25);color:#c2410c;backdrop-filter:blur(2px);}
 .BASKETBALL::before{background:radial-gradient(circle at 20% 20%, rgba(249,115,22,0.35) 0%, transparent 55%);}
-.VOLLEYBALL{background:rgba(240,249,255,0.93);color:#075985;}
+.VOLLEYBALL{background:rgba(240,249,255,0.25);color:#075985;backdrop-filter:blur(2px);}
 .VOLLEYBALL::before{background:radial-gradient(circle at 20% 20%, rgba(14,165,233,0.35) 0%, transparent 55%);}
 
 .s-emoji{font-size:32px;z-index:1;}

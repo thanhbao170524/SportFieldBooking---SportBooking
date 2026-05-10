@@ -10,8 +10,8 @@
         <div class="nav-menu desktop-only">
           <router-link to="/booking" class="nav-menu-link">ĐẶT SÂN</router-link>
           <router-link to="/map" class="nav-menu-link">BẢN ĐỒ</router-link>
-          <router-link to="/friend" class="nav-menu-link">TÌM BẠN</router-link>
-          <router-link to="/about" class="nav-menu-link">GIỚI THIỆU</router-link>
+          <router-link to="/friend" class="nav-menu-link">CỘNG ĐỒNG</router-link>
+          <router-link to="/about" class="nav-menu-link">TIN TỨC</router-link>
       <button 
         class="nav-search-btn" 
         :class="{ 'nav-search-btn--active': isInternalSearchActive }" 

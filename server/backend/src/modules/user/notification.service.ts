@@ -54,19 +54,33 @@ export async function notifyPlayersAboutOwnerPost(params: {
 }
 
 /**
- * Lấy danh sách thông báo của user hiện tại
+ * Lấy danh sách thông báo của user hiện tại (Phân trang)
  */
-export async function getMyNotifications(userId: string) {
-  return prisma.notification.findMany({
-    where: { userId },
-    orderBy: { createdAt: 'desc' },
-    take: 50, // Limit to 50 latest
-    include: {
-      booking: {
-        select: { id: true, bookingCode: true, status: true }
+export async function getMyNotifications(userId: string, page = 1, limit = 10) {
+  const skip = (page - 1) * limit;
+
+  const [total, items] = await Promise.all([
+    prisma.notification.count({ where: { userId } }),
+    prisma.notification.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
+      include: {
+        booking: {
+          select: { id: true, bookingCode: true, status: true }
+        }
       }
-    }
-  });
+    })
+  ]);
+
+  return {
+    items,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit)
+  };
 }
 
 /**

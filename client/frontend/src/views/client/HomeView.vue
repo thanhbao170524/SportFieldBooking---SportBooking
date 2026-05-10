@@ -114,43 +114,15 @@
       >
         <BlogView heading-id="blog-heading" />
       </section>
-      <!-- ── Cities ── -->
-      <section
-        id="cities"
-        aria-labelledby="cities-heading"
-        class="section-wrapper"
-      >
-        <CitiesView heading-id="cities-heading" />
-      </section>
-   
-       <!-- ── Services ── -->
-      <section
-        id="services"
-        aria-labelledby="services-heading"
-        class="section-wrapper"
-      >
-        <ServicesView heading-id="services-heading" />
-      </section>
-      <section
-        id="venue-showcase"
-        aria-labelledby="showcase-heading"
-        class="section-wrapper"
-      >
-        <VenueView heading-id="showcase-heading" />
-      </section>
-
 
     </main>
   </div>
 </template>
 
 <script>
-import CitiesView     from "@/components/client/home/CitiesView.vue";
 import HeroView       from "@/components/client/home/HeroView.vue";
 import StatisticsView from "@/components/client/home/StatisticsView.vue";
-import ServicesView   from "@/components/client/home/ServicesView.vue";
 import BlogView       from "@/components/client/home/BlogView.vue";
-import VenueView      from "@/components/client/home/VenueView.vue";
 import PublicNewsFeed from "@/components/client/home/PublicNewsFeed.vue";
 import VenueCard      from "@/components/client/booking/VenueCard.vue";
 import { clubService } from "@/services/club.service.js";
@@ -167,11 +139,8 @@ export default {
 
   components: {
     HeroView,
-    CitiesView,
     StatisticsView,
-    ServicesView,
     BlogView,
-    VenueView,
     VenueCard,
     PublicNewsFeed,
     MapStyleControl,

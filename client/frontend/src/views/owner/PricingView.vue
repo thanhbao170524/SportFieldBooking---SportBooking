@@ -63,17 +63,16 @@
               </div>
             </div>
             <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-              <!-- Bulk copy button -->
               <button
-                v-if="regularPricings.length > 0 && courtsInSameClub.length > 1"
+                v-if="(regularPricings.length > 0 || specialPricings.length > 0) && courtsInSameClub.length > 1"
                 class="btn-copy-all"
                 :disabled="isCopyingAll"
                 @click="copyPricingToAllCourts"
-                title="Sao chép bảng giá này đến tất cả sân khác trong cùng CLB"
+                title="Áp dụng toàn bộ bảng giá (định kỳ & ngày lễ) của sân này cho tất cả sân khác trong CLB"
               >
-                <span class="material-icons">content_copy</span>
-                <span v-if="isCopyingAll">Đang sao chép...</span>
-                <span v-else>Sao chép cho tất cả sân</span>
+                <span class="material-icons">sync_alt</span>
+                <span v-if="isCopyingAll">Đang đồng bộ...</span>
+                <span v-else>Áp dụng cho toàn CLB</span>
               </button>
               <button class="btn-add" @click="openModal('regular')">
                 <span class="material-icons">add</span> Thêm mới
@@ -130,9 +129,21 @@
                 <p>Ưu tiên áp dụng cho ngày cụ thể</p>
               </div>
             </div>
-            <button class="btn-add special" @click="openModal('special')">
-              <span class="material-icons">stars</span> Thêm ngày lễ
-            </button>
+            <div style="display:flex;gap:10px;align-items:center">
+              <button
+                v-if="(regularPricings.length > 0 || specialPricings.length > 0) && courtsInSameClub.length > 1"
+                class="btn-copy-all special"
+                :disabled="isCopyingAll"
+                @click="copyPricingToAllCourts"
+                title="Áp dụng toàn bộ bảng giá (định kỳ & ngày lễ) của sân này cho tất cả sân khác trong CLB"
+              >
+                <span class="material-icons">sync_alt</span>
+                <span>Áp dụng toàn CLB</span>
+              </button>
+              <button class="btn-add special" @click="openModal('special')">
+                <span class="material-icons">stars</span> Thêm ngày lễ
+              </button>
+            </div>
           </div>
 
           <div class="table-container">
@@ -371,53 +382,27 @@ export default {
       if (otherCourts.length === 0) return;
 
       const confirmed = confirm(
-        `Sẽ sao chép ${this.regularPricings.length} khung giá định kỳ sang ${otherCourts.length} sân còn lại trong cùng CLB.\n\n` +
-        `⚠️ Bảng giá định kỳ hiện có của các sân đích sẽ bị XÓA và thay thế.\n\n` +
-        `Sân sẽ cập nhật: ${otherCourts.map(c => c.name).join(', ')}\n\nTiếp tục?`
+        `BẠN CÓ CHẮC CHẮN MUỐN ĐỒNG BỘ BẢNG GIÁ?\n\n` +
+        `Hành động này sẽ sao chép TOÀN BỘ bảng giá (Định kỳ & Ngày lễ) của sân "${this.selectedCourt.name}" sang ${otherCourts.length} sân còn lại trong CLB.\n\n` +
+        `⚠️ TẤT CẢ bảng giá hiện có của các sân khác sẽ bị XÓA và thay thế hoàn toàn.\n\n` +
+        `Tiếp tục?`
       );
       if (!confirmed) return;
 
       this.isCopyingAll = true;
-      let successCount = 0;
-      let errorCount = 0;
-
-      for (const court of otherCourts) {
-        try {
-          // 1. Fetch existing pricings for target court
-          const res = await api.get(`/owner/courts/${court.id}/pricing`);
-          const existingRegular = res.data?.data?.regularPricings || [];
-
-          // 2. Delete all existing regular pricings to avoid OVERLAP
-          for (const ep of existingRegular) {
-            await api.delete(`/owner/courts/${court.id}/pricing?type=regular&id=${ep.id}`);
-          }
-
-          // 3. Create new pricings from source
-          for (const p of this.regularPricings) {
-            await api.post(`/owner/courts/${court.id}/pricing`, {
-              id: null,
-              startTime: this.formatTimeRaw(p.startTime) + ':00',
-              endTime: this.formatTimeRaw(p.endTime) + ':00',
-              pricePerHour: Number(p.pricePerHour),
-              dayOfWeek: p.dayOfWeek,
-              label: p.label || ''
-            });
-          }
-          successCount++;
-        } catch (e) {
-          console.error(`Lỗi copy giá sang sân ${court.name}:`, e);
-          errorCount++;
-        }
-      }
-
-      // Reload courts list to update pricingCount badges
-      await this.loadCourts();
-      this.isCopyingAll = false;
-
-      if (errorCount > 0) {
-        alert(`Hoàn thành: ${successCount} sân thành công, ${errorCount} sân bị lỗi. Kiểm tra console để biết chi tiết.`);
-      } else {
-        alert(`✅ Đã sao chép bảng giá lên ${successCount} sân thành công!`);
+      try {
+        const res = await api.post(`/owner/courts/${this.selectedCourtId}/pricing/sync`);
+        const syncedCount = res.data?.data?.synced || 0;
+        
+        // Reload courts list to update pricingCount badges
+        await this.loadCourts();
+        toast.success(`✅ Đã đồng bộ bảng giá thành công cho ${syncedCount} sân trong câu lạc bộ!`);
+      } catch (e) {
+        console.error('Lỗi đồng bộ giá:', e);
+        const msg = e.response?.data?.message || 'Có lỗi xảy ra khi đồng bộ bảng giá.';
+        toast.error(msg);
+      } finally {
+        this.isCopyingAll = false;
       }
     },
 
@@ -602,32 +587,35 @@ export default {
       }
     },
 
+    isoToHm(iso) {
+      if (!iso) return '08:00';
+      const s = String(iso);
+      const match = s.match(/(\d{2}):(\d{2})/);
+      return match ? `${match[1]}:${match[2]}` : '08:00';
+    },
+
     getDayName(d) {
       const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
       return days[d];
     },
     formatTime(t) {
       if (!t) return '--:--';
-      // Xử lý cả chuỗi thời gian HH:mm:ss hoặc ISO string
-      let hours, minutes;
-      if (typeof t === 'string' && t.includes(':') && !t.includes('T')) {
-          [hours, minutes] = t.split(':');
-      } else {
-          const date = new Date(t);
-          hours = date.getUTCHours().toString().padStart(2, '0');
-          minutes = date.getUTCMinutes().toString().padStart(2, '0');
-      }
-      return `${hours}:${minutes}`;
+      const match = String(t).match(/(\d{2}):(\d{2})/);
+      return match ? `${match[1]}:${match[2]}` : '--:--';
     },
     formatTimeRaw(t) {
        if (!t) return '06:00';
-       if (typeof t === 'string' && t.includes(':') && !t.includes('T')) {
-          return t.substring(0, 5); // Lấy HH:mm
+       if (typeof t === 'string' && t.includes('T')) {
+          const d = new Date(t);
+          if (!isNaN(d.getTime())) {
+            const h = d.getHours().toString().padStart(2, '0');
+            const m = d.getMinutes().toString().padStart(2, '0');
+            return `${h}:${m}`;
+          }
        }
-       const date = new Date(t);
-       const h = date.getUTCHours().toString().padStart(2, '0');
-       const m = date.getUTCMinutes().toString().padStart(2, '0');
-       return `${h}:${m}`;
+       // Fallback for simple time strings
+       const m = String(t).match(/(\d{2}):(\d{2})/);
+       return m ? `${m[1]}:${m[2]}` : (typeof t === 'string' ? t.substring(0, 5) : '06:00');
     },
     formatPrice(p) {
       return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);

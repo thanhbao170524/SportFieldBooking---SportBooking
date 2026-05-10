@@ -371,6 +371,29 @@
                 </button>
               </div>
             </div>
+
+            <!-- Pagination UI -->
+            <div v-if="notifPagination.totalPages > 1" class="notif-pagination">
+              <button 
+                class="btn-page" 
+                :disabled="notifPagination.page === 1 || notifLoading"
+                @click="changeNotifPage(notifPagination.page - 1)"
+              >
+                <span class="material-icons">chevron_left</span>
+              </button>
+              
+              <div class="page-info">
+                Trang <strong>{{ notifPagination.page }}</strong> / {{ notifPagination.totalPages }}
+              </div>
+
+              <button 
+                class="btn-page" 
+                :disabled="notifPagination.page === notifPagination.totalPages || notifLoading"
+                @click="changeNotifPage(notifPagination.page + 1)"
+              >
+                <span class="material-icons">chevron_right</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -486,6 +509,12 @@ export default {
         subscriptionPlanKey: null,
         subscriptionAddons: [],
         billingIntroDismissedAt: null,
+      },
+      notifPagination: {
+        page: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 1
       },
       showBillingModal: false,
       uploading: {
@@ -671,15 +700,34 @@ export default {
     async loadSystemNotifications() {
       this.notifLoading = true;
       try {
-        const res = await notificationService.getMyNotifications();
-        const list = res?.data?.data || [];
+        const res = await notificationService.getMyNotifications({
+          page: this.notifPagination.page,
+          limit: this.notifPagination.limit
+        });
+        const data = res?.data?.data || {};
+        const list = data.items || [];
         this.systemNotifications = Array.isArray(list) ? list : [];
+        
+        // Update pagination info
+        this.notifPagination.total = data.total || 0;
+        this.notifPagination.totalPages = data.totalPages || 1;
       } catch (err) {
         const msg = err?.response?.data?.message || 'Không thể tải thông báo.';
         toast.error(msg);
       } finally {
         this.notifLoading = false;
       }
+    },
+
+    changeNotifPage(p) {
+      if (p < 1 || p > this.notifPagination.totalPages) return;
+      this.notifPagination.page = p;
+      this.loadSystemNotifications();
+      // Scroll to top of notifications section
+      this.$nextTick(() => {
+        const el = document.querySelector('.notification-list');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     },
 
     async markAllNotificationsRead() {
@@ -1239,6 +1287,45 @@ export default {
 .nl-skel-title { height: 12px; width: 55%; border-radius: 8px; background: rgba(148,163,184,0.25); margin-bottom: 10px; }
 .nl-skel-body { height: 10px; width: 85%; border-radius: 8px; background: rgba(148,163,184,0.18); }
 @keyframes shimmer { 0% { background-position: 0% 0; } 100% { background-position: 200% 0; } }
+
+.notif-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #f1f5f9;
+}
+.btn-page {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #64748b;
+}
+.btn-page:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #16a34a;
+}
+.btn-page:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.page-info {
+  font-size: 14px;
+  color: #64748b;
+}
+.page-info strong {
+  color: #0f172a;
+}
 
 .pane-header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
 .pane-actions { display: flex; gap: 10px; flex-wrap: wrap; }

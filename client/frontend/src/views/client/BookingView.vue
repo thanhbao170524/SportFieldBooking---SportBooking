@@ -513,7 +513,7 @@ export default {
         address:         item.address,
         district:        item.district,
         city:            item.city,
-        image:           item.coverImageUrl || item.logoUrl || "https://images.unsplash.com/photo-1562552476-3f8e2f59a2b7?w=600&q=80",
+        image:           item.coverImageUrl || item.logoUrl || "https://images.unsplash.com/photo-1562552476-3f8e2f59a2b7?w=1200&q=90",
         imageAlt:        `Sân ${item.name} tại ${item.address}`,
         distance:        item.distance != null ? parseFloat(item.distance).toFixed(1) : null,
         isPartner:       item.isPartner       ?? false,
