@@ -22,6 +22,12 @@ export async function POST(req: NextRequest) {
 
     if (!name) return errorResponse("Vui lòng nhập tên dịch vụ/tiện ích", 400);
     if (name.length > 60) return errorResponse("Tên quá dài (tối đa 60 ký tự)", 400);
+
+    // Kiểm tra ký tự đặc biệt
+    if (!/^[a-zA-Z0-9\sÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠƯẠ-ỹ]+$/.test(name)) {
+      return errorResponse("Tên dịch vụ không được chứa ký tự đặc biệt", 400);
+    }
+
     if (icon && icon.length > 40) return errorResponse("Icon quá dài", 400);
 
     const amenity = await prisma.amenity.upsert({
@@ -65,7 +71,7 @@ export async function DELETE(req: NextRequest) {
       where: { id },
     });
 
-    return successResponse("Xóa dịch vụ thành công");
+    return successResponse("Xóa dịch vụ thành công", amenity);
   } catch (err: unknown) {
     return serverErrorResponse(err);
   }

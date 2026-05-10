@@ -138,17 +138,20 @@
               />
             </div>
             <div class="form-row">
-              <label class="form-label">Icon (Material icon, tuỳ chọn)</label>
-              <input
-                v-model.trim="createAmenityForm.icon"
-                type="text"
-                class="form-input"
-                placeholder="Ví dụ: local_cafe, wifi, local_parking..."
-                maxlength="40"
-                autocomplete="off"
-              />
+              <label class="form-label">Phí dịch vụ (VNĐ)</label>
+              <div class="input-with-unit">
+                <input
+                  v-model.number="createAmenityForm.price"
+                  type="number"
+                  class="form-input"
+                  placeholder="0"
+                  min="0"
+                  step="1000"
+                />
+                <span class="unit">đ</span>
+              </div>
               <p class="form-hint">
-                Bạn có thể xem danh sách icon tại <code>material-icons</code> đang dùng trong hệ thống.
+                Nhập 0 nếu đây là tiện ích miễn phí.
               </p>
             </div>
           </div>
@@ -187,7 +190,7 @@ export default {
       creatingAmenity: false,
       createAmenityForm: {
         name: '',
-        icon: '',
+        price: 0,
       },
     };
   },
@@ -294,7 +297,7 @@ export default {
     },
 
     openCreateAmenity() {
-      this.createAmenityForm = { name: '', icon: '' };
+      this.createAmenityForm = { name: '', price: 0 };
       this.showCreateAmenity = true;
     },
     closeCreateAmenity() {
@@ -305,7 +308,7 @@ export default {
       if (this.creatingAmenity) return;
 
       const name = (this.createAmenityForm.name || '').trim();
-      const icon = (this.createAmenityForm.icon || '').trim();
+      const price = Number(this.createAmenityForm.price);
 
       if (!name) {
         toast.error('Vui lòng nhập tên dịch vụ/tiện ích');
@@ -315,16 +318,45 @@ export default {
         toast.error('Tên dịch vụ/tiện ích phải có ít nhất 2 ký tự');
         return;
       }
-      if (icon && !/^[a-z0-9_]+$/i.test(icon)) {
-        toast.error('Icon chỉ nên chứa chữ/số và dấu gạch dưới (vd: local_cafe)');
+      
+      // Kiểm tra ký tự đặc biệt (chỉ cho phép chữ cái, số và khoảng trắng)
+      if (!/^[a-zA-Z0-9\sÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠƯẠ-ỹ]+$/.test(name)) {
+        toast.error('Tên dịch vụ không được chứa ký tự đặc biệt');
+        return;
+      }
+      if (isNaN(price) || price < 0) {
+        toast.error('Phí dịch vụ không hợp lệ (phải ≥ 0)');
         return;
       }
 
       this.creatingAmenity = true;
       try {
-        const res = await clubService.createAmenity({ name, icon: icon || undefined });
+        // 1. Create global amenity
+        const res = await clubService.createAmenity({ name });
         if (res.data?.success) {
-          toast.success('Đã thêm dịch vụ/tiện ích');
+          const newAmenity = res.data.data;
+          
+          // 2. If a club is selected, automatically associate it with the specified price
+          if (this.selectedClubId) {
+            // Prepare current selected amenities
+            const currentSelected = this.amenities
+              .filter(a => a.isSelected)
+              .map(a => ({
+                amenityId: a.id,
+                price: Number(a.price) || 0
+              }));
+            
+            // Add the new one
+            currentSelected.push({
+              amenityId: newAmenity.id,
+              price: price
+            });
+            
+            // Update club amenities
+            await clubService.updateClubAmenities(this.selectedClubId, currentSelected);
+          }
+
+          toast.success('Đã thêm dịch vụ/tiện ích thành công');
           this.showCreateAmenity = false;
           await this.loadAmenities();
         } else {
