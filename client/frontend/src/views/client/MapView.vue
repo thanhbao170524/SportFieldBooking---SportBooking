@@ -7,16 +7,17 @@
         <div class="sidebar-title-row">
           <h1 class="sidebar-title">
             <svg viewBox="0 0 24 24" class="title-icon" aria-hidden="true">
-              <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/>
-              <circle cx="12" cy="10" r="3"/>
+              <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z" />
+              <circle cx="12" cy="10" r="3" />
             </svg>
             Tìm sân gần bạn
           </h1>
-          <button class="sidebar-toggle" @click="sidebarCollapsed = !sidebarCollapsed" :aria-label="sidebarCollapsed ? 'Mở thanh bên' : 'Thu gọn thanh bên'">
+          <button class="sidebar-toggle" @click="sidebarCollapsed = !sidebarCollapsed"
+            :aria-label="sidebarCollapsed ? 'Mở thanh bên' : 'Thu gọn thanh bên'">
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <line x1="3" y1="6" x2="21" y2="6"/>
-              <line x1="3" y1="12" x2="21" y2="12"/>
-              <line x1="3" y1="18" x2="21" y2="18"/>
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
         </div>
@@ -25,38 +26,27 @@
         <div class="search-row" v-show="!sidebarCollapsed">
           <div class="search-input-wrap">
             <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="11" cy="11" r="8"/>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
-            <input
-              id="map-search-input"
-              v-model="searchQuery"
-              type="search"
-              placeholder="Tên sân, địa chỉ..."
-              class="search-input"
-              @input="onSearchInput"
-              aria-label="Tìm kiếm sân"
-            />
+            <input id="map-search-input" v-model="searchQuery" type="search" placeholder="Tên sân, địa chỉ..."
+              class="search-input" @input="onSearchInput" aria-label="Tìm kiếm sân" />
           </div>
-          <button class="btn-locate" @click="locateUser" title="Định vị vị trí của tôi" aria-label="Định vị vị trí của tôi">
+          <button class="btn-locate" @click="locateUser" title="Định vị vị trí của tôi"
+            aria-label="Định vị vị trí của tôi">
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
-              <circle cx="12" cy="12" r="8" stroke-dasharray="none" fill="none"/>
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+              <circle cx="12" cy="12" r="8" stroke-dasharray="none" fill="none" />
             </svg>
           </button>
         </div>
 
         <!-- Filters -->
         <div class="filters-row" v-show="!sidebarCollapsed">
-          <button
-            v-for="sport in sports"
-            :key="sport.value"
-            class="filter-chip"
-            :class="{ active: selectedSport === sport.value }"
-            @click="toggleSport(sport.value)"
-            :aria-pressed="selectedSport === sport.value"
-          >
+          <button v-for="sport in sports" :key="sport.value" class="filter-chip"
+            :class="{ active: selectedSport === sport.value }" @click="toggleSport(sport.value)"
+            :aria-pressed="selectedSport === sport.value">
             <i :class="sport.iconClass" class="chip-icon" aria-hidden="true"></i>
             {{ sport.label }}
           </button>
@@ -103,8 +93,8 @@
         <!-- Empty -->
         <div v-else-if="filteredClubs.length === 0" class="empty-state">
           <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/>
-            <circle cx="12" cy="10" r="3"/>
+            <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z" />
+            <circle cx="12" cy="10" r="3" />
           </svg>
           <p>Không tìm thấy sân phù hợp</p>
           <button class="btn-reset" @click="resetFilters">Xóa bộ lọc</button>
@@ -112,24 +102,12 @@
 
         <!-- Club List -->
         <div v-else class="clubs-list">
-          <div
-            v-for="club in filteredClubs"
-            :key="club.id"
-            class="club-card"
-            :class="{ 'club-card--active': selectedClub?.id === club.id }"
-            @click="selectClub(club)"
-            role="button"
-            tabindex="0"
-            :aria-label="`Chọn sân ${club.name}`"
-            @keydown.enter="selectClub(club)"
-          >
+          <div v-for="club in filteredClubs" :key="club.id" class="club-card"
+            :class="{ 'club-card--active': selectedClub?.id === club.id }" @click="selectClub(club)" role="button"
+            tabindex="0" :aria-label="`Chọn sân ${club.name}`" @keydown.enter="selectClub(club)">
             <div class="club-card-img-wrap">
-              <img
-                :src="club.coverImageUrl || club.logoUrl || defaultImg"
-                :alt="`Sân ${club.name}`"
-                class="club-card-img"
-                loading="lazy"
-              />
+              <img :src="club.coverImageUrl || club.logoUrl || defaultImg" :alt="`Sân ${club.name}`"
+                class="club-card-img" loading="lazy" />
               <span class="distance-badge" v-if="club.distance != null">
                 {{ formatDist(club.distance) }}
               </span>
@@ -138,27 +116,19 @@
               <h3 class="club-name">{{ club.name }}</h3>
               <p class="club-address">
                 <svg viewBox="0 0 24 24" aria-hidden="true" class="addr-icon">
-                  <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/>
-                  <circle cx="12" cy="10" r="3"/>
+                  <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z" />
+                  <circle cx="12" cy="10" r="3" />
                 </svg>
                 {{ club.district }}, {{ club.city }}
               </p>
               <div class="club-sports">
-                <span
-                  v-for="sport in getSportTypes(club)"
-                  :key="sport"
-                  class="sport-tag"
-                >{{ sport }}</span>
+                <span v-for="sport in getSportTypes(club)" :key="sport" class="sport-tag">{{ sport }}</span>
               </div>
               <div class="club-footer">
                 <span class="min-price" v-if="club.minPrice">
                   từ {{ formatPrice(club.minPrice) }}/h
                 </span>
-                <router-link
-                  :to="`/venue/${club.slug}`"
-                  class="btn-book"
-                  @click.stop
-                >
+                <router-link :to="`/venue/${club.slug}`" class="btn-book" @click.stop>
                   Đặt sân
                 </router-link>
               </div>
@@ -178,13 +148,21 @@
       <!-- Map Controls Overlay -->
       <div class="map-controls-overlay">
         <button class="map-ctrl-btn" @click="zoomIn" aria-label="Phóng to">
-          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <svg viewBox="0 0 24 24">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
         </button>
         <button class="map-ctrl-btn" @click="zoomOut" aria-label="Thu nhỏ">
-          <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <svg viewBox="0 0 24 24">
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
         </button>
         <button class="map-ctrl-btn" @click="resetView" aria-label="Về vị trí mặc định" title="Về Hồ Chí Minh">
-          <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <svg viewBox="0 0 24 24">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
+          </svg>
         </button>
       </div>
 
@@ -192,19 +170,20 @@
       <Transition name="slide-up">
         <div v-if="selectedClub && isMobile" class="mobile-popup">
           <button class="popup-close" @click="selectedClub = null" aria-label="Đóng">
-            <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <svg viewBox="0 0 24 24">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
           </button>
           <div class="popup-inner">
-            <img
-              :src="selectedClub.coverImageUrl || selectedClub.logoUrl || defaultImg"
-              :alt="selectedClub.name"
-              class="popup-img"
-            />
+            <img :src="selectedClub.coverImageUrl || selectedClub.logoUrl || defaultImg" :alt="selectedClub.name"
+              class="popup-img" />
             <div class="popup-info">
               <h3 class="popup-name">{{ selectedClub.name }}</h3>
               <p class="popup-addr">{{ selectedClub.address }}, {{ selectedClub.district }}</p>
               <div class="popup-footer">
-                <span class="min-price" v-if="selectedClub.minPrice">từ {{ formatPrice(selectedClub.minPrice) }}/h</span>
+                <span class="min-price" v-if="selectedClub.minPrice">từ {{ formatPrice(selectedClub.minPrice)
+                  }}/h</span>
                 <router-link :to="`/venue/${selectedClub.slug}`" class="btn-book btn-book--sm">Đặt sân →</router-link>
               </div>
             </div>
@@ -218,25 +197,32 @@
       <div v-if="showDetailModal" class="modal-overlay" @click.self="showDetailModal = false">
         <div class="modal-container">
           <button class="modal-close-btn" @click="showDetailModal = false" aria-label="Đóng">
-            <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <svg viewBox="0 0 24 24">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
           </button>
-          
+
           <div class="modal-content-grid" v-if="detailedClub">
             <!-- Sidebar / Image -->
             <div class="modal-image-side">
-              <img :src="detailedClub.coverImageUrl || detailedClub.logoUrl || defaultImg" :alt="detailedClub.name" class="modal-main-img" />
+              <img :src="detailedClub.coverImageUrl || detailedClub.logoUrl || defaultImg" :alt="detailedClub.name"
+                class="modal-main-img" />
               <div class="modal-badges">
                 <span class="modal-badge-partner" v-if="detailedClub.isPartner">Đối tác</span>
               </div>
             </div>
-            
+
             <!-- Info Side -->
             <div class="modal-info-side">
               <h2 class="modal-club-name">{{ detailedClub.name }}</h2>
-              
+
               <div class="modal-meta-row">
                 <div class="modal-meta-item">
-                  <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  <svg viewBox="0 0 24 24">
+                    <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z" />
+                    <circle cx="12" cy="10" r="3" />
+                  </svg>
                   <span>{{ detailedClub.address }}, {{ detailedClub.district }}, {{ detailedClub.city }}</span>
                 </div>
               </div>
@@ -271,7 +257,9 @@
                 </div>
                 <router-link :to="`/venue/${detailedClub.slug}`" class="modal-btn-book">
                   Đặt sân ngay
-                  <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                  <svg viewBox="0 0 24 24">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
                 </router-link>
               </div>
             </div>
@@ -283,8 +271,8 @@
 </template>
 
 <script>
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { clubService } from '@/services/club.service.js';
 import MapStyleControl from '@/components/common/MapStyleControl.vue';
 
@@ -292,13 +280,13 @@ const DEFAULT_CENTER = [106.6297, 10.8231]; // HCM
 const DEFAULT_ZOOM = 12;
 
 const SPORT_LABELS = {
-  FOOTBALL:   { label: 'Bóng đá', iconClass: 'bx bx-football' },
-  BADMINTON:  { label: 'Cầu lông', iconClass: 'bx bx-tennis-ball' },
-  TENNIS:     { label: 'Tennis', iconClass: 'bx bx-tennis-ball' },
+  FOOTBALL: { label: 'Bóng đá', iconClass: 'bx bx-football' },
+  BADMINTON: { label: 'Cầu lông', iconClass: 'bx bx-tennis-ball' },
+  TENNIS: { label: 'Tennis', iconClass: 'bx bx-tennis-ball' },
   PICKLEBALL: { label: 'Pickleball', iconClass: 'bx bx-tennis-ball' },
   BASKETBALL: { label: 'Bóng rổ', iconClass: 'bx bx-basketball' },
   VOLLEYBALL: { label: 'Bóng chuyền', iconClass: 'bx bx-basketball' },
-  OTHER:      { label: 'Khác', iconClass: 'bx bx-map-pin' },
+  OTHER: { label: 'Khác', iconClass: 'bx bx-map-pin' },
 };
 
 export default {
@@ -311,7 +299,7 @@ export default {
   data() {
     return {
       map: null,
-      currentMapStyle: 'mapbox://styles/mapbox/streets-v12',
+      currentMapStyle: `https://maps.vietmap.vn/api/maps/raster/styles/osm-bright/style.json?apikey=${import.meta.env.VITE_VIETMAP_TILEMAP_KEY}`,
       markers: [],
       userMarker: null,
       clubs: [],
@@ -363,7 +351,7 @@ export default {
     window.addEventListener('resize', this.onResize);
     this.initMap();
     await this.loadClubs();
-    
+
     // Tự động định vị khi vào trang
     setTimeout(() => {
       this.locateUser();
@@ -395,27 +383,24 @@ export default {
   },
 
   methods: {
-    // ── Init Mapbox map ──
+    // ── Init VietMap map ──
     initMap() {
-      const token = import.meta.env.VITE_MAPBOX_TOKEN;
-      if (!token || token === 'your_mapbox_token_here') {
-        this.error = 'Thiếu VITE_MAPBOX_TOKEN trong file .env của frontend';
+      const key = import.meta.env.VITE_VIETMAP_TILEMAP_KEY;
+      if (!key) {
+        this.error = 'Thiếu VITE_VIETMAP_TILEMAP_KEY trong file .env của frontend';
         this.loading = false;
         return;
       }
 
-      mapboxgl.accessToken = token;
-
-      this.map = new mapboxgl.Map({
+      this.map = new maplibregl.Map({
         container: this.$refs.mapEl,
         style: this.currentMapStyle,
         center: DEFAULT_CENTER,
         zoom: DEFAULT_ZOOM,
         attributionControl: false,
-        language: 'vi',
       });
 
-      this.map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
+      this.map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
 
       // Smooth load animation
       this.map.on('load', () => {
@@ -478,7 +463,7 @@ export default {
         const priceStr = club.minPrice ? `Từ ${this.formatPrice(club.minPrice)}/h` : 'Liên hệ';
         const imgSrc = club.coverImageUrl || club.logoUrl || this.defaultImg;
 
-        const popup = new mapboxgl.Popup({
+        const popup = new maplibregl.Popup({
           offset: 12,
           closeButton: false,
           maxWidth: '260px',
@@ -532,7 +517,7 @@ export default {
           }
         });
 
-        const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+        const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
           .setLngLat([lng, lat])
           .setPopup(popup)
           .addTo(this.map);
@@ -592,7 +577,7 @@ export default {
           const el = document.createElement('div');
           el.className = 'user-marker';
           el.innerHTML = `<div class="user-pulse"></div><div class="user-dot"></div>`;
-          this.userMarker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+          this.userMarker = new maplibregl.Marker({ element: el, anchor: 'center' })
             .setLngLat([longitude, latitude])
             .addTo(this.map);
 
@@ -611,7 +596,7 @@ export default {
       const el = document.createElement('div');
       el.className = 'user-marker';
       el.innerHTML = `<div class="user-pulse"></div><div class="user-dot"></div>`;
-      this.userMarker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+      this.userMarker = new maplibregl.Marker({ element: el, anchor: 'center' })
         .setLngLat([this.userLocation.lng, this.userLocation.lat])
         .addTo(this.map);
     },
@@ -654,8 +639,8 @@ export default {
     },
 
     // ── Map controls ──
-    zoomIn()   { this.map?.zoomIn(); },
-    zoomOut()  { this.map?.zoomOut(); },
+    zoomIn() { this.map?.zoomIn(); },
+    zoomOut() { this.map?.zoomOut(); },
     resetView() {
       this.map?.flyTo({ center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM, duration: 800 });
     },
@@ -688,12 +673,12 @@ export default {
 </script>
 
 <style>
-/* ── Mapbox Popup custom styles (global, không scoped) ── */
-.mapboxgl-popup-content {
+/* ── MapLibre Popup custom styles (global, không scoped) ── */
+.maplibregl-popup-content {
   padding: 0 !important;
   border-radius: 14px !important;
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.18) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18) !important;
   border: none !important;
 }
 
@@ -765,11 +750,13 @@ export default {
   align-items: center;
   gap: 10px;
 }
+
 .filter-label {
   font-size: 0.75rem;
   font-weight: 700;
   color: #4b5563;
 }
+
 .radius-select {
   flex: 1;
   background: #f3f4f6;
@@ -781,6 +768,7 @@ export default {
   cursor: pointer;
   outline: none;
 }
+
 .radius-select:focus {
   border-color: #22c55e;
   box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
@@ -800,7 +788,10 @@ export default {
   outline: none;
 }
 
-.map-popup-btn:hover { opacity: 0.85; }
+.map-popup-btn:hover {
+  opacity: 0.85;
+}
+
 .map-popup-actions {
   display: flex;
   gap: 4px;
@@ -812,6 +803,7 @@ export default {
   border: 1.5px solid rgb(22, 163, 74);
   padding: 4px 8px;
 }
+
 .map-popup-btn--outline:hover {
   background: #f0fdf4;
 }
@@ -821,6 +813,7 @@ export default {
   color: #fff;
   padding: 4px 8px;
 }
+
 .map-popup-btn--nav:hover {
   background: #2563eb;
 }
@@ -829,7 +822,7 @@ export default {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
   z-index: 2000;
   display: flex;
@@ -845,32 +838,52 @@ export default {
   border-radius: 24px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   animation: modal-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes modal-pop {
-  from { transform: scale(0.9); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .modal-close-btn {
   position: absolute;
-  top: 16px; right: 16px;
-  background: rgba(255,255,255,0.9);
+  top: 16px;
+  right: 16px;
+  background: rgba(255, 255, 255, 0.9);
   border: none;
-  width: 36px; height: 36px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   z-index: 10;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: all 0.2s;
 }
-.modal-close-btn:hover { transform: rotate(90deg); background: #fff; }
-.modal-close-btn svg { width: 20px; height: 20px; stroke: #1a1a2e; stroke-width: 2.5; fill: none; }
+
+.modal-close-btn:hover {
+  transform: rotate(90deg);
+  background: #fff;
+}
+
+.modal-close-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke: #1a1a2e;
+  stroke-width: 2.5;
+  fill: none;
+}
 
 .modal-content-grid {
   display: grid;
@@ -891,8 +904,10 @@ export default {
 
 .modal-badges {
   position: absolute;
-  top: 20px; left: 20px;
+  top: 20px;
+  left: 20px;
 }
+
 .modal-badge-partner {
   background: #fff;
   color: #16a34a;
@@ -900,7 +915,7 @@ export default {
   border-radius: 99px;
   font-size: 0.75rem;
   font-weight: 800;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .modal-info-side {
@@ -931,7 +946,14 @@ export default {
   color: #6b7280;
   font-size: 0.9rem;
 }
-.modal-meta-item svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+.modal-meta-item svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+}
 
 .modal-section {
   margin-bottom: 24px;
@@ -977,7 +999,12 @@ export default {
   display: flex;
   gap: 15px;
 }
-.amenity-item { font-size: 0.88rem; color: #374151; font-weight: 600; }
+
+.amenity-item {
+  font-size: 0.88rem;
+  color: #374151;
+  font-weight: 600;
+}
 
 .modal-footer-cta {
   margin-top: auto;
@@ -992,9 +1019,24 @@ export default {
   display: flex;
   flex-direction: column;
 }
-.price-label { font-size: 0.75rem; color: #9ca3af; font-weight: 600; }
-.price-value { font-size: 1.4rem; font-weight: 900; color: #1a1a2e; }
-.price-value small { font-size: 0.8rem; font-weight: 600; margin-left: 2px; }
+
+.price-label {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+.price-value {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #1a1a2e;
+}
+
+.price-value small {
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-left: 2px;
+}
 
 .modal-btn-book {
   background: linear-gradient(135deg, #16a34a, #22c55e);
@@ -1009,23 +1051,62 @@ export default {
   transition: transform 0.2s, box-shadow 0.2s;
   box-shadow: 0 8px 20px rgba(22, 163, 74, 0.3);
 }
-.modal-btn-book:hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(22, 163, 74, 0.4); }
-.modal-btn-book svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 3; }
 
-.fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
+.modal-btn-book:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(22, 163, 74, 0.4);
+}
+
+.modal-btn-book svg {
+  width: 18px;
+  height: 18px;
+  stroke: #fff;
+  fill: none;
+  stroke-width: 3;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
 
 @media (max-width: 768px) {
-  .modal-container { max-width: 95%; max-height: 90vh; overflow-y: auto; }
-  .modal-content-grid { grid-template-columns: 1fr; }
-  .modal-image-side { height: 200px; }
-  .modal-main-img { min-height: 200px; }
-  .modal-info-side { padding: 24px; }
-  .modal-club-name { font-size: 1.4rem; }
+  .modal-container {
+    max-width: 95%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .modal-content-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-image-side {
+    height: 200px;
+  }
+
+  .modal-main-img {
+    min-height: 200px;
+  }
+
+  .modal-info-side {
+    padding: 24px;
+  }
+
+  .modal-club-name {
+    font-size: 1.4rem;
+  }
 }
 
 /* Custom marker */
-.custom-marker { cursor: pointer; }
+.custom-marker {
+  cursor: pointer;
+}
 
 .marker-pin {
   width: 40px;
@@ -1059,35 +1140,53 @@ export default {
 .marker-shadow {
   width: 20px;
   height: 6px;
-  background: rgba(0,0,0,0.15);
+  background: rgba(0, 0, 0, 0.15);
   border-radius: 50%;
   margin: 0 auto;
   margin-top: 1px;
 }
 
 /* User position marker */
-.user-marker { position: relative; width: 20px; height: 20px; }
+.user-marker {
+  position: relative;
+  width: 20px;
+  height: 20px;
+}
+
 .user-dot {
-  width: 14px; height: 14px;
+  width: 14px;
+  height: 14px;
   background: #2563eb;
   border: 3px solid #fff;
   border-radius: 50%;
   position: absolute;
-  top: 3px; left: 3px;
+  top: 3px;
+  left: 3px;
   z-index: 2;
-  box-shadow: 0 2px 8px rgba(37,99,235,0.5);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.5);
 }
+
 .user-pulse {
-  width: 36px; height: 36px;
-  background: rgba(37,99,235,0.2);
+  width: 36px;
+  height: 36px;
+  background: rgba(37, 99, 235, 0.2);
   border-radius: 50%;
   position: absolute;
-  top: -8px; left: -8px;
+  top: -8px;
+  left: -8px;
   animation: pulse-ring 2s infinite;
 }
+
 @keyframes pulse-ring {
-  0% { transform: scale(0.5); opacity: 1; }
-  100% { transform: scale(1.5); opacity: 0; }
+  0% {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
 }
 </style>
 
@@ -1144,7 +1243,8 @@ export default {
 }
 
 .title-icon {
-  width: 20px; height: 20px;
+  width: 20px;
+  height: 20px;
   stroke: #3dd56d;
   stroke-width: 2;
   fill: none;
@@ -1157,7 +1257,8 @@ export default {
   background: none;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  width: 34px; height: 34px;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1165,12 +1266,15 @@ export default {
   flex-shrink: 0;
   transition: background 0.2s;
 }
+
 .sidebar-toggle svg {
-  width: 16px; height: 16px;
+  width: 16px;
+  height: 16px;
   stroke: #6b7280;
   stroke-width: 2;
   fill: none;
 }
+
 .sidebar-toggle:hover {
   background: #f0fdf4;
   color: rgb(22, 163, 74);
@@ -1191,8 +1295,11 @@ export default {
 
 .search-icon {
   position: absolute;
-  left: 10px; top: 50%; transform: translateY(-50%);
-  width: 15px; height: 15px;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 15px;
+  height: 15px;
   stroke: #9ca3af;
   stroke-width: 2;
   fill: none;
@@ -1209,16 +1316,18 @@ export default {
   transition: border-color 0.2s, box-shadow 0.2s;
   box-sizing: border-box;
 }
+
 .search-input:focus {
   border-color: #3dd56d;
-  box-shadow: 0 0 0 3px rgba(61,213,109,0.12);
+  box-shadow: 0 0 0 3px rgba(61, 213, 109, 0.12);
 }
 
 .btn-locate {
   background: #fff;
   border: 1.5px solid #e5e7eb;
   border-radius: 10px;
-  width: 40px; height: 38px;
+  width: 40px;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1226,12 +1335,15 @@ export default {
   flex-shrink: 0;
   transition: all 0.2s;
 }
+
 .btn-locate svg {
-  width: 16px; height: 16px;
+  width: 16px;
+  height: 16px;
   stroke: #6b7280;
   stroke-width: 2;
   fill: none;
 }
+
 .btn-locate:hover {
   background: #f0fdf4;
   color: rgb(22, 163, 74);
@@ -1248,7 +1360,10 @@ export default {
   overflow-x: auto;
   scrollbar-width: none;
 }
-.filters-row::-webkit-scrollbar { display: none; }
+
+.filters-row::-webkit-scrollbar {
+  display: none;
+}
 
 .filter-chip {
   display: inline-flex;
@@ -1265,17 +1380,23 @@ export default {
   white-space: nowrap;
   transition: all 0.2s;
 }
+
 .filter-chip:hover {
   border-color: rgb(22, 163, 74);
   color: rgb(22, 163, 74);
 }
+
 .filter-chip.active {
   background: rgb(22, 163, 74);
   color: #fff;
   border-color: rgb(22, 163, 74);
   box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
 }
-.chip-icon { font-size: 0.95em; line-height: 1; }
+
+.chip-icon {
+  font-size: 0.95em;
+  line-height: 1;
+}
 
 /* Results area */
 .sidebar-results {
@@ -1285,29 +1406,47 @@ export default {
   scrollbar-width: thin;
   scrollbar-color: #e5e7eb transparent;
 }
-.sidebar-results::-webkit-scrollbar { width: 4px; }
-.sidebar-results::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 4px; }
+
+.sidebar-results::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-results::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 4px;
+}
 
 .result-count {
   font-size: 0.78rem;
   color: #6b7280;
   margin-bottom: 12px;
 }
-.result-count strong { color: #1a1a2e; }
+
+.result-count strong {
+  color: #1a1a2e;
+}
+
 .loading-text {
   display: flex;
   align-items: center;
   gap: 8px;
 }
+
 .spinner-inline {
-  width: 14px; height: 14px;
+  width: 14px;
+  height: 14px;
   border: 2px solid #e5e7eb;
   border-top-color: #3dd56d;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
   display: inline-block;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 /* Empty state */
 .empty-state {
@@ -1319,13 +1458,20 @@ export default {
   color: #9ca3af;
   text-align: center;
 }
+
 .empty-state svg {
-  width: 40px; height: 40px;
+  width: 40px;
+  height: 40px;
   stroke: #d1d5db;
   stroke-width: 1.5;
   fill: none;
 }
-.empty-state p { font-size: 0.85rem; margin: 0; }
+
+.empty-state p {
+  font-size: 0.85rem;
+  margin: 0;
+}
+
 .btn-reset {
   background: none;
   border: 1px solid #e5e7eb;
@@ -1336,7 +1482,12 @@ export default {
   cursor: pointer;
   transition: all 0.2s;
 }
-.btn-reset:hover { border-color: rgb(22, 163, 74); color: rgb(22, 163, 74); background: #f0fdf4; }
+
+.btn-reset:hover {
+  border-color: rgb(22, 163, 74);
+  color: rgb(22, 163, 74);
+  background: #f0fdf4;
+}
 
 /* Club List */
 .clubs-list {
@@ -1355,19 +1506,24 @@ export default {
   transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
   background: #fff;
 }
+
 .club-card:hover,
 .club-card--active {
   border-color: rgb(22, 163, 74);
   box-shadow: 0 4px 16px rgba(22, 163, 74, 0.15);
   transform: translateY(-1px);
 }
-.club-card--active { background: #f0fdf4; }
+
+.club-card--active {
+  background: #f0fdf4;
+}
 
 .club-card-img-wrap {
   position: relative;
   flex-shrink: 0;
   width: 90px;
 }
+
 .club-card-img {
   width: 90px;
   height: 100%;
@@ -1378,8 +1534,9 @@ export default {
 
 .distance-badge {
   position: absolute;
-  top: 6px; left: 6px;
-  background: rgba(0,0,0,0.55);
+  top: 6px;
+  left: 6px;
+  background: rgba(0, 0, 0, 0.55);
   color: #fff;
   font-size: 0.65rem;
   font-weight: 700;
@@ -1418,8 +1575,10 @@ export default {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .addr-icon {
-  width: 11px; height: 11px;
+  width: 11px;
+  height: 11px;
   stroke: #9ca3af;
   stroke-width: 2;
   fill: none;
@@ -1466,11 +1625,21 @@ export default {
   transition: opacity 0.2s;
   white-space: nowrap;
 }
-.btn-book:hover { opacity: 0.9; }
-.btn-book--sm { font-size: 0.75rem; padding: 6px 14px; }
+
+.btn-book:hover {
+  opacity: 0.9;
+}
+
+.btn-book--sm {
+  font-size: 0.75rem;
+  padding: 6px 14px;
+}
 
 /* Skeleton */
-.skeleton-card { pointer-events: none; }
+.skeleton-card {
+  pointer-events: none;
+}
+
 .skeleton-img {
   width: 90px;
   background: linear-gradient(90deg, #f3f4f6 25%, #e9eaec 50%, #f3f4f6 75%);
@@ -1478,6 +1647,7 @@ export default {
   animation: shimmer 1.2s infinite;
   min-height: 90px;
 }
+
 .skeleton-line {
   height: 10px;
   border-radius: 6px;
@@ -1485,12 +1655,27 @@ export default {
   background-size: 200% 100%;
   animation: shimmer 1.2s infinite;
 }
-.w80 { width: 80%; }
-.w55 { width: 55%; }
-.w40 { width: 40%; }
+
+.w80 {
+  width: 80%;
+}
+
+.w55 {
+  width: 55%;
+}
+
+.w40 {
+  width: 40%;
+}
+
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 /* ── Map container ── */
@@ -1506,7 +1691,10 @@ export default {
   opacity: 0;
   transition: opacity 0.6s ease;
 }
-.mapbox-map.map-loaded { opacity: 1; }
+
+.mapbox-map.map-loaded {
+  opacity: 1;
+}
 
 /* Map custom controls */
 .map-controls-overlay {
@@ -1524,7 +1712,8 @@ export default {
 }
 
 .map-ctrl-btn {
-  width: 36px; height: 36px;
+  width: 36px;
+  height: 36px;
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
@@ -1532,19 +1721,23 @@ export default {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: background 0.2s, transform 0.2s;
 }
+
 .map-ctrl-btn svg {
-  width: 16px; height: 16px;
+  width: 16px;
+  height: 16px;
   stroke: #374151;
   stroke-width: 2;
   fill: none;
 }
+
 .map-ctrl-btn:hover {
   background: #f9fafb;
   transform: scale(1.05);
 }
+
 .marker-pin--active {
   background: rgb(22, 163, 74) !important;
   transform: scale(1.15) translateY(-5px);
@@ -1554,24 +1747,29 @@ export default {
 /* Mobile popup */
 .mobile-popup {
   position: absolute;
-  bottom: 0; left: 0; right: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
   background: #fff;
   border-radius: 20px 20px 0 0;
-  box-shadow: 0 -4px 24px rgba(0,0,0,0.15);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
   z-index: 20;
   padding: 16px;
 }
 
 .popup-close {
   position: absolute;
-  top: 12px; right: 16px;
+  top: 12px;
+  right: 16px;
   background: none;
   border: none;
   cursor: pointer;
   padding: 4px;
 }
+
 .popup-close svg {
-  width: 18px; height: 18px;
+  width: 18px;
+  height: 18px;
   stroke: #6b7280;
   stroke-width: 2;
   fill: none;
@@ -1581,24 +1779,32 @@ export default {
   display: flex;
   gap: 14px;
 }
+
 .popup-img {
-  width: 80px; height: 80px;
+  width: 80px;
+  height: 80px;
   object-fit: cover;
   border-radius: 10px;
   flex-shrink: 0;
 }
-.popup-info { flex: 1; }
+
+.popup-info {
+  flex: 1;
+}
+
 .popup-name {
   font-size: 0.9rem;
   font-weight: 700;
   color: #1a1a2e;
   margin: 0 0 4px;
 }
+
 .popup-addr {
   font-size: 0.75rem;
   color: #6b7280;
   margin: 0 0 10px;
 }
+
 .popup-footer {
   display: flex;
   align-items: center;
@@ -1610,6 +1816,7 @@ export default {
 .slide-up-leave-active {
   transition: transform 0.3s ease, opacity 0.3s ease;
 }
+
 .slide-up-enter-from,
 .slide-up-leave-to {
   transform: translateY(100%);
@@ -1618,7 +1825,11 @@ export default {
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
-  .map-page { flex-direction: column; height: 100svh; }
+  .map-page {
+    flex-direction: column;
+    height: 100svh;
+  }
+
   .sidebar {
     width: 100% !important;
     min-width: 100% !important;
@@ -1627,8 +1838,18 @@ export default {
     border-right: none;
     border-bottom: 1px solid #e5e7eb;
   }
-  .sidebar-collapsed { max-height: 60px; }
-  .map-container { flex: 1; }
-  .map-controls-overlay { top: 10px; right: 10px; }
+
+  .sidebar-collapsed {
+    max-height: 60px;
+  }
+
+  .map-container {
+    flex: 1;
+  }
+
+  .map-controls-overlay {
+    top: 10px;
+    right: 10px;
+  }
 }
 </style>

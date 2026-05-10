@@ -30,7 +30,7 @@
 }
 
 /* Booking map popup */
-.bk-popup .mapboxgl-popup-content {
+.bk-popup .maplibregl-popup-content {
   padding: 0 !important;
   border-radius: 14px !important;
   overflow: hidden;
