@@ -371,6 +371,12 @@
                 </button>
               </div>
             </div>
+          </div>
+
+          <div v-else-if="!systemNotifications.length" class="notif-empty">
+            <span class="material-icons">notifications_off</span>
+            <p>Chưa có thông báo nào.</p>
+          </div>
 
             <!-- Pagination UI -->
             <div v-if="notifPagination.totalPages > 1" class="notif-pagination">
