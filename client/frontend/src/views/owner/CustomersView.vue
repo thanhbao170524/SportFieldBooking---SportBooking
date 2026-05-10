@@ -349,8 +349,15 @@
 
             <!-- Actions -->
             <div class="d-action-group">
-              <button class="pc-btn-primary w-full" @click="openMessageModal">
-                <span class="material-icons">forum</span> Nhắn tin
+              <a 
+                v-if="selectedCustomer.phone && selectedCustomer.phone !== 'Chưa cập nhật'" 
+                :href="'tel:' + selectedCustomer.phone" 
+                class="pc-btn-primary w-full no-underline"
+              >
+                <span class="material-icons">call</span> Gọi điện
+              </a>
+              <button v-else class="pc-btn-primary w-full" disabled style="opacity: 0.6; cursor: not-allowed;">
+                <span class="material-icons">phone_disabled</span> Chưa có SĐT
               </button>
               <div class="d-action-row mt-3">
                 <button class="pc-btn-outline flex-1" @click="openEditModal">
@@ -486,59 +493,6 @@
       </transition>
     </Teleport>
 
-    <!-- Chat Modal (Premium Glass) -->
-    <Teleport to="body">
-      <transition name="modal-fade">
-        <div
-          v-if="showMessageModal"
-          class="pc-modal-backdrop"
-          @click.self="showMessageModal = false"
-        >
-          <div class="pc-modal-content pc-glass-panel">
-            <div class="modal-header">
-              <div class="modal-title-group">
-                <span class="material-icons modal-icon text-green">forum</span>
-                <h3>Soạn Tin Nhắn</h3>
-              </div>
-              <button class="pc-icon-btn" @click="showMessageModal = false">
-                <span class="material-icons">close</span>
-              </button>
-            </div>
-
-            <div class="modal-body">
-              <div class="chat-target">
-                <span>Gửi tới:</span>
-                <div class="chat-badge">
-                  <span class="material-icons">person</span>
-                  {{ selectedCustomer?.name }}
-                </div>
-              </div>
-              <div class="form-group mt-3">
-                <textarea
-                  v-model="messageBody"
-                  class="pc-search-input w-full"
-                  rows="5"
-                  placeholder="Nhập nội dung tin nhắn gửi khách hàng..."
-                ></textarea>
-              </div>
-            </div>
-
-            <div class="modal-footer">
-              <button class="pc-btn-outline" @click="showMessageModal = false">
-                Đóng
-              </button>
-              <button
-                class="pc-btn-primary bg-green"
-                @click="sendMessage"
-                style="margin-left: 12px"
-              >
-                <span class="material-icons">send</span> Gửi Ngay
-              </button>
-            </div>
-          </div>
-        </div>
-      </transition>
-    </Teleport>
   </div>
 
   <!-- Modal: Thêm Khách Hàng Bằng SĐT -->
@@ -717,9 +671,7 @@ export default {
       selectedCustomerId: null,
       selectedCustomerDetails: null,
       showEditModal: false,
-      showMessageModal: false,
       saving: false,
-      messageBody: "",
       editForm: { id: null, tier: "NORMAL", notes: "" },
       tiers: [
         { id: "ALL", label: "Tất cả" },
@@ -907,21 +859,6 @@ export default {
       setTimeout(() => {
         this.toast.show = false;
       }, 3000);
-    },
-    openMessageModal() {
-      if (!this.selectedCustomer) return;
-      this.messageBody = "";
-      this.showMessageModal = true;
-    },
-    sendMessage() {
-      if (!this.messageBody.trim()) {
-        alert("Vui lòng nhập nội dung tin nhắn");
-        return;
-      }
-      alert(
-        `Chức năng đang phát triển. Giả lập gửi tin tới ${this.selectedCustomer.name}: "${this.messageBody}"`,
-      );
-      this.showMessageModal = false;
     },
     getTierLabel(tier) {
       const labels = {
@@ -1381,10 +1318,12 @@ export default {
   }
 }
 
-.pc-table-row:hover {
-  background: rgba(255, 255, 255, 0.8);
-  transform: scale(1.005);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
+.pc-table-row:hover, .pc-table-row:hover td {
+  background: none !important;
+  background-color: transparent !important;
+  transform: none !important;
+  box-shadow: none !important;
+  transition: none !important;
 }
 .pc-table-row.row-selected {
   background: rgba(59, 130, 246, 0.05);
@@ -1754,11 +1693,11 @@ export default {
   transition: 0.2s;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 }
-.pc-table-row:hover .pc-icon-btn {
+/* .pc-table-row:hover .pc-icon-btn {
   background: #f8fafc;
   color: #1e293b;
   transform: translateX(2px);
-}
+} */
 
 /* --- Detail Sidebar --- */
 .pc-detail-sidebar {

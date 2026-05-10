@@ -667,7 +667,7 @@ export default {
 .data-table { width: 100%; border-collapse: collapse; min-width: 580px; }
 .data-table th { padding: 18px 16px; text-align: left; font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 800; letter-spacing: 0.1em; border-bottom: 2px solid #f1f5f9; background: #f8fafc; }
 .data-table td { padding: 16px; border-bottom: 1px solid #f1f5f9; color: #334155; vertical-align: middle; font-size: 14px; }
-.data-table tr:hover td { background: #fcfdfe; }
+.data-table tbody tr:hover, .data-table tbody tr:hover td { background: none !important; background-color: transparent !important; transition: none !important; }
 
 .badge-day { padding: 6px 12px; border-radius: 100px; font-size: 11px; font-weight: 800; }
 .badge-day.all { background: #f1f5f9; color: #64748b; }

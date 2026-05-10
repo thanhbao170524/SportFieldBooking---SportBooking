@@ -189,7 +189,7 @@
               <a href="#" class="policy-link" @click.stop>Điều khoản dịch vụ</a>
               và
               <a href="#" class="policy-link" @click.stop>Chính sách bảo mật</a>
-              của Playfinder.
+              của Sports Booking.
             </span>
           </label>
           <p v-if="errors.policy" class="field-error">{{ errors.policy }}</p>

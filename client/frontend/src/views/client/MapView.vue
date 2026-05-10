@@ -347,7 +347,7 @@ export default {
   },
 
   async mounted() {
-    document.title = 'Bản đồ sân thể thao | PlayFinder';
+    document.title = 'Bản đồ sân thể thao | Sports Booking';
     window.addEventListener('resize', this.onResize);
     this.initMap();
     await this.loadClubs();

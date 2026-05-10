@@ -277,15 +277,16 @@
 </template>
 
 <script>
-import banner1 from "../../../assets/assets/images/banner/banner1.jpg";
-import banner2 from "../../../assets/assets/images/banner/banner2.jpg";
-import banner3 from "../../../assets/assets/images/banner/banner3.jpg";
-import banner4 from "../../../assets/assets/images/banner/banner4.jpg";
+import banner15 from "../../../assets/assets/images/banner/banner15.jpg";
 import banner5 from "../../../assets/assets/images/banner/banner5.jpg";
 import banner6 from "../../../assets/assets/images/banner/banner6.jpg";
 import banner7 from "../../../assets/assets/images/banner/banner7.jpg";
 import banner8 from "../../../assets/assets/images/banner/banner8.jpg";
 import banner9 from "../../../assets/assets/images/banner/banner9.jpg";
+import banner10 from "../../../assets/assets/images/banner/banner10.jpg";
+import banner12 from "../../../assets/assets/images/banner/banner12.jpg";
+import banner13 from "../../../assets/assets/images/banner/banner13.jpg";
+import banner14 from "../../../assets/assets/images/banner/banner14.jpg";
 import { formatDateInputLocal } from "@/utils/dateInput";
 
 export default {
@@ -302,14 +303,20 @@ export default {
       loadingGPS: false,
       timer: null,
 
-      banners: [banner1, banner2, banner3, banner4, banner5, banner6, banner7, banner8, banner9],
+      banners: [banner15, banner5, banner6, banner7, banner8, banner9, banner10, banner12, banner13, banner14],
 
       sports: [
         { value: "football",   label: "Bóng đá" },
         { value: "badminton",  label: "Cầu lông" },
         { value: "tennis",     label: "Tennis" },
         { value: "pickleball", label: "Pickleball" },
-        { value: "basketball", label: "Bóng rổ" }
+        { value: "basketball", label: "Bóng rổ" },
+        { value: "padel",      label: "Padel" },
+        { value: "volleyball", label: "Bóng chuyền" },
+        { value: "billiard",   label: "Billiards" },
+        { value: "futsal",     label: "Futsal" },
+        { value: "tabletennis",label: "Table tennis" },
+        { value: "golf",       label: "Golf" },
       ],
     };
   },

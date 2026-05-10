@@ -55,7 +55,7 @@
             :key="tab.value"
             class="tab-btn"
             :class="{ active: activeTab === tab.value }"
-            @click="activeTab = tab.value"
+            @click="handleTabChange(tab.value)"
           >
             <span class="material-icons">{{ tab.icon }}</span>
             {{ tab.label }}
@@ -249,10 +249,40 @@
               </footer>
             </article>
             
-            <!-- Skeleton Loading -->
             <template v-if="loading">
                <div v-for="i in 3" :key="i" class="skeleton-post"></div>
             </template>
+
+            <!-- Pagination -->
+            <div v-if="totalPages > 1" class="pagination-wrapper mt-8">
+              <button 
+                class="pg-btn" 
+                :disabled="currentPage === 1"
+                @click="changePage(currentPage - 1)"
+              >
+                <span class="material-icons">chevron_left</span>
+              </button>
+              
+              <div class="pg-numbers">
+                <button 
+                  v-for="p in totalPages" 
+                  :key="p"
+                  class="pg-num"
+                  :class="{ active: p === currentPage }"
+                  @click="changePage(p)"
+                >
+                  {{ p }}
+                </button>
+              </div>
+
+              <button 
+                class="pg-btn" 
+                :disabled="currentPage === totalPages"
+                @click="changePage(currentPage + 1)"
+              >
+                <span class="material-icons">chevron_right</span>
+              </button>
+            </div>
           </div>
         </main>
       </div>
@@ -344,7 +374,7 @@
 </template>
 
 <script>
-import { postService, unwrapPostListPayload } from '@/services/post.service';
+import { postService, unwrapPostListPayload, unwrapPostListMeta } from '@/services/post.service';
 import { clubService } from '@/services/club.service';
 import { toast } from 'vue3-toastify';
 import LoadingView from '@/components/common/LoadingView.vue';
@@ -409,6 +439,10 @@ export default {
       defaultClubLogo: 'https://api.dicebear.com/7.x/identicon/svg?seed=Club',
       currentUserAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Me',
       currentUserId: null,
+      currentPage: 1,
+      totalPages: 1,
+      totalItems: 0,
+      pageSize: 10,
       _feedIo: null
     };
   },
@@ -416,10 +450,7 @@ export default {
     filteredFeed() {
       let list = [...this.allFeed];
       
-      // Tab filter
-      if (this.activeTab !== 'all') {
-        list = list.filter(item => item.type === this.activeTab);
-      }
+      // Removed local Tab filter because it's handled by backend pagination
 
       // Keyword filter
       if (this.filters.keyword) {
@@ -447,17 +478,39 @@ export default {
   async mounted() {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     this.currentUserId = user.id;
-    await this.fetchMatches();
+    await this.fetchMatches(1);
     await this.fetchUserClubs();
     this.loadLikes();
   },
   methods: {
-    async fetchMatches() {
+    async handleTabChange(tabValue) {
+      this.activeTab = tabValue;
+      await this.fetchMatches(1);
+    },
+    async fetchMatches(page = 1) {
       this.loading = true;
+      this.currentPage = page;
       try {
-        const res = await postService.getPublicFeed({ limit: 50, page: 1 });
-        const list = unwrapPostListPayload(res.data);
+        const res = await postService.getPublicFeed({ 
+          limit: this.pageSize, 
+          page: this.currentPage,
+          type: this.activeTab !== 'all' ? this.activeTab : undefined,
+          // Note: Backend filter for keyword/date/level should be added if possible,
+          // but for now we'll keep local filter for those or just fetch more.
+        });
         
+        if (!res.success) {
+          toast.error(res.message || "Không thể tải bảng tin");
+          return;
+        }
+
+        const dataField = res.data;
+        const list = unwrapPostListPayload(dataField);
+        const meta = unwrapPostListMeta(dataField);
+        
+        this.totalItems = meta.total || 0;
+        this.totalPages = Math.ceil(this.totalItems / this.pageSize);
+
         // Map interaction counts
         this.allFeed = list.map(p => ({
           ...p,
@@ -472,12 +525,19 @@ export default {
           }
         });
         
-        this.stats.activeMatch = this.allFeed.filter(p => p.type === 'TEAM_MATCHING').length;
+        this.stats.activeMatch = meta.totalMatchCount || this.allFeed.filter(p => p.type === 'TEAM_MATCHING').length;
+        
+        // Scroll to top of feed
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } catch (e) {
         toast.error("Không thể tải bảng tin cộng đồng");
       } finally {
         this.loading = false;
       }
+    },
+    async changePage(page) {
+      if (page < 1 || page > this.totalPages) return;
+      await this.fetchMatches(page);
     },
     async fetchUserClubs() {
       try {
@@ -747,22 +807,22 @@ export default {
 .trend-count { font-size: 11px; color: #94a3b8; }
 
 /* Social Feed */
-.feed-grid-social { display: flex; flex-direction: column; gap: 24px; }
-.social-post { background: #fff; border-radius: 24px; border: 1px solid #e2e8f0; padding: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+.feed-grid-social { display: flex; flex-direction: column; gap: 16px; }
+.social-post { background: #fff; border-radius: 20px; border: 1px solid #e2e8f0; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
 
 .social-post__header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
 .author-info { display: flex; align-items: center; gap: 12px; }
-.avatar-sm { width: 44px; height: 44px; border-radius: 14px; overflow: hidden; background: #f1f5f9; }
+.avatar-sm { width: 40px; height: 40px; border-radius: 12px; overflow: hidden; background: #f1f5f9; }
 .avatar-sm img { width: 100%; height: 100%; object-fit: cover; }
 .author-text { display: flex; flex-direction: column; }
-.author-name { font-size: 1rem; font-weight: 800; color: #1e293b; }
+.author-name { font-size: 0.95rem; font-weight: 800; color: #1e293b; }
 .post-time { font-size: 12px; color: #94a3b8; }
 
 .btn-icon { background: none; border: none; color: #94a3b8; cursor: pointer; padding: 5px; border-radius: 50%; transition: all 0.2s; }
 .btn-icon:hover { background: #f1f5f9; color: #10b981; }
 
-.post-title-social { font-size: 1.35rem; font-weight: 900; color: #1e293b; margin-bottom: 12px; line-height: 1.2; }
-.post-text { font-size: 0.95rem; color: #475569; line-height: 1.6; margin-bottom: 20px; white-space: pre-wrap; }
+.post-title-social { font-size: 1.15rem; font-weight: 800; color: #1e293b; margin-bottom: 8px; line-height: 1.3; }
+.post-text { font-size: 0.9rem; color: #475569; line-height: 1.5; margin-bottom: 15px; white-space: pre-wrap; }
 
 .match-details-box { background: #f8fafc; border-radius: 16px; padding: 16px; border: 1px solid #f1f5f9; }
 .detail-row { display: flex; flex-wrap: wrap; gap: 20px; }
@@ -789,7 +849,7 @@ export default {
 .post-actions-main { display: grid; grid-template-columns: 1fr; }
 .btn-join-premium { background: #1e293b; color: #fff; border: none; padding: 12px; border-radius: 12px; font-weight: 800; font-size: 14px; cursor: pointer; transition: all 0.3s; }
 .btn-join-premium:hover { background: #10b981; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
-.btn-detail-premium { background: #f1f5f9; color: #1e293b; border: none; padding: 12px; border-radius: 12px; font-weight: 800; font-size: 14px; cursor: pointer; }
+.btn-detail-premium { background: #f1f5f9; color: #1e293b; border: none; padding: 10px; border-radius: 10px; font-weight: 800; font-size: 13px; cursor: pointer; }
 
 /* Comments Section */
 .comment-input-wrap { display: flex; align-items: center; gap: 12px; background: #f8fafc; padding: 8px 12px; border-radius: 12px; border: 1px solid #e2e8f0; }
@@ -800,6 +860,72 @@ export default {
 .comment-bubble { background: #f1f5f9; padding: 8px 14px; border-radius: 14px; flex: 1; }
 .comment-author { font-size: 12px; font-weight: 800; color: #1e293b; margin-bottom: 2px; }
 .comment-text { font-size: 13px; color: #475569; }
+
+/* Pagination Styles */
+.pagination-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin-top: 40px;
+}
+
+.pg-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #64748b;
+}
+
+.pg-btn:hover:not(:disabled) {
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.pg-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pg-numbers {
+  display: flex;
+  gap: 8px;
+}
+
+.pg-num {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #64748b;
+}
+
+.pg-num:hover:not(.active) {
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.pg-num.active {
+  background: #10b981;
+  color: #fff;
+  border-color: #10b981;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
+}
 
 /* Modals */
 .modal-overlay-premium { position: fixed; inset: 0; background: rgba(15,23,42,0.8); backdrop-filter: blur(8px); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }

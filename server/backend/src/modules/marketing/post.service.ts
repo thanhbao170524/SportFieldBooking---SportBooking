@@ -105,7 +105,7 @@ export async function createPost(
 
 export async function updatePost(
   postId: string,
-  ownerId: string,
+  requesterId: string,
   data: {
     type?: PostType;
     title?: string;
@@ -117,7 +117,13 @@ export async function updatePost(
   }
 ) {
   const existing = await prisma.post.findFirst({
-    where: { id: postId, club: { ownerId } },
+    where: { 
+      id: postId, 
+      OR: [
+        { club: { ownerId: requesterId } },
+        { userId: requesterId }
+      ]
+    },
   });
   if (!existing) throw new Error("POST_NOT_FOUND_OR_UNAUTHORIZED");
 
@@ -327,6 +333,7 @@ export async function enrichPostsWithLikes<T extends { id: string }>(posts: T[],
 
 export async function getPosts(filters: {
   clubId?: string;
+  userId?: string;
   type?: PostType;
   isUser?: boolean;
   page?: number;
@@ -341,6 +348,7 @@ export async function getPosts(filters: {
   const where: Prisma.PostWhereInput = {
     deletedAt: null,
     ...(filters.clubId && { clubId: filters.clubId }),
+    ...(filters.userId && { userId: filters.userId }),
     ...(filters.type && { type: filters.type }),
     ...(filters.isUser
       ? {
@@ -397,25 +405,41 @@ export async function getPosts(filters: {
     return enrichPostsWithLikes(items, filters.currentUserId);
   }
 
-  // User feed — logic lọc sân trống
+  // User feed
+  if (usePaging) {
+    const total = await prisma.post.count({ where });
+    const posts = await prisma.post.findMany({
+      where,
+      include: includeClub,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    const items = await attachCourtNames(posts);
+    const enriched = await enrichPostsWithLikes(items, filters.currentUserId);
+    return { items: enriched, total, page, limit };
+  }
+
   const posts = await prisma.post.findMany({
     where,
     include: includeClub,
     orderBy: { createdAt: "desc" },
-    take: 500, // Lấy nhiều để lọc
+    take: 500,
   });
 
   const enriched = await attachCourtNames(posts);
-  const finalItems = await enrichPostsWithLikes(enriched, filters.currentUserId);
-  if (!usePaging) return finalItems;
-
-  const total = await prisma.post.count({ where });
-  return { items: finalItems, total, page, limit };
+  return enrichPostsWithLikes(enriched, filters.currentUserId);
 }
 
-export async function deletePost(postId: string, ownerId: string) {
+export async function deletePost(postId: string, requesterId: string) {
   const post = await prisma.post.findFirst({
-    where: { id: postId, club: { ownerId } },
+    where: { 
+      id: postId, 
+      OR: [
+        { club: { ownerId: requesterId } },
+        { userId: requesterId }
+      ]
+    },
   });
 
   if (!post) throw new Error("POST_NOT_FOUND_OR_UNAUTHORIZED");

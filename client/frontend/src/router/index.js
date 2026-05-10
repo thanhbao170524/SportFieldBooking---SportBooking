@@ -9,10 +9,12 @@ let hideLoaderTimer = null;
 let loaderVisibleAt = 0;
 let isLoaderVisible = false;
 
-function emitNavigationLoader(loading) {
+function emitNavigationLoader(loading, progress) {
   if (typeof window !== "undefined") {
     window.dispatchEvent(
-      new CustomEvent(LOADER_EVENT_NAME, { detail: { loading } })
+      new CustomEvent(LOADER_EVENT_NAME, {
+        detail: { loading, progress: progress ?? loading },
+      })
     );
   }
 }
@@ -24,10 +26,13 @@ function startNavigationLoader() {
   }
   if (isLoaderVisible || showLoaderTimer) return;
 
+  // Instant progress bar
+  emitNavigationLoader(false, true);
+
   showLoaderTimer = setTimeout(() => {
     isLoaderVisible = true;
     loaderVisibleAt = Date.now();
-    emitNavigationLoader(true);
+    emitNavigationLoader(true, true);
     showLoaderTimer = null;
   }, LOADER_SHOW_DELAY_MS);
 }
@@ -38,7 +43,7 @@ function stopNavigationLoader() {
     showLoaderTimer = null;
   }
   if (!isLoaderVisible) {
-    emitNavigationLoader(false);
+    emitNavigationLoader(false, false);
     return;
   }
 
@@ -47,7 +52,7 @@ function stopNavigationLoader() {
   hideLoaderTimer = setTimeout(() => {
     isLoaderVisible = false;
     loaderVisibleAt = 0;
-    emitNavigationLoader(false);
+    emitNavigationLoader(false, false);
     hideLoaderTimer = null;
   }, remainingVisibleTime);
 }

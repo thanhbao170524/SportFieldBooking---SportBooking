@@ -12,6 +12,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type") as PostType | null;
     const clubId = searchParams.get("clubId") || undefined;
+    const userIdParam = searchParams.get("userId") || undefined;
 
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
     const limitRaw = parseInt(searchParams.get("limit") || "0", 10) || 0;
@@ -21,6 +22,7 @@ export async function GET(req: NextRequest) {
 
     const posts = await getPosts({
       clubId,
+      userId: userIdParam,
       type: type || undefined,
       isUser: true,
       currentUserId: user?.userId,

@@ -48,7 +48,7 @@
 
       <div class="promo-mockup">
         <div class="mockup-wrapper">
-          <img src="/bot.png" alt="Playfinder Mobile App Mockups" class="mockup-img" />
+          <img src="/bot.png" alt="Sports Booking Mobile App Mockups" class="mockup-img" />
         </div>
       </div>
     </div>

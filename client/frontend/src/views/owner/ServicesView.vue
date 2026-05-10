@@ -66,6 +66,13 @@
               <div class="toggle-switch">
                 <div class="switch-slider"></div>
               </div>
+              <button 
+                class="btn-delete-item" 
+                @click.stop="confirmDeleteService(service)" 
+                title="Xóa vĩnh viễn dịch vụ này khỏi hệ thống"
+              >
+                <span class="material-icons">delete_outline</span>
+              </button>
             </div>
 
             <div class="card-body" v-if="service.isSelected">
@@ -327,6 +334,23 @@ export default {
         toast.error(err?.response?.data?.message || 'Lỗi khi thêm mới');
       } finally {
         this.creatingAmenity = false;
+      }
+    },
+    async confirmDeleteService(service) {
+      if (!confirm(`Bạn có chắc chắn muốn XÓA VĨNH VIỄN dịch vụ "${service.name}"? \nHành động này sẽ xóa dịch vụ này khỏi TẤT CẢ các câu lạc bộ!`)) {
+        return;
+      }
+      
+      try {
+        const res = await clubService.deleteAmenity(service.id);
+        if (res.data?.success) {
+          toast.success('Đã xóa dịch vụ thành công');
+          await this.loadAmenities();
+        } else {
+          toast.error(res.data?.message || 'Xóa thất bại');
+        }
+      } catch (err) {
+        toast.error('Lỗi khi xóa dịch vụ');
       }
     },
   }
@@ -695,6 +719,36 @@ export default {
 
 .active .switch-slider {
   left: 23px;
+}
+
+/* Delete Button on Card */
+.btn-delete-item {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: #fff;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  opacity: 0;
+  margin-left: 8px;
+}
+
+.service-card:hover .btn-delete-item {
+  opacity: 1;
+}
+
+.btn-delete-item:hover {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+.btn-delete-item .material-icons {
+  font-size: 20px;
 }
 
 /* Card Body */

@@ -75,6 +75,9 @@ export const clubService = {
     createAmenity(payload) {
         return api.post('/owner/amenities', payload);
     },
+    deleteAmenity(id) {
+        return api.delete('/owner/amenities', { params: { id } });
+    },
 
     // ── Slots ──────────────────────────────────────────────────
     getSlotsByClub(slug, date) {

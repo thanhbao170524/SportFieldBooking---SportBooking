@@ -872,7 +872,7 @@ export default {
   letter-spacing: .05em; border-bottom: 2px solid #f1f5f9;
 }
 .premium-table td { padding: 16px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; color: #0f172a !important; }
-.premium-table tbody tr:hover { background: #f8fafc; }
+.premium-table tbody tr:hover, .premium-table tbody tr:hover td { background: none !important; background-color: transparent !important; transition: none !important; }
 .order-id-p { font-family: monospace; font-weight: 700; color: #94a3b8; font-size: 12px; }
 .user-cell-p { display: flex; align-items: center; gap: 12px; }
 .u-avatar-p { width: 32px; height: 32px; border-radius: 10px; background: #f1f5f9; color: #10b981; display: flex; align-items: center; justify-content: center; font-weight: 800; }

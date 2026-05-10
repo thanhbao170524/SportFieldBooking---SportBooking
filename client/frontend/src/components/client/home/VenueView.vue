@@ -1,5 +1,5 @@
 <template>
-  <section class="playfinder-section" :class="{ 'visible': visible }" ref="sectionRef">
+  <section class="sportsbooking-section" :class="{ 'visible': visible }" ref="sectionRef">
     <div class="bg-dots" />
 
     <div class="container">
@@ -39,7 +39,7 @@ import { ref, onMounted } from 'vue'
 
 const title = ref('Nền tảng dành cho các chủ cơ sở thể thao')
 const subtitle = ref(
-  "Cho dù bạn là hội đồng, trường học, nhóm cộng đồng hay trung tâm giải trí, việc trở thành Đối tác của Playfinder có thể mang lại lợi ích cho địa điểm thể thao của bạn theo nhiều cách."
+  "Cho dù bạn là hội đồng, trường học, nhóm cộng đồng hay trung tâm giải trí, việc trở thành Đối tác của Sports Booking có thể mang lại lợi ích cho địa điểm thể thao của bạn theo nhiều cách."
 )
 
 const features = ref([
@@ -57,7 +57,7 @@ const features = ref([
   {
     title: 'Chuyên môn Marketing',
     description:
-      'Tận dụng các chiến dịch marketing của Playfinder giúp địa điểm của bạn tăng cường sự hiện diện trên nhiều kênh.',
+      'Tận dụng các chiến dịch marketing của Sports Booking giúp địa điểm của bạn tăng cường sự hiện diện trên nhiều kênh.',
     iconPath: `
       <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
     `
@@ -99,7 +99,7 @@ const handleClick = (feature) => {
 
 <style scoped>
 /* ── CSS Variables ── */
-.playfinder-section {
+.sportsbooking-section {
   --green: rgb(22, 163, 74);
   --green-dark: rgb(15, 118, 52);
   --green-glow: rgba(22, 163, 74, 0.12);
@@ -141,7 +141,7 @@ const handleClick = (feature) => {
   transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.playfinder-section.visible .section-header {
+.sportsbooking-section.visible .section-header {
   opacity: 1;
   transform: translateY(0);
 }
@@ -190,7 +190,7 @@ const handleClick = (feature) => {
   transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.playfinder-section.visible .feature-card {
+.sportsbooking-section.visible .feature-card {
   opacity: 1;
   transform: translateY(0);
 }
@@ -316,7 +316,7 @@ const handleClick = (feature) => {
 
 /* ── Responsive ── */
 @media (max-width: 640px) {
-  .playfinder-section { padding: 80px 20px; }
+  .sportsbooking-section { padding: 80px 20px; }
   .feature-card { padding: 40px 24px 35px; }
   .section-header h2 { font-size: 24px; }
 }

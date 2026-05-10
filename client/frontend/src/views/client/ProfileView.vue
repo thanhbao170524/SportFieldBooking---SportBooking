@@ -524,7 +524,11 @@ export default {
 
         return {
           ...club,
-          image: club.logoUrl || (club.images && club.images[0]?.url) || '/img/default-club.png',
+          image: club.coverImageUrl || 
+                 club.logoUrl || 
+                 (club.images && club.images[0]?.url) || 
+                 (club.courts && club.courts.find(c => c.images && c.images.length > 0)?.images[0]?.url) ||
+                 '/img/default-club.png',
           isFavorited: true,
           minPrice: minPrice,
           openTime: openTime,
@@ -706,15 +710,20 @@ export default {
       if (!this.user?.id) return;
       this.loadingPosts = true;
       try {
-        // Fetch public feed and filter by current user
-        const res = await postService.getPublicFeed({ limit: 100, page: 1 });
-        const allPosts = unwrapPostListPayload(res.data);
+        // Fetch posts filtered by the current user's ID
+        const res = await postService.getPublicFeed({ 
+          userId: this.user.id,
+          limit: 100, 
+          page: 1 
+        });
+        const items = unwrapPostListPayload(res.data);
         
-        // Filter articles created by the current user
-        this.userPosts = allPosts.filter(post => 
-          post.authorId === this.user.id || 
-          (post.author && post.author.id === this.user.id)
-        ).map(p => ({ ...p, commentCount: p._count?.comments || 0, viewCount: p.viewCount || 0 }));
+        // Map data fields (backend uses userId, _count, etc.)
+        this.userPosts = items.map(p => ({ 
+          ...p, 
+          commentCount: p._count?.comments || 0, 
+          viewCount: p.viewCount || 0 
+        }));
       } catch (e) {
         console.error("Lỗi tải bài đăng:", e);
         toast.error("Không thể tải danh sách bài đăng");
@@ -813,18 +822,29 @@ export default {
        }
        this.saving = true;
        try {
-         // Create post via user endpoint
-         const res = await postService.createUserPost({
+         const payload = {
            ...this.matchForm,
-           clubId: this.matchForm.clubId || this.userClubs[0]?.id // Default to one club for visibility
-         });
+           clubId: this.matchForm.clubId || (this.userClubs[0]?.id || null)
+         };
+
+         let res;
+         if (this.matchForm.id) {
+           // Update existing post
+           res = await postService.updateUserPost(this.matchForm.id, payload);
+         } else {
+           // Create new post
+           res = await postService.createUserPost(payload);
+         }
+
          if (res.success) {
-           toast.success("Kèo của bạn đã được đăng!");
+           toast.success(this.matchForm.id ? "Đã cập nhật bài đăng!" : "Kèo của bạn đã được đăng!");
            this.showMatchModal = false;
+           // Reset form
+           this.matchForm = { title: '', content: '', clubId: '', type: 'TEAM_MATCHING', linkedDate: '' };
            await this.fetchUserPosts();
          }
        } catch (e) {
-         toast.error("Lỗi khi đăng bài.");
+         toast.error(this.matchForm.id ? "Lỗi khi cập nhật bài." : "Lỗi khi đăng bài.");
        } finally {
          this.saving = false;
        }
@@ -844,7 +864,27 @@ export default {
       window.location.href = '/auth/login';
     },
     formatDate(d) {
-       return new Date(d).toLocaleDateString('vi-VN');
+      return new Date(d).toLocaleDateString('vi-VN');
+    },
+    getLabel(type) {
+      const labels = {
+        'TEAM_MATCHING': 'Tìm đối',
+        'FIND_PARTNER': 'Tìm bạn chơi',
+        'CHALLENGE': 'Thử thách',
+        'EXCHANGE': 'Giao lưu'
+      };
+      return labels[type] || type;
+    },
+    editPost(post) {
+      this.matchForm = {
+        id: post.id,
+        title: post.title,
+        content: post.content,
+        clubId: post.clubId,
+        type: post.type,
+        linkedDate: post.linkedDate ? post.linkedDate.split('T')[0] : ''
+      };
+      this.showMatchModal = true;
     }
   }
 }

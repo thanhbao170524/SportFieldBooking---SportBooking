@@ -170,24 +170,24 @@ export default {
         {
           "@context": "https://schema.org",
           "@type": "WebSite",
-          "name": "PlayFinder",
-          "alternateName": "Hệ thống đặt sân PlayFinder",
-          "url": "https://playfinder.vn",
+          "name": "Sports Booking",
+          "alternateName": "Hệ thống đặt sân Sports Booking",
+          "url": "https://sportsbooking.vn",
           "potentialAction": {
             "@type": "SearchAction",
-            "target": "https://playfinder.vn/san?q={search_term_string}",
+            "target": "https://sportsbooking.vn/san?q={search_term_string}",
             "query-input": "required name=search_term_string"
           }
         },
         {
           "@context": "https://schema.org",
           "@type": "Organization",
-          "name": "PlayFinder",
-          "url": "https://playfinder.vn",
-          "logo": "https://playfinder.vn/logo.png",
+          "name": "Sports Booking",
+          "url": "https://sportsbooking.vn",
+          "logo": "https://sportsbooking.vn/logo.png",
           "sameAs": [
-            "https://www.facebook.com/playfinder.vn",
-            "https://www.instagram.com/playfinder.vn"
+            "https://www.facebook.com/sportsbooking.vn",
+            "https://www.instagram.com/sportsbooking.vn"
           ]
         }
       ];
@@ -195,7 +195,7 @@ export default {
   },
 
   async mounted() {
-    document.title = "Đặt sân bóng đá, tennis, cầu lông gần bạn | PlayFinder Việt Nam";
+    document.title = "Đặt sân bóng đá, tennis, cầu lông gần bạn | Sports Booking Việt Nam";
 
     await this.loadDefaultClubs();
     this.tryGeolocation();

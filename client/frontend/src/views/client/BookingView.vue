@@ -324,7 +324,7 @@ export default {
       sportOptions: Object.entries(SPORT_LABELS).map(([value, label]) => ({ value, label })),
 
       bookingOptions: [
-        { value: "partner", label: "Đối tác PlayFinder" },
+        { value: "partner", label: "Đối tác Sports Booking" },
         { value: "online",  label: "Đặt sân trực tuyến" },
       ],
       formatOptions: [

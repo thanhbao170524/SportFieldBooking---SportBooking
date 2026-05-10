@@ -2,7 +2,7 @@
   <section class="blog-section">
     <div class="blog-section__header">
       <h2 class="blog-section__title" data-aos="fade-up">BLOG THỂ THAO</h2>
-      <p class="blog-section__subtitle" data-aos="fade-up" data-aos-delay="100">Cập nhật những tin tức và bài viết mới nhất từ Playfinder.</p>
+      <p class="blog-section__subtitle" data-aos="fade-up" data-aos-delay="100">Cập nhật những tin tức và bài viết mới nhất từ Sports Booking.</p>
     </div>
 
     <div class="blog-slider-wrapper">

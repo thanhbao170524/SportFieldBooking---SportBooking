@@ -54,3 +54,31 @@ export async function DELETE(
     return serverErrorResponse(error);
   }
 }
+
+/**
+ * PATCH /api/posts/[postId]
+ * Cập nhật bài đăng (yêu cầu đăng nhập, chỉ chủ bài).
+ */
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ postId: string }> }
+) {
+  try {
+    const { getAuthUser } = await import("@/middleware/auth.middleware");
+    const { user, error } = await getAuthUser(req);
+    if (error) return error;
+
+    const { postId } = await params;
+    const body = await req.json();
+
+    const { updatePost } = await import("@/modules/marketing/post.service");
+    const updated = await updatePost(postId, user.userId, body);
+
+    return successResponse("Cập nhật bài đăng thành công", updated);
+  } catch (error) {
+    if (error instanceof Error && error.message === "POST_NOT_FOUND_OR_UNAUTHORIZED") {
+      return errorResponse("Không tìm thấy bài đăng hoặc bạn không có quyền chỉnh sửa.", 403);
+    }
+    return serverErrorResponse(error);
+  }
+}

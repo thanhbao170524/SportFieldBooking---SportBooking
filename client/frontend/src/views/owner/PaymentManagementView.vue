@@ -763,7 +763,7 @@ code { background: #f1f5f9; padding: 2px 6px; border-radius: 8px; }
 .pay-table { width: 100%; border-collapse: collapse; background: #fff !important; color: #0f172a !important; }
 .pay-table th, .pay-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; color: #0f172a !important; }
 .pay-table th { background: #f8fafc; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; }
-.pay-table tbody tr:hover { background: #f8fafc; }
+.pay-table tbody tr:hover { background: transparent !important; }
 .right { text-align: right; }
 .strong { font-weight: 900; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 12px; }

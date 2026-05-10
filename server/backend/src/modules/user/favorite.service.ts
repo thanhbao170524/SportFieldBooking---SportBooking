@@ -54,7 +54,8 @@ export async function getMyFavorites(userId: string) {
             images: { take: 1 },
             courts: { 
               include: { 
-                pricings: true 
+                pricings: true,
+                images: { take: 1 }
               } 
             },
             openingHours: {

@@ -42,6 +42,11 @@ export const postService = {
         return response.data;
     },
 
+    updateUserPost: async (postId, postData) => {
+        const response = await api.patch(`/posts/${postId}`, postData);
+        return response.data;
+    },
+
     updatePost: async (postId, postData) => {
         const response = await api.patch('/owner/posts', postData, {
             params: { id: postId },

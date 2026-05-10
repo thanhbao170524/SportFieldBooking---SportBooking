@@ -373,33 +373,27 @@
             </div>
           </div>
 
-          <div v-else-if="!systemNotifications.length" class="notif-empty">
-            <span class="material-icons">notifications_off</span>
-            <p>Chưa có thông báo nào.</p>
-          </div>
-
-            <!-- Pagination UI -->
-            <div v-if="notifPagination.totalPages > 1" class="notif-pagination">
-              <button 
-                class="btn-page" 
-                :disabled="notifPagination.page === 1 || notifLoading"
-                @click="changeNotifPage(notifPagination.page - 1)"
-              >
-                <span class="material-icons">chevron_left</span>
-              </button>
-              
-              <div class="page-info">
-                Trang <strong>{{ notifPagination.page }}</strong> / {{ notifPagination.totalPages }}
-              </div>
-
-              <button 
-                class="btn-page" 
-                :disabled="notifPagination.page === notifPagination.totalPages || notifLoading"
-                @click="changeNotifPage(notifPagination.page + 1)"
-              >
-                <span class="material-icons">chevron_right</span>
-              </button>
+          <!-- Pagination UI -->
+          <div v-if="notifPagination.totalPages > 1" class="notif-pagination">
+            <button 
+              class="btn-page" 
+              :disabled="notifPagination.page === 1 || notifLoading"
+              @click="changeNotifPage(notifPagination.page - 1)"
+            >
+              <span class="material-icons">chevron_left</span>
+            </button>
+            
+            <div class="page-info">
+              Trang <strong>{{ notifPagination.page }}</strong> / {{ notifPagination.totalPages }}
             </div>
+
+            <button 
+              class="btn-page" 
+              :disabled="notifPagination.page === notifPagination.totalPages || notifLoading"
+              @click="changeNotifPage(notifPagination.page + 1)"
+            >
+              <span class="material-icons">chevron_right</span>
+            </button>
           </div>
         </div>
 

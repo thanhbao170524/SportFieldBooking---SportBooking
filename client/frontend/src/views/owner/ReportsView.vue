@@ -201,6 +201,7 @@ export default {
 .card { background: #fff; border: 1px solid #eaecf2; border-radius: 18px; padding: 0; overflow: hidden; }
 .table { width: 100%; border-collapse: collapse; }
 th, td { padding: 14px 16px; font-size: 13px; border-bottom: 1px solid rgba(148,163,184,0.18); color: #334155; vertical-align: top; }
+tbody tr:hover { background: transparent !important; }
 th { font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: #64748b; }
 .text-right { text-align: right; }
 .reason { font-weight: 800; color: #0f1623; }

@@ -36,3 +36,37 @@ export async function POST(req: NextRequest) {
   }
 }
 
+/**
+ * DELETE /api/owner/amenities?id=xxx
+ * Chủ sân/Admin xóa tiện ích/dịch vụ hệ thống.
+ */
+export async function DELETE(req: NextRequest) {
+  try {
+    const { user, error } = await getAuthUser(req);
+    if (error) return error;
+
+    const roleErr = requireRole(user, ["OWNER", "ADMIN"]);
+    if (roleErr) return roleErr;
+
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+
+    if (!id) return errorResponse("Thiếu ID dịch vụ cần xóa", 400);
+
+    // Kiểm tra xem amenity có tồn tại không
+    const amenity = await prisma.amenity.findUnique({
+      where: { id },
+    });
+
+    if (!amenity) return errorResponse("Dịch vụ không tồn tại", 404);
+
+    // Xóa amenity (quan hệ club_amenities sẽ được xóa tự động nhờ onDelete: Cascade)
+    await prisma.amenity.delete({
+      where: { id },
+    });
+
+    return successResponse("Xóa dịch vụ thành công");
+  } catch (err: unknown) {
+    return serverErrorResponse(err);
+  }
+}

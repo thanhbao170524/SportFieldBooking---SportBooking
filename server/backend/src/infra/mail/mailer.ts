@@ -15,9 +15,9 @@ export async function sendResetPasswordEmail(email: string, token: string) {
   const resetLink = `${env.NEXT_PUBLIC_APP_URL || "http://localhost:5173"}/auth/reset-password?token=${token}`;
 
   const mailOptions = {
-    from: `"Playfinder Support" <${env.SMTP_USER ?? "no-reply@playfinder.local"}>`,
+    from: `"Sports Booking Support" <${env.SMTP_USER ?? "no-reply@sportsbooking.local"}>`,
     to: email,
-    subject: "Đặt lại mật khẩu - Playfinder",
+    subject: "Đặt lại mật khẩu - Sports Booking",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
         <h2 style="color: #16a34a; text-align: center;">Đặt lại mật khẩu của bạn</h2>
@@ -78,7 +78,7 @@ export async function sendBookingConfirmationEmail(data: BookingEmailData) {
     .join("");
 
   const mailOptions = {
-    from: `"Playfinder" <${env.SMTP_USER ?? "no-reply@playfinder.local"}>`,
+    from: `"Sports Booking" <${env.SMTP_USER ?? "no-reply@sportsbooking.local"}>`,
     to: data.bookerEmail,
     subject: `✅ Đặt sân thành công - ${data.bookingCode}`,
     html: `
@@ -152,7 +152,7 @@ export async function sendBookingConfirmationEmail(data: BookingEmailData) {
         </div>
 
         <div style="background: #f9fafb; padding: 16px 20px; text-align: center; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
-          <p style="font-size: 12px; color: #9ca3af; margin: 0;">© 2026 Playfinder. Đây là email tự động, vui lòng không phản hồi.</p>
+          <p style="font-size: 12px; color: #9ca3af; margin: 0;">© 2026 Sports Booking. Đây là email tự động, vui lòng không phản hồi.</p>
         </div>
       </div>
     `,
@@ -191,7 +191,7 @@ export async function sendBookingWaitingPaymentEmail(data: BookingEmailData) {
     .join("");
 
   const mailOptions = {
-    from: `"Playfinder" <${env.SMTP_USER ?? "no-reply@playfinder.local"}>`,
+    from: `"Sports Booking" <${env.SMTP_USER ?? "no-reply@sportsbooking.local"}>`,
     to: data.bookerEmail,
     subject: `🕒 Đang chờ thanh toán - ${data.bookingCode}`,
     html: `
@@ -242,7 +242,7 @@ export async function sendBookingWaitingPaymentEmail(data: BookingEmailData) {
         </div>
 
         <div style="background: #f9fafb; padding: 16px 20px; text-align: center; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
-          <p style="font-size: 12px; color: #9ca3af; margin: 0;">© 2026 Playfinder. Cần hỗ trợ? Phản hồi email này.</p>
+          <p style="font-size: 12px; color: #9ca3af; margin: 0;">© 2026 Sports Booking. Cần hỗ trợ? Phản hồi email này.</p>
         </div>
       </div>
     `,
