@@ -596,7 +596,7 @@ export default {
     return {
       clubs: [], loading: false,
       q: '', statusQ: 'all',
-      fallbackImg: 'https://images.unsplash.com/photo-1575446106012-c344f5b75e13?w=600&q=80',
+      fallbackImg: 'https://images.unsplash.com/photo-1575446106012-c344f5b75e13?w=1200&q=90',
       successBanner: null,
 
       // ADD
@@ -867,12 +867,11 @@ export default {
     statusLabel(s) { return {APPROVED:'Hoạt động',PENDING:'Chờ duyệt',REJECTED:'Tạm ngưng'}[s] || s; },
     fmt(t) {
       if (!t) return '--:--';
-      // If ISO string (e.g. "1970-01-01T16:00:00.000Z"), extract UTC HH:MM directly
-      if (typeof t === 'string') {
-        const m = t.match(/(\d{2}):(\d{2})/);
-        if (m) return `${m[1]}:${m[2]}`;
-      }
-      return '--:--';
+      const s = String(t);
+      const tMatch = s.match(/T(\d{2}):(\d{2})/);
+      if (tMatch) return `${tMatch[1]}:${tMatch[2]}`;
+      const hmMatch = s.match(/(\d{2}):(\d{2})/);
+      return hmMatch ? `${hmMatch[1]}:${hmMatch[2]}` : '--:--';
     },
 
     async load() {
@@ -1018,12 +1017,16 @@ export default {
     },
     isoToHm(iso) {
       if (!iso) return '08:00';
-      // Extract HH:MM from ISO string directly to avoid timezone conversion
-      if (typeof iso === 'string') {
-        const m = iso.match(/(\d{2}):(\d{2})/);
-        if (m) return `${m[1]}:${m[2]}`;
+      // Use local time conversion for ISO strings to avoid UTC shift
+      if (typeof iso === 'string' && iso.includes('T')) {
+        const d = new Date(iso);
+        if (!isNaN(d.getTime())) {
+          return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        }
       }
-      return '08:00';
+      // Fallback for simple time strings
+      const m = String(iso).match(/(\d{2}):(\d{2})/);
+      return m ? `${m[1]}:${m[2]}` : '08:00';
     },
     async loadAmenities(clubId) {
       this.amenitiesLoading = true;

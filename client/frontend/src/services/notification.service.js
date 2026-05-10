@@ -4,8 +4,8 @@ export const notificationService = {
   /**
    * Fetch user notifications
    */
-  getMyNotifications() {
-    return api.get('/notifications');
+  getMyNotifications(params = {}) {
+    return api.get('/notifications', { params });
   },
 
   /**

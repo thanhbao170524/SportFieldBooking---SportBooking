@@ -744,8 +744,8 @@ export default {
     async fetchNotifications() {
       this.loadingNotifications = true;
       try {
-        const res = await notificationService.getMyNotifications();
-        this.notifications = res.data.data || [];
+        const res = await notificationService.getMyNotifications({ page: 1, limit: 100 });
+        this.notifications = res.data.data.items || [];
       } catch (e) {
         toast.error("Lỗi khi tải thông báo");
       } finally {

@@ -50,7 +50,7 @@
             :alt="venue.imageAlt || `Sân ${venue.name}`"
             class="venue-img"
             loading="lazy"
-            width="220" height="160"
+            width="400" height="300"
             itemprop="image"
           />
         </router-link>

@@ -327,3 +327,71 @@ export async function deletePricing(type: 'regular' | 'special', pricingId: stri
     return prisma.specialDatePricing.delete({ where: { id: pricingId } });
   }
 }
+
+/**
+ * Đồng bộ bảng giá từ một sân sang tất cả các sân khác trong cùng Câu lạc bộ
+ */
+export async function syncClubPricing(sourceCourtId: string, ownerId: string) {
+  // 1. Lấy thông tin sân nguồn và bảng giá của nó
+  const sourceCourt = await prisma.court.findFirst({
+    where: { id: sourceCourtId, club: { ownerId } },
+    include: { 
+      pricings: true, 
+      specialPricings: true 
+    }
+  });
+
+  if (!sourceCourt) throw new Error("SOURCE_COURT_NOT_FOUND_OR_UNAUTHORIZED");
+
+  const clubId = sourceCourt.clubId;
+
+  // 2. Lấy danh sách các sân khác trong cùng CLB
+  const targetCourts = await prisma.court.findMany({
+    where: { 
+      clubId, 
+      id: { not: sourceCourtId },
+      deletedAt: null 
+    }
+  });
+
+  if (targetCourts.length === 0) return { synced: 0 };
+
+  // 3. Thực hiện đồng bộ trong Transaction
+  return prisma.$transaction(async (tx) => {
+    for (const court of targetCourts) {
+      // Xóa sạch bảng giá cũ của sân đích
+      await tx.courtPricing.deleteMany({ where: { courtId: court.id } });
+      await tx.specialDatePricing.deleteMany({ where: { courtId: court.id } });
+
+      // Copy bảng giá định kỳ
+      if (sourceCourt.pricings.length > 0) {
+        await tx.courtPricing.createMany({
+          data: sourceCourt.pricings.map(p => ({
+            courtId: court.id,
+            dayOfWeek: p.dayOfWeek,
+            startTime: p.startTime,
+            endTime: p.endTime,
+            pricePerHour: p.pricePerHour,
+            label: p.label
+          }))
+        });
+      }
+
+      // Copy bảng giá ngày đặc biệt
+      if (sourceCourt.specialPricings.length > 0) {
+        await tx.specialDatePricing.createMany({
+          data: sourceCourt.specialPricings.map(p => ({
+            courtId: court.id,
+            specificDate: p.specificDate,
+            startTime: p.startTime,
+            endTime: p.endTime,
+            pricePerHour: p.pricePerHour,
+            note: p.note
+          }))
+        });
+      }
+    }
+
+    return { synced: targetCourts.length };
+  });
+}

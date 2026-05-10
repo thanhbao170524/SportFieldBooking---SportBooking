@@ -215,7 +215,6 @@ export async function getAdminSummary(startDate?: string, endDate?: string) {
     end.setHours(23, 59, 59, 999);
   }
 
-  const end = endDate ? new Date(endDate) : new Date();
   const [
     pendingClubs, pendingKyc, totalUsers, activeClubs,
     totalBookings, filteredBookings, filteredRevenue,

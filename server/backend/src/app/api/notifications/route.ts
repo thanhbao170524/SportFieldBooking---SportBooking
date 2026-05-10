@@ -12,8 +12,12 @@ export async function GET(req: NextRequest) {
     const { user, error } = await getAuthUser(req);
     if (error) return error;
 
-    const notifications = await getMyNotifications(user.userId);
-    return successResponse("Lấy thông báo thành công", notifications);
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "10");
+
+    const data = await getMyNotifications(user.userId, page, limit);
+    return successResponse("Lấy thông báo thành công", data);
   } catch (error) {
     return serverErrorResponse(error);
   }
