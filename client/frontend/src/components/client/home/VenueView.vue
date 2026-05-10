@@ -92,7 +92,6 @@ onMounted(() => {
 });
 
 const handleClick = (feature) => {
-  console.log('Clicked:', feature.title)
   // TODO: navigate or emit event
   // emit('feature-click', feature)
 }

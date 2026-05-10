@@ -23,7 +23,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const auth = await requireAdminPermissions(req, ["view_posts"]);
     if (auth.error) return auth.error;
 
-    console.log("DEBUG: Fetching comments for admin");
     const comments = await prisma.comment.findMany({
       include: {
         user: {
@@ -41,11 +40,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       },
       orderBy: { createdAt: "desc" }
     });
-    console.log("DEBUG: Comments fetched successfully, count:", comments.length);
 
     return successResponse("Lấy comments thành công", comments);
   } catch (error) {
-    console.error("DEBUG: GET Admin Comments Error:", error);
+    console.error("GET Admin Comments Error:", error);
     return serverErrorResponse(error);
   }
 }

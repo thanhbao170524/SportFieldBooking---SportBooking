@@ -138,20 +138,17 @@ export function normalizePermissionsMatrix(input: unknown): PermissionsMatrix {
 
 export async function getPermissionsMatrix(): Promise<PermissionsMatrix> {
   try {
-    console.log("DEBUG: Querying systemConfig for RBAC_PERMISSIONS");
     const row = await prisma.systemConfig.findUnique({
       where: { key: CONFIG_KEY },
       select: { value: true },
     });
 
     if (!row?.value) {
-      console.log("DEBUG: No RBAC_PERMISSIONS found in DB, using defaults");
       return DEFAULT_PERMISSIONS_MATRIX;
     }
 
     try {
       const result = normalizePermissionsMatrix(JSON.parse(row.value));
-      console.log("DEBUG: RBAC matrix normalized successfully");
       return result;
     } catch (parseError) {
       console.error("DEBUG: Failed to parse RBAC_PERMISSIONS JSON:", parseError);

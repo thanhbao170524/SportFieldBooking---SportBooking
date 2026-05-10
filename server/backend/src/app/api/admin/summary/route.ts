@@ -16,19 +16,17 @@ export async function GET(req: NextRequest) {
     const startDate = searchParams.get('startDate') || undefined;
     const endDate = searchParams.get('endDate') || undefined;
 
-    console.log("DEBUG: Fetching admin summary data");
     const [summary, monthlyStats] = await Promise.all([
       getAdminSummary(startDate, endDate),
       getMonthlyStatsAdmin()
     ]);
-    console.log("DEBUG: Admin summary data fetched successfully");
 
     return successResponse("Lấy số liệu tổng quan thành công", {
       ...summary,
       monthlyStats
     });
   } catch (error: unknown) {
-    console.error("DEBUG: GET Admin Summary Error:", error);
+    console.error("GET Admin Summary Error:", error);
     return serverErrorResponse(error);
   }
 }
