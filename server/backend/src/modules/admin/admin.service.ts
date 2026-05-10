@@ -101,7 +101,6 @@ export async function toggleClubActiveStatus(clubId: string, isActive: boolean) 
       data: { isActive }
     });
 
-    console.log(`DEBUG: toggleClubActiveStatus - Club ${clubId} updated to isActive=${isActive}`);
 
     // 2. Cập nhật tất cả sân thuộc CLB
     // Nếu CLB bị khóa, tất cả sân bị treo (SUSPENDED)
@@ -216,7 +215,7 @@ export async function getAdminSummary(startDate?: string, endDate?: string) {
     end.setHours(23, 59, 59, 999);
   }
 
-  console.log("DEBUG: getAdminSummary - Starting Promise.all for stats", { start, end });
+  const end = endDate ? new Date(endDate) : new Date();
   const [
     pendingClubs, pendingKyc, totalUsers, activeClubs,
     totalBookings, filteredBookings, filteredRevenue,
@@ -250,7 +249,6 @@ export async function getAdminSummary(startDate?: string, endDate?: string) {
     prisma.club.count(),
     getVisitStatsAdmin(startDate, endDate),
   ]);
-  console.log("DEBUG: getAdminSummary - Promise.all completed");
 
   // Derived calculations
   const totalRevenue = Number(filteredRevenue._sum.finalAmount || 0);
@@ -674,8 +672,6 @@ export async function handleReportAdmin(
   adminResponse?: string
 ) {
   try {
-    console.log("DEBUG: handleReportAdmin - Updating report:", reportId, status);
-    
     // 1. Cập nhật trạng thái báo cáo
     const report = await prisma.report.update({
       where: { id: reportId },
@@ -686,8 +682,6 @@ export async function handleReportAdmin(
       }
     });
 
-    console.log("DEBUG: handleReportAdmin - Creating notification for user:", report.reporterId);
-    
     // 2. Gửi thông báo về cho người báo cáo (bọc trong try-catch riêng để không làm hỏng flow chính)
     try {
       await prisma.notification.create({
@@ -698,7 +692,6 @@ export async function handleReportAdmin(
           body: adminResponse || (status === "RESOLVED" ? "Admin đã duyệt báo cáo của bạn." : "Yêu cầu báo cáo không phù hợp."),
         }
       });
-      console.log("DEBUG: handleReportAdmin - Notification sent successfully");
     } catch (notifError) {
       console.error("ERROR: handleReportAdmin - Failed to create notification:", notifError);
       // Vẫn tiếp tục vì report đã được cập nhật xong

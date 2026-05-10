@@ -350,7 +350,6 @@ export default {
         { value: "Bãi xe",        label: "Đỗ xe miễn phí" },
         { value: "Căng tin",      label: "Căng tin" },
         { value: "Phòng tắm",     label: "Phòng tắm" },
-        // { value: "changing_room", label: "Phòng thay đồ" },
       ],
     };
   },
@@ -495,7 +494,6 @@ export default {
               lat: position.coords.latitude,
               lng: position.coords.longitude
             };
-            console.log("User location acquired:", this.userCoords);
             resolve();
           },
           (error) => {

@@ -26,11 +26,8 @@ export const initSocket = (server: HTTPServer) => {
   });
 
   io.on("connection", (socket) => {
-    console.log("Client connected:", socket.id);
-
     socket.on("join-venue", async (venueId: string) => {
       socket.join(`venue-${venueId}`);
-      console.log(`Socket ${socket.id} joined venue-${venueId}`);
 
       try {
         const notifications = await redis.lrange(`notifications:venue:${venueId}`, 0, -1);
@@ -45,21 +42,17 @@ export const initSocket = (server: HTTPServer) => {
 
     socket.on("leave-venue", (venueId: string) => {
       socket.leave(`venue-${venueId}`);
-      console.log(`Socket ${socket.id} left venue-${venueId}`);
     });
 
     socket.on("join-booking", (bookingId: string) => {
       socket.join(`booking-${bookingId}`);
-      console.log(`Socket ${socket.id} joined booking-${bookingId}`);
     });
 
     socket.on("leave-booking", (bookingId: string) => {
       socket.leave(`booking-${bookingId}`);
-      console.log(`Socket ${socket.id} left booking-${bookingId}`);
     });
 
     socket.on("disconnect", () => {
-      console.log("Client disconnected:", socket.id);
     });
   });
 
@@ -96,6 +89,5 @@ export const notifyNewBooking = async (venueId: string, bookingData: unknown) =>
 export const notifyBookingStatusChanged = (bookingId: string, data: unknown) => {
   if (io) {
     io.to(`booking-${bookingId}`).emit("booking-status-changed", data);
-    console.log(`Emitted booking-status-changed to booking-${bookingId}`);
   }
 };

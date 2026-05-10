@@ -39,7 +39,6 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
 
     const body = await req.json();
     const { id, status, adminResponse } = body;
-    console.log("DEBUG: Handling report:", { id, status, adminResponse });
 
     if (!id || !status) {
       return serverErrorResponse("Thiếu thông tin xử lý");

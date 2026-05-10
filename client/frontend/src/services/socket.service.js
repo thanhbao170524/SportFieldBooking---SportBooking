@@ -33,7 +33,6 @@ class SocketService {
       });
 
       this.socket.on("connect", () => {
-        console.log("Socket connected:", this.socket.id, API_URL);
         this.joinedVenueIds.forEach((vid) => {
           this.socket.emit("join-venue", vid);
         });
@@ -44,21 +43,17 @@ class SocketService {
       });
 
       this.socket.on("booking-updated", (data) => {
-        console.log("Socket received booking-updated:", data);
         if (this.bookingUpdateCallback) this.bookingUpdateCallback(data);
       });
 
       this.socket.on("recent-notifications", (list) => {
-        console.log("Socket received recent-notifications:", list?.length);
         if (this.recentNotificationsCallback) this.recentNotificationsCallback(list);
       });
 
       this.socket.on("booking-status-changed", (data) => {
-        console.log("Socket received booking-status-changed:", data);
         if (this.bookingStatusChangedCallback) this.bookingStatusChangedCallback(data);
       });
 
-      console.log("Connecting to socket server:", API_URL);
     }
     return this.socket;
   }
@@ -69,7 +64,6 @@ class SocketService {
     this.joinedVenueIds.add(key);
     if (this.socket) {
       this.socket.emit("join-venue", venueId);
-      console.log(`Joined venue: ${venueId}`);
     }
   }
 
@@ -79,7 +73,6 @@ class SocketService {
     this.joinedVenueIds.delete(key);
     if (this.socket) {
       this.socket.emit("leave-venue", venueId);
-      console.log(`Left venue: ${venueId}`);
     }
   }
 
@@ -96,14 +89,12 @@ class SocketService {
   joinBooking(bookingId) {
     if (this.socket) {
       this.socket.emit("join-booking", bookingId);
-      console.log(`Joined booking room: ${bookingId}`);
     }
   }
 
   leaveBooking(bookingId) {
     if (this.socket) {
       this.socket.emit("leave-booking", bookingId);
-      console.log(`Left booking room: ${bookingId}`);
     }
   }
 
@@ -120,7 +111,6 @@ class SocketService {
       this.socket.disconnect();
       this.socket = null;
       this.joinedVenueIds.clear();
-      console.log("Socket disconnected");
     }
   }
 }

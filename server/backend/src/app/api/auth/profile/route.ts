@@ -15,22 +15,18 @@ export async function GET(req: NextRequest) {
     if (error) return error;
 
     // Lấy profile từ service
-    console.log("DEBUG: Fetching profile for user:", user.userId);
     const profile = await getMyProfile(user.userId);
     if (!profile) {
-      console.error("DEBUG: Profile not found for user:", user.userId);
       return errorResponse("Không tìm thấy người dùng", 404);
     }
     
     // Lấy ma trận quyền
-    console.log("DEBUG: Fetching permissions matrix");
     const matrix = await getPermissionsMatrix();
     const permissions = matrix[user.role as RoleKey] || {};
 
     let ownerProfile = null;
     // Nếu là OWNER, kèm theo kycStatus từ ownerProfile (phẳng hóa ra ngoài user)
     if (user.role === "OWNER") {
-      console.log("DEBUG: Fetching owner profile");
       const op = await prisma.ownerProfile.findUnique({
         where: { userId: user.userId },
         select: { kycStatus: true },
@@ -48,7 +44,6 @@ export async function GET(req: NextRequest) {
 
     return successResponse("Lấy thông tin cá nhân thành công", profileData);
   } catch (error: unknown) {
-    console.error("DEBUG: auth/profile error:", error);
     return serverErrorResponse(error);
   }
 }

@@ -99,7 +99,6 @@ onMounted(() => {
 })
 
 const handleClick = (service) => {
-  console.log('Clicked:', service.title)
 }
 </script>
 
