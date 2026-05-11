@@ -755,7 +755,7 @@ export default {
     },
     validateCreateField(field) {
       const val = String(this.createForm[field] || '').trim();
-      const titleRegex = /^[a-zA-Z0-9\sÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠƯẠ-ỹ!?,.\[\]()\-]+$/;
+      const titleRegex = /^[a-zA-Z0-9\sÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÊÔƠƯẠ-ỹ!?,.\[\]()\-]+$/;
 
       switch (field) {
         case 'title':
