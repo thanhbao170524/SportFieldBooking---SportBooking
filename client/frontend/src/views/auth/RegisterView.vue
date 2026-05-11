@@ -316,7 +316,7 @@ export default {
         if (!v) { this.errors.fullName = 'Vui lòng nhập họ và tên.'; return }
         if (v.length < 2) { this.errors.fullName = 'Họ và tên phải có ít nhất 2 ký tự.'; return }
         if (v.length > 100) { this.errors.fullName = 'Họ và tên không quá 100 ký tự.'; return }
-        if (!/^[a-zA-Z0-9\sÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠƯẠ-ỹ]+$/.test(v)) {
+        if (!/^[a-zA-Z0-9\sÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÊÔƠƯẠ-ỹ]+$/.test(v)) {
           this.errors.fullName = 'Họ và tên không được chứa ký tự đặc biệt.';
           return;
         }
