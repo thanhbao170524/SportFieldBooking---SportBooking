@@ -334,17 +334,113 @@
                   </div>
                   <div class="form-field full">
                     <label>Chọn sân bóng (Tùy chọn)</label>
-                    <div class="club-chips">
-                       <button 
-                         v-for="club in userClubs" 
-                         :key="club.id"
-                         :class="{ active: createForm.clubId === club.id }"
-                         @click="createForm.clubId = (createForm.clubId === club.id ? '' : club.id)"
-                       >
-                         {{ club.name }}
-                       </button>
-                       <span v-if="userClubs.length === 0" class="text-hint">Bạn chưa theo dõi sân nào</span>
+
+                    <!-- Selected pill -->
+                    <div v-if="selectedClub" class="club-selected">
+                      <span class="material-icons">place</span>
+                      <div class="club-selected__info">
+                        <strong>{{ selectedClub.name }}</strong>
+                        <span v-if="selectedClub.district">{{ selectedClub.district }}</span>
+                      </div>
+                      <button type="button" class="club-selected__clear" @click="createForm.clubId = ''">
+                        <span class="material-icons">close</span>
+                      </button>
                     </div>
+
+                    <!-- Search + dropdown -->
+                    <div v-else class="club-finder" :class="{ open: clubDropdownOpen }">
+                      <div class="club-finder__search">
+                        <span class="material-icons">search</span>
+                        <input
+                          v-model="clubFilterKeyword"
+                          type="text"
+                          placeholder="Tìm sân theo tên hoặc khu vực..."
+                          @focus="clubDropdownOpen = true"
+                          @blur="onClubDropdownBlur"
+                        />
+                        <button
+                          v-if="clubFilterKeyword"
+                          type="button"
+                          class="club-finder__clear"
+                          @mousedown.prevent="clubFilterKeyword = ''"
+                        >
+                          <span class="material-icons">close</span>
+                        </button>
+                      </div>
+
+                      <div v-if="clubDropdownOpen" class="club-finder__list">
+                        <button
+                          v-for="club in filteredClubs"
+                          :key="club.id"
+                          type="button"
+                          class="club-finder__item"
+                          @mousedown.prevent="pickClub(club)"
+                        >
+                          <span class="material-icons">stadium</span>
+                          <div class="club-finder__item-text">
+                            <strong>{{ club.name }}</strong>
+                            <span v-if="club.district || club.city">{{ club.district || '' }}{{ club.district && club.city ? ' • ' : '' }}{{ club.city || '' }}</span>
+                          </div>
+                        </button>
+                        <div v-if="filteredClubs.length === 0" class="club-finder__empty">
+                          <span class="material-icons">search_off</span>
+                          Không tìm thấy sân nào khớp "{{ clubFilterKeyword }}"
+                        </div>
+                      </div>
+                    </div>
+                    <span v-if="userClubs.length === 0" class="text-hint">Chưa có sân nào để chọn</span>
+                  </div>
+
+                  <div class="form-field full">
+                    <label>Ảnh đính kèm (tuỳ chọn)</label>
+                    <div
+                      v-if="!createForm.imageUrl"
+                      class="post-uploader"
+                      :class="{ 'is-uploading': uploadingPostImage }"
+                      @click="!uploadingPostImage && $refs.createPostImageInput.click()"
+                      @dragover.prevent
+                      @drop.prevent="onCreateImageDrop"
+                    >
+                      <span class="material-icons post-uploader__icon">
+                        {{ uploadingPostImage ? 'hourglass_top' : 'add_photo_alternate' }}
+                      </span>
+                      <div class="post-uploader__text">
+                        <strong>{{ uploadingPostImage ? 'Đang tải lên...' : 'Nhấn để chọn ảnh' }}</strong>
+                        <span>JPG, PNG, GIF, WebP — tối đa 5MB</span>
+                      </div>
+                    </div>
+
+                    <div v-else class="post-preview">
+                      <img :src="createForm.imageUrl" alt="Ảnh bài đăng" class="post-preview__img" />
+                      <div class="post-preview__actions">
+                        <button
+                          type="button"
+                          class="post-preview__btn"
+                          @click="$refs.createPostImageInput.click()"
+                          :disabled="uploadingPostImage"
+                        >
+                          <span class="material-icons">swap_horiz</span>
+                          Đổi ảnh
+                        </button>
+                        <button
+                          type="button"
+                          class="post-preview__btn danger"
+                          @click="createForm.imageUrl = ''"
+                          :disabled="uploadingPostImage"
+                        >
+                          <span class="material-icons">delete_outline</span>
+                          Xoá
+                        </button>
+                      </div>
+                    </div>
+
+                    <input
+                      ref="createPostImageInput"
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      style="display:none"
+                      @change="onCreateImageChange"
+                    />
                   </div>
                </div>
             </div>
@@ -415,13 +511,17 @@ export default {
         content: '',
         clubId: '',
         linkedDate: '',
-        skillSelection: 'INTERMEDIATE'
+        skillSelection: 'INTERMEDIATE',
+        imageUrl: ''
       },
       createErrors: {
         title: '',
         content: '',
         linkedDate: ''
       },
+      clubFilterKeyword: '',
+      clubDropdownOpen: false,
+      uploadingPostImage: false,
       levels: [
         { val: 'BEGINNER', label: 'Giao lưu' },
         { val: 'INTERMEDIATE', label: 'Trung bình' },
@@ -481,6 +581,20 @@ export default {
       }
 
       return list;
+    },
+    selectedClub() {
+      if (!this.createForm.clubId) return null;
+      return this.userClubs.find(c => c.id === this.createForm.clubId) || null;
+    },
+    filteredClubs() {
+      const k = (this.clubFilterKeyword || '').trim().toLowerCase();
+      const list = Array.isArray(this.userClubs) ? this.userClubs : [];
+      if (!k) return list.slice(0, 30);
+      return list.filter(c =>
+        (c.name || '').toLowerCase().includes(k) ||
+        (c.district || '').toLowerCase().includes(k) ||
+        (c.city || '').toLowerCase().includes(k)
+      ).slice(0, 30);
     }
   },
   async mounted() {
@@ -578,11 +692,65 @@ export default {
         });
         toast.success("Đã đăng bài thành công!");
         this.showCreateModal = false;
+        // Reset form
+        this.createForm = {
+          title: '', content: '', clubId: '',
+          linkedDate: '', skillSelection: 'INTERMEDIATE', imageUrl: ''
+        };
+        this.clubFilterKeyword = '';
         await this.fetchMatches();
       } catch (e) {
         toast.error(e.response?.data?.message || "Lỗi khi đăng bài");
       } finally {
         this.saving = false;
+      }
+    },
+    pickClub(club) {
+      if (!club) return;
+      this.createForm.clubId = club.id;
+      this.clubFilterKeyword = '';
+      this.clubDropdownOpen = false;
+    },
+    onClubDropdownBlur() {
+      // delay để click vào item kịp trigger trước khi dropdown đóng
+      setTimeout(() => { this.clubDropdownOpen = false; }, 150);
+    },
+    onCreateImageChange(event) {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      if (file) this.uploadPostImage(file);
+    },
+    onCreateImageDrop(event) {
+      const file = event.dataTransfer?.files?.[0];
+      if (file) this.uploadPostImage(file);
+    },
+    async uploadPostImage(file) {
+      const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowed.includes(file.type)) {
+        toast.error('Chỉ chấp nhận ảnh JPG, PNG, GIF hoặc WebP.');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Ảnh không được vượt quá 5MB.');
+        return;
+      }
+      this.uploadingPostImage = true;
+      try {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('type', 'post-image');
+        const api = (await import('@/api/axios')).default;
+        const res = await api.post('/upload', fd, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        const url = res.data?.data?.url;
+        if (!url) throw new Error('Không nhận được URL ảnh.');
+        this.createForm.imageUrl = url;
+        toast.success('Tải ảnh lên thành công');
+      } catch (err) {
+        toast.error(err?.response?.data?.message || 'Upload ảnh thất bại.');
+      } finally {
+        this.uploadingPostImage = false;
       }
     },
     validateCreateField(field) {
@@ -778,7 +946,7 @@ export default {
   position: relative;
   z-index: 100;
 }
-.ann-link { color: #10b981; font-weight: 700; text-decoration: none; margin-left: 5px; }
+.ann-link { color: #16a34a; font-weight: 700; text-decoration: none; margin-left: 5px; }
 .ann-close { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #fff; cursor: pointer; }
 
 .page-shell { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
@@ -787,26 +955,26 @@ export default {
 /* Breadcrumb */
 .breadcrumb ol { display: flex; list-style: none; padding: 0; margin-bottom: 20px; font-size: 12px; color: #64748b; gap: 8px; }
 .breadcrumb a { color: inherit; text-decoration: none; }
-.breadcrumb a:hover { color: #10b981; }
+.breadcrumb a:hover { color: #16a34a; }
 
 /* Header */
 .page-header { margin-bottom: 40px; }
 .header-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap; }
 .page-title { margin: 0; }
 .title-main { font-size: 3rem; font-weight: 900; color: #1e293b; display: block; letter-spacing: -2px; }
-.title-accent-box { display: inline-block; background: #10b981; padding: 2px 12px; border-radius: 4px; margin-top: -10px; }
+.title-accent-box { display: inline-block; background: #16a34a; padding: 2px 12px; border-radius: 4px; margin-top: -10px; }
 .title-sub { font-size: 1rem; color: #fff; font-weight: 700; text-transform: uppercase; }
 
 .stats-pills { display: flex; gap: 10px; }
 .stat-pill { background: #fff; padding: 6px 14px; border-radius: 99px; font-size: 12px; font-weight: 700; color: #475569; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-.stat-pill .material-icons { font-size: 14px; color: #10b981; }
+.stat-pill .material-icons { font-size: 14px; color: #16a34a; }
 
 .btn-create-premium {
   background: #1e293b; color: #fff; border: none; padding: 14px 28px; border-radius: 12px;
   font-weight: 800; font-size: 14px; display: flex; align-items: center; gap: 10px;
   cursor: pointer; transition: all 0.3s; box-shadow: 0 10px 15px -3px rgba(30, 41, 59, 0.2);
 }
-.btn-create-premium:hover { background: #10b981; transform: translateY(-3px); box-shadow: 0 10px 20px -3px rgba(16, 185, 129, 0.3); }
+.btn-create-premium:hover { background: #16a34a; transform: translateY(-3px); box-shadow: 0 10px 20px -3px rgba(22, 163, 74, 0.3); }
 
 /* Tabs */
 .community-tabs-wrapper { overflow-x: auto; scrollbar-width: none; margin-top: 20px; }
@@ -816,8 +984,8 @@ export default {
   color: #64748b; font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px;
   cursor: pointer; transition: all 0.2s; white-space: nowrap;
 }
-.tab-btn:hover { border-color: #10b981; color: #10b981; }
-.tab-btn.active { background: #10b981; color: #fff; border-color: #10b981; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2); }
+.tab-btn:hover { border-color: #16a34a; color: #16a34a; }
+.tab-btn.active { background: #16a34a; color: #fff; border-color: #16a34a; box-shadow: 0 4px 10px rgba(22, 163, 74, 0.2); }
 .tab-btn .material-icons { font-size: 18px; }
 
 /* Layout */
@@ -834,8 +1002,8 @@ export default {
 
 .chip-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 .filter-chip { background: #f8fafc; border: 1px solid #e2e8f0; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; color: #64748b; cursor: pointer; transition: all 0.2s; }
-.filter-chip:hover, .filter-chip.active { border-color: #10b981; color: #10b981; background: rgba(16, 185, 129, 0.05); }
-.filter-chip.active { background: #10b981; color: #fff; }
+.filter-chip:hover, .filter-chip.active { border-color: #16a34a; color: #16a34a; background: rgba(22, 163, 74, 0.05); }
+.filter-chip.active { background: #16a34a; color: #fff; }
 
 .date-input-wrapper { display: flex; align-items: center; gap: 10px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px 14px; border-radius: 10px; }
 .date-input-p { border: none; background: none; font-size: 13px; outline: none; width: 100%; font-family: inherit; }
@@ -866,7 +1034,7 @@ export default {
 .post-time { font-size: 12px; color: #94a3b8; }
 
 .btn-icon { background: none; border: none; color: #94a3b8; cursor: pointer; padding: 5px; border-radius: 50%; transition: all 0.2s; }
-.btn-icon:hover { background: #f1f5f9; color: #10b981; }
+.btn-icon:hover { background: #f1f5f9; color: #16a34a; }
 
 .post-title-social { font-size: 1.15rem; font-weight: 800; color: #1e293b; margin-bottom: 8px; line-height: 1.3; }
 .post-text { font-size: 0.9rem; color: #475569; line-height: 1.5; margin-bottom: 15px; white-space: pre-wrap; }
@@ -874,7 +1042,7 @@ export default {
 .match-details-box { background: #f8fafc; border-radius: 16px; padding: 16px; border: 1px solid #f1f5f9; }
 .detail-row { display: flex; flex-wrap: wrap; gap: 20px; }
 .detail-item { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #64748b; }
-.detail-item .material-icons { font-size: 18px; color: #10b981; }
+.detail-item .material-icons { font-size: 18px; color: #16a34a; }
 
 .skill-level { padding: 4px 10px; border-radius: 6px; font-size: 11px; text-transform: uppercase; }
 .skill-pro { background: #fee2e2; color: #ef4444; }
@@ -895,7 +1063,7 @@ export default {
 
 .post-actions-main { display: grid; grid-template-columns: 1fr; }
 .btn-join-premium { background: #1e293b; color: #fff; border: none; padding: 12px; border-radius: 12px; font-weight: 800; font-size: 14px; cursor: pointer; transition: all 0.3s; }
-.btn-join-premium:hover { background: #10b981; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+.btn-join-premium:hover { background: #16a34a; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3); }
 .btn-detail-premium { background: #f1f5f9; color: #1e293b; border: none; padding: 10px; border-radius: 10px; font-weight: 800; font-size: 13px; cursor: pointer; }
 
 /* Comments Section */
@@ -932,8 +1100,8 @@ export default {
 }
 
 .pg-btn:hover:not(:disabled) {
-  border-color: #10b981;
-  color: #10b981;
+  border-color: #16a34a;
+  color: #16a34a;
 }
 
 .pg-btn:disabled {
@@ -963,22 +1131,22 @@ export default {
 }
 
 .pg-num:hover:not(.active) {
-  border-color: #10b981;
-  color: #10b981;
+  border-color: #16a34a;
+  color: #16a34a;
 }
 
 .pg-num.active {
-  background: #10b981;
+  background: #16a34a;
   color: #fff;
-  border-color: #10b981;
-  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
+  border-color: #16a34a;
+  box-shadow: 0 4px 10px rgba(22, 163, 74, 0.2);
 }
 
 /* Modals */
 .modal-overlay-premium { position: fixed; inset: 0; background: rgba(15,23,42,0.8); backdrop-filter: blur(8px); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
 .modal-card-premium { background: #fff; width: 100%; max-width: 600px; border-radius: 30px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
 .modal-card-header { position: relative; padding: 40px 30px 20px; }
-.header-accent { position: absolute; top: 0; left: 0; right: 0; height: 8px; background: #10b981; }
+.header-accent { position: absolute; top: 0; left: 0; right: 0; height: 8px; background: #16a34a; }
 .header-content-p h2 { font-size: 1.8rem; font-weight: 900; margin: 0; letter-spacing: -1px; }
 .header-content-p p { font-size: 0.9rem; color: #94a3b8; margin: 5px 0 0; }
 .modal-close-p { position: absolute; top: 20px; right: 20px; background: #f1f5f9; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #64748b; }
@@ -989,22 +1157,163 @@ export default {
 .form-field label { display: block; font-size: 12px; font-weight: 800; color: #64748b; margin-bottom: 8px; text-transform: uppercase; }
 .input-with-icon-p { display: flex; align-items: center; gap: 10px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 16px; border-radius: 12px; }
 .input-with-icon-p input { border: none; background: none; outline: none; flex: 1; font-size: 14px; }
-.input-with-icon-p .material-icons { color: #10b981; font-size: 20px; }
+.input-with-icon-p .material-icons { color: #16a34a; font-size: 20px; }
 
 .form-field textarea, .form-field select, .form-field input[type="date"] { width: 100%; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 16px; font-size: 14px; font-family: inherit; outline: none; }
-.form-field textarea:focus, .form-field select:focus, .form-field input:focus { border-color: #10b981; }
+.form-field textarea:focus, .form-field select:focus, .form-field input:focus { border-color: #16a34a; }
 
 .club-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .club-chips button { background: #f1f5f9; border: 1px solid #e2e8f0; padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; }
-.club-chips button.active { background: #10b981; color: #fff; border-color: #10b981; }
+.club-chips button.active { background: #16a34a; color: #fff; border-color: #16a34a; }
+
+/* --- Club Finder (searchable selector) --- */
+.club-finder { position: relative; }
+.club-finder__search {
+  display: flex; align-items: center; gap: 10px;
+  background: #f8fafc; border: 1px solid #e2e8f0;
+  padding: 12px 14px; border-radius: 12px;
+  transition: border-color 0.2s ease;
+}
+.club-finder.open .club-finder__search,
+.club-finder__search:focus-within {
+  border-color: #16a34a;
+  background: #fff;
+}
+.club-finder__search .material-icons { color: #94a3b8; font-size: 20px; }
+.club-finder__search input {
+  flex: 1; border: none; background: none; outline: none;
+  font-size: 14px; font-family: inherit; color: #0f172a;
+}
+.club-finder__clear {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border: none; background: #e2e8f0;
+  border-radius: 50%; cursor: pointer; color: #475569;
+}
+.club-finder__clear:hover { background: #cbd5e1; }
+.club-finder__clear .material-icons { font-size: 14px !important; }
+
+.club-finder__list {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+  max-height: 260px; overflow-y: auto;
+  background: #fff; border: 1px solid #e2e8f0;
+  border-radius: 12px; padding: 6px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+  z-index: 5;
+}
+
+.club-finder__item {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  background: transparent; border: none;
+  padding: 10px 12px; border-radius: 10px;
+  cursor: pointer; text-align: left;
+  transition: background 0.15s ease;
+}
+.club-finder__item:hover { background: #f0fdf4; }
+.club-finder__item .material-icons {
+  flex-shrink: 0; color: #16a34a; font-size: 20px;
+}
+.club-finder__item-text { display: flex; flex-direction: column; min-width: 0; }
+.club-finder__item-text strong {
+  font-size: 13.5px; font-weight: 700; color: #0f172a;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.club-finder__item-text span {
+  font-size: 11.5px; color: #64748b;
+}
+
+.club-finder__empty {
+  display: flex; align-items: center; gap: 8px;
+  padding: 14px 12px; font-size: 13px; color: #94a3b8;
+}
+.club-finder__empty .material-icons { font-size: 18px !important; }
+
+.club-selected {
+  display: flex; align-items: center; gap: 12px;
+  background: #ecfdf5; border: 1px solid #bbf7d0;
+  padding: 12px 14px; border-radius: 12px;
+}
+.club-selected > .material-icons {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: #16a34a; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px !important; flex-shrink: 0;
+}
+.club-selected__info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.club-selected__info strong {
+  font-size: 14px; font-weight: 800; color: #14532d;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.club-selected__info span { font-size: 12px; color: #15803d; font-weight: 600; }
+.club-selected__clear {
+  border: none; background: rgba(255,255,255,0.7);
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: #15803d;
+}
+.club-selected__clear:hover { background: #fff; color: #ef4444; }
+.club-selected__clear .material-icons { font-size: 16px !important; }
+
+.text-hint { font-size: 12px; color: #94a3b8; }
+
+/* --- Post Image Uploader (in create modal) --- */
+.post-uploader {
+  display: flex; align-items: center; gap: 16px;
+  padding: 18px 20px;
+  border: 2px dashed #cbd5e1; border-radius: 14px;
+  background: #f8fafc; cursor: pointer;
+  transition: all 0.2s ease;
+}
+.post-uploader:hover:not(.is-uploading) {
+  border-color: #16a34a; background: #ecfdf5;
+}
+.post-uploader.is-uploading { opacity: 0.65; pointer-events: none; }
+
+.post-uploader__icon {
+  width: 52px; height: 52px; border-radius: 14px;
+  background: #ecfdf5; color: #16a34a;
+  font-size: 28px !important;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.post-uploader__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.post-uploader__text strong { font-size: 14px; font-weight: 700; color: #0f172a; }
+.post-uploader__text span { font-size: 12.5px; color: #64748b; }
+
+.post-preview {
+  position: relative;
+  border-radius: 14px; overflow: hidden;
+  background: #0f172a; border: 1px solid #e2e8f0;
+}
+.post-preview__img {
+  display: block; width: 100%; max-height: 280px; object-fit: cover;
+}
+.post-preview__actions {
+  position: absolute; top: 12px; right: 12px;
+  display: flex; gap: 8px;
+}
+.post-preview__btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 12px; border-radius: 10px; border: none;
+  background: rgba(255, 255, 255, 0.92); color: #0f172a;
+  font-weight: 700; font-size: 12.5px; cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+}
+.post-preview__btn:hover:not(:disabled) { background: white; transform: translateY(-1px); }
+.post-preview__btn .material-icons { font-size: 16px !important; }
+.post-preview__btn.danger { background: rgba(254, 226, 226, 0.95); color: #b91c1c; }
+.post-preview__btn.danger:hover:not(:disabled) { background: #fee2e2; }
+.post-preview__btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .modal-card-footer { padding: 20px 30px; background: #f8fafc; display: flex; justify-content: flex-end; gap: 15px; }
 .btn-cancel-p { background: none; border: none; font-weight: 700; color: #64748b; cursor: pointer; }
 .btn-submit-premium { background: #1e293b; color: #fff; border: none; padding: 14px 30px; border-radius: 14px; font-weight: 800; cursor: pointer; transition: all 0.3s; }
-.btn-submit-premium:hover { background: #10b981; transform: translateY(-2px); }
+.btn-submit-premium:hover { background: #16a34a; transform: translateY(-2px); }
 
 /* Join Success */
-.success-icon-wrap { width: 80px; height: 80px; background: rgba(16, 185, 129, 0.1); color: #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
+.success-icon-wrap { width: 80px; height: 80px; background: rgba(22, 163, 74, 0.1); color: #16a34a; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
 .success-icon-wrap .material-icons { font-size: 48px; }
 
 /* Animations */

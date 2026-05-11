@@ -392,7 +392,14 @@ export default {
       }
     },
     validateTransferField(field) {
-      const val = String(this.clubTransfer[field] || '').trim();
+      // Map từ field key sang đúng property trong clubTransfer
+      const propMap = {
+        bankName: 'transferBankName',
+        accountNumber: 'transferAccountNumber',
+        beneficiaryName: 'transferBeneficiaryName',
+      };
+      const prop = propMap[field] || field;
+      const val = String(this.clubTransfer[prop] || '').trim();
       const nameRegex = /^[a-zA-Z0-9\sÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠƯẠ-ỹ]+$/;
 
       switch (field) {
@@ -599,6 +606,8 @@ export default {
         transferBeneficiaryName: c.transferBeneficiaryName || '',
         transferQrImageUrl: c.transferQrImageUrl || '',
       };
+      // Xóa các thông báo lỗi cũ khi load dữ liệu mới
+      this.transferErrors = { bankName: '', accountNumber: '', beneficiaryName: '' };
     },
     transferPayloadForClub() {
       const f = this.clubTransfer;

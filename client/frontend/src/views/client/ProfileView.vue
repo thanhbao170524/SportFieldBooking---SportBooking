@@ -387,6 +387,59 @@
                 <label class="form-label-p">Nội dung chi tiết</label>
                 <textarea v-model="matchForm.content" class="form-control-p" rows="4" placeholder="Mô tả kỹ năng, phí chia sẻ, địa điểm cụ thể..."></textarea>
               </div>
+
+              <div class="mb-4">
+                <label class="form-label-p">Ảnh đính kèm (tuỳ chọn)</label>
+                <div
+                  v-if="!matchForm.imageUrl"
+                  class="post-uploader-p"
+                  :class="{ 'is-uploading': uploadingPostImage }"
+                  @click="!uploadingPostImage && $refs.postImageInput.click()"
+                  @dragover.prevent
+                  @drop.prevent="onPostImageDrop"
+                >
+                  <span class="material-icons post-uploader-p__icon">
+                    {{ uploadingPostImage ? 'hourglass_top' : 'add_photo_alternate' }}
+                  </span>
+                  <div class="post-uploader-p__text">
+                    <strong>{{ uploadingPostImage ? 'Đang tải lên...' : 'Nhấn để chọn ảnh' }}</strong>
+                    <span>JPG, PNG, GIF, WebP — tối đa 5MB</span>
+                  </div>
+                </div>
+
+                <div v-else class="post-preview-p">
+                  <img :src="matchForm.imageUrl" alt="Ảnh bài đăng" class="post-preview-p__img" />
+                  <div class="post-preview-p__actions">
+                    <button
+                      type="button"
+                      class="post-preview-p__btn"
+                      @click="$refs.postImageInput.click()"
+                      :disabled="uploadingPostImage"
+                    >
+                      <span class="material-icons">swap_horiz</span>
+                      Đổi ảnh
+                    </button>
+                    <button
+                      type="button"
+                      class="post-preview-p__btn danger"
+                      @click="matchForm.imageUrl = ''"
+                      :disabled="uploadingPostImage"
+                    >
+                      <span class="material-icons">delete_outline</span>
+                      Xoá
+                    </button>
+                  </div>
+                </div>
+
+                <input
+                  ref="postImageInput"
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  style="display:none"
+                  @change="onPostImageChange"
+                />
+              </div>
+
               <div class="row g-4">
                 <div class="col-md-6">
                   <label class="form-label-p">Chọn CLB (Tuỳ chọn)</label>
@@ -477,8 +530,10 @@ export default {
         content: '',
         clubId: '',
         type: 'TEAM_MATCHING',
-        linkedDate: ''
+        linkedDate: '',
+        imageUrl: ''
       },
+      uploadingPostImage: false,
       errors: {
         fullName: '',
         phone: '',
@@ -925,6 +980,44 @@ export default {
       if (interval > 1) return Math.floor(interval) + " phút trước";
       return "Vừa xong";
     },
+    onPostImageChange(event) {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      if (file) this.uploadPostImage(file);
+    },
+    onPostImageDrop(event) {
+      const file = event.dataTransfer?.files?.[0];
+      if (file) this.uploadPostImage(file);
+    },
+    async uploadPostImage(file) {
+      const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowed.includes(file.type)) {
+        toast.error('Chỉ chấp nhận ảnh JPG, PNG, GIF hoặc WebP.');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Ảnh không được vượt quá 5MB.');
+        return;
+      }
+      this.uploadingPostImage = true;
+      try {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('type', 'post-image');
+        const api = (await import('@/api/axios')).default;
+        const res = await api.post('/upload', fd, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        const url = res.data?.data?.url;
+        if (!url) throw new Error('Không nhận được URL ảnh.');
+        this.matchForm.imageUrl = url;
+        toast.success('Tải ảnh lên thành công');
+      } catch (err) {
+        toast.error(err?.response?.data?.message || 'Upload ảnh thất bại.');
+      } finally {
+        this.uploadingPostImage = false;
+      }
+    },
     async handleCreateMatch() {
        const title = (this.matchForm.title || '').trim();
        const content = (this.matchForm.content || '').trim();
@@ -984,7 +1077,7 @@ export default {
            toast.success(this.matchForm.id ? "Đã cập nhật bài đăng!" : "Kèo của bạn đã được đăng!");
            this.showMatchModal = false;
            // Reset form
-           this.matchForm = { title: '', content: '', clubId: '', type: 'TEAM_MATCHING', linkedDate: '' };
+           this.matchForm = { title: '', content: '', clubId: '', type: 'TEAM_MATCHING', linkedDate: '', imageUrl: '' };
            await this.fetchUserPosts();
          }
        } catch (e) {
@@ -1026,7 +1119,8 @@ export default {
         content: post.content,
         clubId: post.clubId,
         type: post.type,
-        linkedDate: post.linkedDate ? post.linkedDate.split('T')[0] : ''
+        linkedDate: post.linkedDate ? post.linkedDate.split('T')[0] : '',
+        imageUrl: post.imageUrl || ''
       };
       this.showMatchModal = true;
     }
@@ -1297,29 +1391,66 @@ export default {
 }
 
 .form-label-p {
+  display: block;
   font-size: 0.875rem;
   font-weight: 700;
   color: #475569;
+  margin-bottom: 8px;
 }
 
 .form-control-p {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
   border: 2px solid #f1f5f9;
   border-radius: 12px;
   padding: 12px 16px;
   font-size: 0.9375rem;
-  transition: all 0.2s;
+  font-family: inherit;
+  color: #0f172a;
   background: #f8fafc;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.form-control-p::placeholder {
+  color: #94a3b8;
 }
 
 .form-control-p:focus {
-  outline: none;
   border-color: #10b981;
   background: white;
   box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
 }
 
+textarea.form-control-p {
+  resize: vertical;
+  min-height: 96px;
+  line-height: 1.5;
+}
+
 .select-wrapper-p {
   position: relative;
+}
+
+.select-wrapper-p::after {
+  content: '\e5cf';
+  font-family: 'Material Icons';
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  pointer-events: none;
+  font-size: 22px;
+}
+
+.select-wrapper-p select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 42px;
+  cursor: pointer;
 }
 
 /* --- Button Styles --- */
@@ -1327,13 +1458,19 @@ export default {
   padding: 12px 24px;
   border-radius: 12px;
   font-weight: 700;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   transition: all 0.3s;
   border: none;
   cursor: pointer;
+  font-size: 0.9375rem;
+  white-space: nowrap;
+}
+
+.btn-premium .material-icons {
+  font-size: 18px;
 }
 
 .btn-premium--emerald {
@@ -1360,6 +1497,36 @@ export default {
 .btn-premium--light {
   background: #f1f5f9;
   color: #475569;
+}
+
+.btn-premium--light:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.btn-premium--outline-emerald {
+  background: transparent;
+  border: 2px solid #10b981;
+  color: #059669;
+}
+
+.btn-premium--outline-emerald:hover {
+  background: #ecfdf5;
+  transform: translateY(-2px);
+}
+
+.shadow-emerald {
+  box-shadow: 0 10px 20px rgba(16, 185, 129, 0.25);
+}
+
+.shadow-emerald:hover {
+  box-shadow: 0 14px 28px rgba(16, 185, 129, 0.35);
+}
+
+.btn-premium:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
 }
 
 /* --- Notification Feed --- */
@@ -1487,6 +1654,50 @@ export default {
   justify-content: space-between;
 }
 
+.modal-icon-p {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: #ecfdf5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-icon-p .material-icons {
+  font-size: 24px;
+}
+
+.modal-title-p {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800;
+  font-size: 1.5rem;
+  margin: 0;
+  text-transform: uppercase;
+  color: #0f172a;
+  letter-spacing: 0.5px;
+}
+
+.modal-close-btn-p {
+  border: none;
+  background: #f1f5f9;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modal-close-btn-p:hover {
+  background: #fee2e2;
+  color: #ef4444;
+  transform: rotate(90deg);
+}
+
 .modal-card__body-p {
   padding: 24px;
 }
@@ -1497,6 +1708,141 @@ export default {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+/* --- Post Image Upload --- */
+.post-uploader-p {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  border: 2px dashed #cbd5e1;
+  border-radius: 14px;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.post-uploader-p:hover:not(.is-uploading) {
+  border-color: #10b981;
+  background: #ecfdf5;
+}
+
+.post-uploader-p.is-uploading {
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.post-uploader-p__icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: #ecfdf5;
+  color: #10b981;
+  font-size: 28px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.post-uploader-p__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.post-uploader-p__text strong {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.post-uploader-p__text span {
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.post-preview-p {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #0f172a;
+  border: 1px solid #e2e8f0;
+}
+
+.post-preview-p__img {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+}
+
+.post-preview-p__actions {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+.post-preview-p__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+}
+
+.post-preview-p__btn:hover:not(:disabled) {
+  background: white;
+  transform: translateY(-1px);
+}
+
+.post-preview-p__btn .material-icons {
+  font-size: 18px !important;
+}
+
+.post-preview-p__btn.danger {
+  background: rgba(254, 226, 226, 0.95);
+  color: #b91c1c;
+}
+
+.post-preview-p__btn.danger:hover:not(:disabled) {
+  background: #fee2e2;
+}
+
+.post-preview-p__btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Modal transition (matches <transition name="modal-fade">) */
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+.modal-fade-enter-active .modal-card-p,
+.modal-fade-leave-active .modal-card-p {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
+}
+.modal-fade-enter-from .modal-card-p,
+.modal-fade-leave-to .modal-card-p {
+  transform: translateY(20px) scale(0.96);
 }
 
 /* --- Premium Post Cards --- */
