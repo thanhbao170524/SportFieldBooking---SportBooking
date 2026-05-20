@@ -1208,6 +1208,7 @@ export default {
         email: this.form.email,
         note: this.form.note,
         voucher_code: this.voucherApplied ? this.form.voucher.trim().toUpperCase() : '',
+        holdStartedAt: Date.now(),
       };
 
       sessionStorage.setItem('pending_booking', JSON.stringify(bookingData));

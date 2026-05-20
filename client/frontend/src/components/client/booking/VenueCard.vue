@@ -366,26 +366,28 @@ export default {
   box-shadow: 0 4px 20px rgba(0,0,0,0.06);
 }
 
-/* ─── Image (left column) ─── */
+/* ─── Image (left column) — fixed frame so cards stay aligned ─── */
 .card-image {
   position: relative;
   flex-shrink: 0;
+  align-self: flex-start;
   width: 300px;
-  min-height: 140px;
+  height: 200px;
   background: #f1f5f9;
   overflow: hidden;
 }
 
 .image-link {
+  position: absolute;
+  inset: 0;
   display: block;
-  width: 100%;
-  height: 100%;
 }
 
 .venue-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   display: block;
   transition: transform .45s cubic-bezier(.25,.46,.45,.94);
 }

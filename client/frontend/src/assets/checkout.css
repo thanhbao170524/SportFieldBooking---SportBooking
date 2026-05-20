@@ -19,6 +19,11 @@
 
 .chk-main { padding:28px 12px 60px; }
 
+/* Sidebar: scroll theo trang, không sticky (tránh khối cố định che nội dung khi cuộn) */
+.chk-sidebar {
+  position: static;
+}
+
 /* CARDS */
 .chk-card { background:#fff; border-radius:16px; border:1px solid #e2e8f0; overflow:hidden; transition:box-shadow .2s; }
 .chk-card:hover { box-shadow:0 4px 20px rgba(0,0,0,.06); }

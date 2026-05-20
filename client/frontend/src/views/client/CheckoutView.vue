@@ -648,7 +648,7 @@
 
         <!-- RIGHT: Summary sidebar -->
         <div class="col-lg-5">
-          <div class="sticky-top" style="top:20px">
+          <div class="chk-sidebar">
 
             <div class="chk-card mb-3">
               <div class="chk-card__header">
@@ -888,6 +888,8 @@ import { toast } from 'vue3-toastify';
 
 const phoneVN = /^(0|\+84)[0-9]{9}$/;
 const voucherCodeRe = /^[A-Z0-9_-]{3,20}$/;
+const CHECKOUT_HOLD_SECONDS = 300;
+const PENDING_BOOKING_KEY = 'pending_booking';
 
 export default {
   name: 'CheckoutView',
@@ -903,7 +905,7 @@ export default {
       copiedField: '',
       cardFlipped: false,
       cardForm: { number: '', expiry: '', cvc: '', holder: '' },
-      timerSeconds: 300,
+      timerSeconds: CHECKOUT_HOLD_SECONDS,
       timerInterval: null,
       errorMessage: '',
       paymentConfirmed: false,
@@ -1062,7 +1064,7 @@ export default {
     timerDisplay() {
       return `${String(Math.floor(this.timerSeconds / 60)).padStart(2, '0')}:${String(this.timerSeconds % 60).padStart(2, '0')}`;
     },
-    timerPercent() { return Math.round((this.timerSeconds / 300) * 100); },
+    timerPercent() { return Math.round((this.timerSeconds / CHECKOUT_HOLD_SECONDS) * 100); },
 
     formattedCardNumber() {
       if (!this.cardForm.number) return '•••• •••• •••• ••••';
@@ -1102,7 +1104,7 @@ export default {
 
     // Nếu URL không có dữ liệu (trống trơn), thử lấy từ sessionStorage
     if (!q.club_id && !q.success) {
-      const stored = sessionStorage.getItem('pending_booking');
+      const stored = sessionStorage.getItem(PENDING_BOOKING_KEY);
       if (stored) {
         try {
           const data = JSON.parse(stored);
@@ -1133,7 +1135,7 @@ export default {
       } finally {
         this.isProcessing = false;
       }
-      sessionStorage.removeItem('pending_booking');
+      sessionStorage.removeItem(PENDING_BOOKING_KEY);
       return;
     }
 
@@ -1142,8 +1144,7 @@ export default {
       this.bookingSuccess = true;
       this.loadBookingFromServer(q.code);
       this.startStatusPolling(q.code);
-      // Xoá dữ liệu tạm sau khi đã checkout thành công (hoặc chờ xử lý)
-      sessionStorage.removeItem('pending_booking');
+      sessionStorage.removeItem(PENDING_BOOKING_KEY);
       return;
     }
 
@@ -1178,7 +1179,7 @@ export default {
     }
 
     this.bookingCode = 'TP' + Date.now().toString(36).toUpperCase().slice(-6);
-    this.startTimer();
+    this.initHoldTimer(Number(q.holdStartedAt) || null);
   },
   beforeUnmount() {
     clearInterval(this.timerInterval);
@@ -1258,12 +1259,65 @@ export default {
       setTimeout(() => { this.copiedField = ''; }, 2000);
     },
 
+    persistPendingBooking(holdStartedAt) {
+      const data = {
+        club_id: this.bookingInfo.club_id,
+        club_slug: this.bookingInfo.club_slug,
+        venue_name: this.bookingInfo.venue_name,
+        courts: typeof this.bookingInfo.courts === 'string'
+          ? this.bookingInfo.courts
+          : JSON.stringify(this.bookingInfo.courts || []),
+        date: this.bookingInfo.date,
+        slots: this.bookingInfo.slots,
+        booking_slots: this.bookingInfo.booking_slots,
+        time_slot_ids: this.bookingInfo.time_slot_ids,
+        services: this.bookingInfo.services,
+        total: this.bookingInfo.total,
+        name: this.bookingInfo.name,
+        phone: this.bookingInfo.phone,
+        email: this.bookingInfo.email,
+        note: this.bookingInfo.note,
+        voucher_code: this.bookingInfo.voucher_code,
+        holdStartedAt,
+      };
+      sessionStorage.setItem(PENDING_BOOKING_KEY, JSON.stringify(data));
+    },
+
+    initHoldTimer(existingHoldStartedAt) {
+      const holdStartedAt = existingHoldStartedAt && Number.isFinite(existingHoldStartedAt)
+        ? existingHoldStartedAt
+        : Date.now();
+
+      this.persistPendingBooking(holdStartedAt);
+
+      const elapsed = Math.floor((Date.now() - holdStartedAt) / 1000);
+      this.timerSeconds = Math.max(0, CHECKOUT_HOLD_SECONDS - elapsed);
+
+      if (this.timerSeconds <= 0) {
+        this.handleHoldExpired();
+        return;
+      }
+
+      this.startTimer();
+    },
+
+    handleHoldExpired() {
+      clearInterval(this.timerInterval);
+      sessionStorage.removeItem(PENDING_BOOKING_KEY);
+
+      alert('Thời gian giữ sân đã hết hạn. Bạn sẽ được chuyển về trang sân bóng.');
+
+      const backUrl = this.bookingInfo?.club_slug ? `/venue/${this.bookingInfo.club_slug}` : '/';
+      this.$router.push(backUrl);
+    },
+
     startTimer() {
       this.timerInterval = setInterval(async () => {
         if (this.timerSeconds > 0) {
           this.timerSeconds--;
         } else {
           clearInterval(this.timerInterval);
+          sessionStorage.removeItem(PENDING_BOOKING_KEY);
           // Only cancel if there's a booking code and payment hasn't been confirmed
           if (this.bookingCode && !this.paymentConfirmed) {
             try {
@@ -1280,11 +1334,7 @@ export default {
             }
           }
 
-          alert("Thời gian giữ sân đã hết hạn. Bạn sẽ được chuyển về trang sân bóng.");
-
-          // Redirect back to venue or home
-          const backUrl = this.bookingInfo.club_slug ? `/venue/${this.bookingInfo.club_slug}` : '/';
-          this.$router.push(backUrl);
+          this.handleHoldExpired();
         }
       }, 1000);
     },
@@ -1561,10 +1611,10 @@ export default {
             voucher_code: '',
           };
 
-          // Cập nhật lại timer dựa trên thời gian tạo đơn (giả sử hold 5 phút = 300s)
+          // Cập nhật lại timer dựa trên thời gian tạo đơn
           if (b.status === 'WAITING_PAYMENT' && b.createdAt) {
             const elapsed = Math.floor((Date.now() - new Date(b.createdAt).getTime()) / 1000);
-            this.timerSeconds = Math.max(0, 300 - elapsed);
+            this.timerSeconds = Math.max(0, CHECKOUT_HOLD_SECONDS - elapsed);
           }
 
           // Thông tin minh chứng (nếu có)

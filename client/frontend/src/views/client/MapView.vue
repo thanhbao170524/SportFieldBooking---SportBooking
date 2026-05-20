@@ -1522,14 +1522,17 @@ export default {
   position: relative;
   flex-shrink: 0;
   width: 90px;
+  height: 90px;
+  overflow: hidden;
+  background: #f1f5f9;
 }
 
 .club-card-img {
-  width: 90px;
+  width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   display: block;
-  min-height: 90px;
 }
 
 .distance-badge {

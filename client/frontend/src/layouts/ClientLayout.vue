@@ -56,4 +56,12 @@ export default {
   margin: 0 !important;
   padding: 0 !important;
 }
+
+@media (max-width: 768px) {
+  .client-wrapper .back-to-top {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+}
 </style>

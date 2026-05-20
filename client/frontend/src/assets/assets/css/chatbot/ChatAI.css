@@ -464,9 +464,29 @@ textarea::placeholder { color: #94a3b8; }
     max-width: calc(100vw - 1.5rem);
   }
 
+  .trigger-stack {
+    min-height: 56px;
+  }
+
+  .trigger-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    box-shadow: 0 3px 12px rgba(15, 23, 42, 0.12);
+  }
+
+  .trigger-btn:hover {
+    transform: translateY(-1px) scale(1.03);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.16);
+  }
+
+  .trigger-img-wrap {
+    border-radius: 12px;
+  }
+
   .chatbot-nudge {
-    right: 72px;
-    bottom: 13px;
+    right: 58px;
+    bottom: 10px;
     max-width: min(280px, calc(100vw - 5rem));
     min-width: 0;
     font-size: 0.8rem;
