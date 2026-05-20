@@ -327,7 +327,7 @@ function buildMessages(rawMessages: RawMessage[], contextNote: string): ModelMes
       }
     }
 
-    return { role: m.role as ModelMessage["role"], content: textContent };
+    return { role: m.role, content: textContent } as ModelMessage;
   });
 
   if (!parsed.length) return parsed;
@@ -342,8 +342,8 @@ function buildMessages(rawMessages: RawMessage[], contextNote: string): ModelMes
     if (recentMessages[0]) {
       recentMessages[0] = {
         ...recentMessages[0],
-        content: `[CONVERSATION_HISTORY_SUMMARY: ${sessionSummary}]\n\n${recentMessages[0].content}`,
-      };
+        content: `[CONVERSATION_HISTORY_SUMMARY: ${sessionSummary}]\n\n${String(recentMessages[0].content)}`,
+      } as ModelMessage;
     }
     messages = recentMessages;
   }
@@ -357,8 +357,8 @@ function buildMessages(rawMessages: RawMessage[], contextNote: string): ModelMes
     const stateStr = sessionState ? `\n[SESSION_STATE: ${sessionState}]` : "";
     messages[lastUserIdx] = {
       ...messages[lastUserIdx],
-      content: `${contextNote}${stateStr}\n\n${messages[lastUserIdx].content}`,
-    };
+      content: `${contextNote}${stateStr}\n\n${String(messages[lastUserIdx].content)}`,
+    } as ModelMessage;
   }
 
   return messages;

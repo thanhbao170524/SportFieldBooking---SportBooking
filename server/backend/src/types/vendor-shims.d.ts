@@ -11,39 +11,6 @@ declare module "@ai-sdk/google" {
   }): GoogleGenerativeAIProvider;
 }
 
-declare module "ai" {
-  export type ModelMessage = {
-    role: "system" | "user" | "assistant" | "tool";
-    content: string;
-  };
-
-  export type ToolSet = Record<
-    string,
-    {
-      description?: string;
-      parameters?: unknown;
-      execute?: (input: unknown) => unknown;
-    }
-  >;
-
-  export function streamText(options: {
-    model: unknown;
-    messages: ModelMessage[];
-    system?: string;
-    temperature?: number;
-    tools?: ToolSet;
-    onFinish?: () => void;
-  }): { toUIMessageStream: () => unknown };
-
-  export function createUIMessageStream(options: {
-    execute: (args: unknown) => Promise<void> | void;
-  }): unknown;
-
-  export function createUIMessageStreamResponse(options: {
-    stream: unknown;
-  }): Response;
-}
-
 declare module "zod" {
   // Minimal shim for TS tooling when node_modules isn't resolved.
   // At runtime, the real `zod` package must exist.
