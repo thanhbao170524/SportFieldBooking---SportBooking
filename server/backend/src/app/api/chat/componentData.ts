@@ -219,6 +219,88 @@ export function resolveComponentType(toolName: string, result: unknown): string 
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Generate a brief Vietnamese text summary from tool results
+// Used when the model doesn't produce text alongside tool calls
+// ─────────────────────────────────────────────────────────────────────────────
+export function generateToolSummary(toolName: string, result: unknown): string {
+  if (!isRecord(result)) return "";
+
+  if (typeof result.error === "string") {
+    if (result.error.toString().toLowerCase().includes("đăng nhập")) {
+      return "Bạn cần đăng nhập để sử dụng tính năng này nhé! 🔐";
+    }
+    return `Có lỗi xảy ra: ${result.error}`;
+  }
+
+  switch (toolName) {
+    case "searchClubs": {
+      const clubs = Array.isArray(result.clubs) ? result.clubs : [];
+      if (!result.found || clubs.length === 0) {
+        const hint = typeof result.suggestionHint === "string" ? result.suggestionHint : "";
+        return hint
+          ? `Chưa tìm thấy sân phù hợp. ${hint}`
+          : "Chưa tìm thấy sân phù hợp. Bạn thử đổi khu vực hoặc môn khác nhé!";
+      }
+      const first = isRecord(clubs[0]) ? clubs[0] : {};
+      const price = typeof first.minPrice === "number"
+        ? ` Giá từ ${(first.minPrice as number / 1000).toFixed(0)}k/giờ.`
+        : "";
+      if (clubs.length === 1) {
+        return `Tìm được 1 sân: **${first.name || ""}** (${first.district || ""}).${price} Bạn muốn xem chi tiết không?`;
+      }
+      return `Tìm được ${clubs.length} sân!${price} Bạn muốn xem sân nào?`;
+    }
+
+    case "getClubDetails": {
+      const name = typeof result.name === "string" ? result.name : "sân";
+      const addr = typeof result.address === "string" ? ` tại ${result.address}` : "";
+      return `Đây là thông tin chi tiết **${name}**${addr}. Bạn muốn xem khung giờ trống không?`;
+    }
+
+    case "getAvailableSlots": {
+      const courts = Array.isArray(result.courts) ? result.courts : [];
+      const totalSlots = courts.reduce((sum: number, c: unknown) => {
+        if (!isRecord(c)) return sum;
+        const slots = Array.isArray(c.slots) ? c.slots : [];
+        return sum + slots.length;
+      }, 0);
+      if (totalSlots === 0) return "Không có khung giờ trống trong ngày này. Thử ngày khác nhé!";
+      return `Có ${totalSlots} khung giờ trống! Chọn giờ phù hợp với bạn nhé.`;
+    }
+
+    case "checkSlotAvailability": {
+      if (result.available === true) return "Khung giờ này còn trống! Bạn muốn đặt luôn không?";
+      const alts = Array.isArray(result.alternatives) ? result.alternatives : [];
+      if (alts.length > 0) return `Khung giờ đó đã hết. Có ${alts.length} giờ thay thế gần đó.`;
+      return "Khung giờ này đã hết. Thử giờ khác nhé!";
+    }
+
+    case "getUserBookings": {
+      const bookings = Array.isArray(result) ? result : [];
+      if (bookings.length === 0) return "Bạn chưa có lịch đặt sân nào.";
+      return `Bạn có ${bookings.length} lịch đặt sân. Xem chi tiết bên dưới nhé!`;
+    }
+
+    case "getUserProfile":
+      return "Đây là thông tin tài khoản của bạn.";
+
+    case "getUserInsights":
+      return "Đây là thống kê hoạt động của bạn trên CourtMate.";
+
+    case "createBooking": {
+      if (result.success) {
+        const code = typeof result.bookingCode === "string" ? result.bookingCode : "";
+        return `Đặt sân thành công! 🎉 Mã đặt: **${code}**. Kiểm tra email để xem chi tiết nhé.`;
+      }
+      return "Không thể đặt sân. Vui lòng thử lại sau.";
+    }
+
+    default:
+      return "";
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Main export — normalize data theo từng tool
 // ─────────────────────────────────────────────────────────────────────────────
 export function normalizeToolResultForComponent(

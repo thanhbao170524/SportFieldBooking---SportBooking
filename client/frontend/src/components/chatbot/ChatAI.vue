@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div class="courtmate-container" :class="{ 'is-open': isOpen }">
+    <div class="courtmate-container" :class="{ 'is-open': isOpen, 'is-expanded': isExpanded }">
     <!-- Floating Trigger -->
     <div v-if="!isOpen" class="trigger-stack">
       <Transition name="nudge-fade">
@@ -25,7 +25,7 @@
 
     <!-- Chat Window -->
     <Transition name="slide-up">
-      <div v-if="isOpen" class="chat-wrapper">
+      <div v-if="isOpen" class="chat-wrapper" :class="{ 'chat-expanded': isExpanded }">
         <div class="chrome-border"></div>
 
         <!-- Header -->
@@ -45,6 +45,14 @@
             <button @click="clearMessages" class="icon-btn" title="Làm mới">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>
+              </svg>
+            </button>
+            <button @click="toggleExpand" class="icon-btn" :title="isExpanded ? 'Thu nhỏ' : 'Mở rộng'">
+              <svg v-if="!isExpanded" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+              </svg>
+              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 14h6v6M14 10h6V4M10 14l-7 7M14 10l7-7"/>
               </svg>
             </button>
             <button @click="toggleChat" class="icon-btn close-btn">
@@ -89,20 +97,29 @@
                 </div>
 
                 <div class="bubble-wrap">
-                  <div class="bubble" :class="msg.role === 'user' ? 'bubble-user' : 'bubble-bot'">
+                  <div v-if="msg.textContent" class="bubble" :class="msg.role === 'user' ? 'bubble-user' : 'bubble-bot'">
                     <div
-                      v-if="msg.role === 'assistant' && msg.textContent"
+                      v-if="msg.role === 'assistant'"
                       class="md-content"
                       v-html="renderMarkdown(msg.textContent)"
                     ></div>
                     <div v-else-if="msg.role === 'user'" class="plain-content">{{ msg.textContent }}</div>
+                  </div>
 
+                  <template v-if="msg.structuredDataList && msg.structuredDataList.length > 1">
                     <ChatStructuredContent
-                      v-if="hasRenderableStructuredData(msg.structuredData)"
-                      :structured-data="msg.structuredData"
+                      v-for="(sd, sdIdx) in msg.structuredDataList.filter(hasRenderableStructuredData)"
+                      :key="sdIdx"
+                      :structured-data="sd"
                       @quick-message="sendQuickMessage"
                     />
-                  </div>
+                  </template>
+                  <ChatStructuredContent
+                    v-else-if="hasRenderableStructuredData(msg.structuredData)"
+                    :structured-data="msg.structuredData"
+                    @quick-message="sendQuickMessage"
+                  />
+
                   <time class="msg-time">{{ formatTime(msg.createdAt) }}</time>
                 </div>
               </div>
@@ -125,6 +142,13 @@
             </div>
           </div>
         </div>
+
+        <!-- Error Toast -->
+        <Transition name="fade">
+          <div v-if="chatError" class="chat-error-toast">
+            ⚠️ {{ chatError }}
+          </div>
+        </Transition>
 
         <!-- Input Footer -->
         <footer class="input-footer">
@@ -171,6 +195,7 @@ import ChatStructuredContent from './ChatStructuredContent.vue';
 
 // --- State ---
 const isOpen = ref(false);
+const isExpanded = ref(false);
 const isFocused = ref(false);
 const messageContainer = ref(null);
 const inputField = ref(null);
@@ -181,6 +206,7 @@ const supportedStructuredComponents = new Set([
   'clubList',
   'clubDetail',
   'slotPicker',
+  'slotSuggestions',
   'bookingConfirm',
   'bookingSuccess',
   'userProfile',
@@ -216,8 +242,11 @@ const chat = shallowRef(new Chat({
   transport,
   onError: (error) => console.error('CourtMate Error:', error),
   onFinish: ({ message }) => {
-    // After each assistant message finishes, trigger reactivity
     triggerRef(chat);
+    // Data parts (structured UI) may arrive slightly after text finishes
+    // Re-trigger after short delays to ensure they render
+    setTimeout(() => triggerRef(chat), 150);
+    setTimeout(() => triggerRef(chat), 500);
   },
 }));
 
@@ -236,6 +265,7 @@ const displayMessages = computed(() => {
 
   return rawMessages.map(m => {
     let textContent = '';
+    const structuredDataList = [];
     let structuredData = structuredDataMap.value[m.id] || null;
 
     // AI SDK v6: messages have 'parts' array, no 'content' property
@@ -247,10 +277,15 @@ const displayMessages = computed(() => {
         // v6 data parts have type 'data-{name}' pattern
         else if (typeof part.type === 'string' && part.type.startsWith('data-')) {
           if (part.data && part.data.component) {
-            structuredData = part.data;
+            structuredDataList.push(part.data);
           }
         }
       }
+    }
+
+    // Use last structured data as primary (backward-compatible)
+    if (structuredDataList.length > 0) {
+      structuredData = structuredDataList[structuredDataList.length - 1];
     }
 
     // Fallback: if text content looks like JSON with component field
@@ -266,7 +301,12 @@ const displayMessages = computed(() => {
       }
     }
 
-    return { ...m, textContent: textContent.trim(), structuredData };
+    // Use server-generated summary when model didn't produce text
+    if (!textContent.trim() && structuredData?.summary) {
+      textContent = structuredData.summary;
+    }
+
+    return { ...m, textContent: textContent.trim(), structuredData, structuredDataList };
   }).filter((m) => {
     const hasText = Boolean(m.textContent);
     const hasStructured = hasRenderableStructuredData(m.structuredData);
@@ -328,6 +368,11 @@ const toggleChat = () => {
   }
 };
 
+const toggleExpand = () => {
+  isExpanded.value = !isExpanded.value;
+  nextTick(scrollToBottom);
+};
+
 const clearMessages = () => {
   chat.value.messages = [];
   structuredDataMap.value = {};
@@ -357,10 +402,13 @@ const handleInputKeydown = (event) => {
   submitMessage();
 };
 
+const chatError = ref(null);
+
 const submitMessage = async () => {
   if (isComposing.value || !input.value.trim() || isLoading.value) return;
   const text = input.value;
   input.value = '';
+  chatError.value = null;
   nextTick(() => { if (inputField.value) inputField.value.style.height = 'auto'; });
   
   try {
@@ -368,7 +416,9 @@ const submitMessage = async () => {
     triggerRef(chat);
   } catch (err) {
     console.error('Send message error:', err);
+    chatError.value = 'Không thể gửi tin nhắn. Vui lòng thử lại.';
     triggerRef(chat);
+    setTimeout(() => { chatError.value = null; }, 5000);
   }
 };
 

@@ -2,11 +2,11 @@
   <div v-if="shouldRender" class="component-area">
     <!-- Component: clubList -->
     <div v-if="structuredData.component === 'clubList'" class="club-list-comp">
-      <div v-if="structuredData.data?.clubs?.length">
+      <div v-if="structuredData.data?.clubs?.length" class="club-list-grid">
         <div v-for="club in structuredData.data.clubs" :key="club.id" class="club-card">
           <div class="club-card-header">
             <div class="club-card-title">🏟️ {{ club.name }}</div>
-            <div class="club-card-price">{{ (club.displayPrice ?? club.minPrice)?.toLocaleString() }}đ</div>
+            <div class="club-card-price">{{ (club.displayPrice ?? club.minPrice)?.toLocaleString() }}đ/h</div>
           </div>
           <div v-if="club.priceMatchType" class="price-match-row">
             <span
@@ -20,6 +20,12 @@
             </span>
           </div>
           <p class="club-card-addr">📍 {{ club.address }}</p>
+          <div class="club-card-meta">
+            <span v-if="club.rating" class="meta-item">⭐ {{ club.rating }}</span>
+            <span v-if="club.distanceKm" class="meta-item">📏 {{ club.distanceKm }}km</span>
+            <span v-if="club.availableSlotCount" class="meta-item">🟢 {{ club.availableSlotCount }} slot</span>
+            <span v-if="club.sports?.length" class="meta-item">{{ club.sports.map(s => s.label).join(', ') }}</span>
+          </div>
           <div class="club-card-footer">
             <span class="card-tag">🕐 {{ club.openTime }}-{{ club.closeTime }}</span>
             <button type="button" @click="openVenueDetail(club)" class="card-btn">Chi tiết</button>
@@ -36,16 +42,46 @@
     <!-- Component: clubDetail -->
     <div v-if="structuredData.component === 'clubDetail'" class="club-detail-comp">
       <div class="detail-banner">⭐ {{ structuredData.data.name }}</div>
-      <div class="detail-info-row">
-        <div class="info-item"><span>Giờ mở cửa:</span> <strong>{{ structuredData.data.openTime }} - {{ structuredData.data.closeTime }}</strong></div>
+      <div class="detail-info-grid">
+        <div class="info-item" v-if="structuredData.data.todayHours">
+          <span>Giờ hôm nay</span>
+          <strong v-if="!structuredData.data.todayHours.isClosed">{{ structuredData.data.todayHours.openTime }} - {{ structuredData.data.todayHours.closeTime }}</strong>
+          <strong v-else class="text-closed">Đóng cửa</strong>
+        </div>
+        <div class="info-item" v-if="structuredData.data.fullAddress">
+          <span>Địa chỉ</span>
+          <strong>{{ structuredData.data.fullAddress }}</strong>
+        </div>
+        <div class="info-item" v-if="structuredData.data.phone">
+          <span>Điện thoại</span>
+          <strong>{{ structuredData.data.phone }}</strong>
+        </div>
       </div>
-      <div class="amenities-wrap">
-        <span v-for="a in structuredData.data.amenities" :key="a.name" class="amenity-chip">{{ a.name }}</span>
+
+      <div v-if="structuredData.data.vouchers?.length" class="vouchers-wrap">
+        <div class="vouchers-title">🎁 Khuyến mãi</div>
+        <div v-for="v in structuredData.data.vouchers" :key="v.code" class="voucher-chip">
+          <span class="voucher-code">{{ v.code }}</span>
+          <span class="voucher-value">-{{ v.type === 'PERCENTAGE' ? v.discount + '%' : v.discount?.toLocaleString() + 'đ' }}</span>
+        </div>
       </div>
-      <div
-        v-if="structuredData.data.courts?.length"
-        class="court-pricing-wrap"
-      >
+
+      <div v-if="structuredData.data.amenities?.length" class="amenities-wrap">
+        <span v-for="a in structuredData.data.amenities" :key="a.name" class="amenity-chip">
+          {{ a.name }}
+          <span v-if="a.price > 0" class="amenity-price">{{ a.price?.toLocaleString() }}đ</span>
+        </span>
+      </div>
+
+      <div v-if="structuredData.data.cheapestPricingWindows?.length" class="cheapest-wrap">
+        <div class="cheapest-title">💰 Giá rẻ nhất</div>
+        <div v-for="(pw, idx) in structuredData.data.cheapestPricingWindows" :key="idx" class="cheapest-row">
+          <span>{{ pw.courtName }} ({{ pw.startTime }}–{{ pw.endTime }})</span>
+          <strong>{{ pw.pricePerHour?.toLocaleString() }}đ/h</strong>
+        </div>
+      </div>
+
+      <div v-if="structuredData.data.courts?.length" class="court-pricing-wrap">
         <div class="court-pricing-title">Bảng giá theo từng sân</div>
         <div
           v-for="court in structuredData.data.courts"
@@ -64,10 +100,7 @@
             <span>{{ price.startTime }} - {{ price.endTime }}</span>
             <strong>{{ price.pricePerHour?.toLocaleString() }}đ/giờ</strong>
           </div>
-          <div
-            v-if="!court.pricings || !court.pricings.length"
-            class="price-empty"
-          >
+          <div v-if="!court.pricings || !court.pricings.length" class="price-empty">
             Chưa có bảng giá chi tiết cho sân này.
           </div>
         </div>
@@ -77,17 +110,31 @@
 
     <!-- Component: slotPicker -->
     <div v-if="structuredData.component === 'slotPicker'" class="slot-picker-comp">
+      <div v-if="structuredData.data?.summary" class="slot-summary">
+        <span v-for="s in structuredData.data.summary" :key="s.courtName" class="summary-item">
+          {{ s.courtName }}: {{ s.slotCount }} slot ({{ s.firstSlot }}–{{ s.lastSlot }})
+        </span>
+      </div>
       <div v-for="court in structuredData.data.courts" :key="court.courtId" class="court-block">
-        <div class="court-label">📍 {{ court.name }}</div>
-        <div class="slots-flex">
+        <div class="court-label">
+          <span>📍 {{ court.courtName || court.name }}</span>
+          <span v-if="court.sportLabel" class="court-sport-tag">{{ court.sportLabel }}</span>
+        </div>
+        <div class="slots-grid">
           <button
             v-for="slot in court.slots"
             :key="slot.id"
-            @click="emitQuickMessage('Tôi muốn đặt sân ' + court.name + ' khung giờ ' + slot.start)"
-            class="slot-chip"
+            @click="emitQuickMessage('Tôi muốn đặt sân ' + (court.courtName || court.name) + ' khung giờ ' + (slot.startTimeDisplay || slot.start))"
+            class="slot-chip-enhanced"
           >
-            {{ slot.start }}
+            <span class="slot-time">{{ slot.startTimeDisplay || slot.start }}</span>
+            <span v-if="slot.pricePerHour" class="slot-price">{{ slot.pricePerHour?.toLocaleString() }}đ</span>
           </button>
+        </div>
+        <div v-if="court.continuousGroups?.length" class="continuous-info">
+          <span v-for="(grp, idx) in court.continuousGroups.slice(0, 3)" :key="idx" class="continuous-badge">
+            {{ grp.startDisplay }}–{{ grp.endDisplay }} ({{ grp.totalHours }}h)
+          </span>
         </div>
       </div>
     </div>
@@ -137,12 +184,31 @@
 
     <!-- Component: bookingHistory -->
     <div v-if="structuredData.component === 'bookingHistory'" class="history-comp">
-      <div v-for="b in structuredData.data" :key="b.code" class="history-card">
+      <div v-for="b in structuredData.data" :key="b.bookingCode" class="history-card">
         <div class="history-main">
-          <div class="h-name">{{ b.club }}</div>
-          <div class="h-date">{{ b.time }}</div>
+          <div class="h-name">{{ b.clubName }}</div>
+          <div class="h-date">{{ b.startTime }}</div>
+          <div class="h-court" v-if="b.courtName">{{ b.courtName }} · {{ b.sportLabel }}</div>
         </div>
-        <div class="h-status" :class="b.status.toLowerCase()">{{ b.status }}</div>
+        <div class="h-right">
+          <div class="h-status" :class="b.status?.toLowerCase()">{{ formatBookingStatus(b.status) }}</div>
+          <div class="h-amount" v-if="b.finalAmount">{{ b.finalAmount?.toLocaleString() }}đ</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Component: slotSuggestions (alternatives when slot is unavailable) -->
+    <div v-if="structuredData.component === 'slotSuggestions'" class="slot-suggestions-comp">
+      <div class="suggestions-header">⏰ Giờ thay thế gợi ý</div>
+      <div class="slots-flex">
+        <button
+          v-for="alt in structuredData.data.alternatives"
+          :key="alt.id"
+          @click="emitQuickMessage('Tôi chọn khung giờ ' + alt.startTimeDisplay + ' sân ' + alt.courtName)"
+          class="slot-chip suggestion-chip"
+        >
+          {{ alt.startTimeDisplay }} · {{ alt.courtName }}
+        </button>
       </div>
     </div>
 
@@ -277,6 +343,7 @@ const supportedComponents = new Set([
   'clubList',
   'clubDetail',
   'slotPicker',
+  'slotSuggestions',
   'bookingConfirm',
   'bookingSuccess',
   'userProfile',
@@ -313,6 +380,18 @@ function formatInsightPlace(city, district) {
   return d || c || "";
 }
 
+const BOOKING_STATUS_MAP = {
+  PENDING: 'Chờ xử lý',
+  WAITING_PAYMENT: 'Chờ thanh toán',
+  CONFIRMED: 'Đã xác nhận',
+  COMPLETED: 'Hoàn thành',
+  CANCELLED: 'Đã hủy',
+};
+
+function formatBookingStatus(status) {
+  return BOOKING_STATUS_MAP[status] || status || '';
+}
+
 /** Trang chi tiết đặt sân: /venue/:id với id = slug CLB (VenueDetailView). */
 const openVenueDetail = (club) => {
   const slug = typeof club?.slug === "string" ? club.slug.trim() : "";
@@ -336,8 +415,11 @@ const openVenueDetail = (club) => {
   box-sizing: border-box;
 }
 
+.club-list-grid { display: flex; flex-direction: column; gap: 0.75rem; }
 .club-card { background: var(--bg-card, #f8f9fa); border-radius: 12px; border: 1px solid var(--border, #e9ecef); padding: 1.15rem; transition: 0.2s; }
 .club-card:hover { border-color: var(--primary-light, rgba(0, 140, 255, 0.1)); box-shadow: 0 4px 12px var(--primary-light, rgba(0, 140, 255, 0.1)); }
+.club-card-meta { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.65rem; }
+.meta-item { font-size: 0.72rem; background: #e2e8f0; color: #475569; padding: 3px 7px; border-radius: 6px; font-weight: 500; }
 
 .club-card-header {
   display: flex;
@@ -376,10 +458,21 @@ const openVenueDetail = (club) => {
 .card-btn:hover { background: var(--primary, #008cff); color: white; }
 
 .court-block { margin-bottom: 1rem; background: #ffffff; border: 1px solid var(--border, #e9ecef); border-radius: 12px; padding: 1rem; }
-.court-label { font-size: 0.9rem; font-weight: 700; color: var(--text-hi, #1e293b); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 6px; }
+.court-label { font-size: 0.9rem; font-weight: 700; color: var(--text-hi, #1e293b); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 6px; justify-content: space-between; }
+.court-sport-tag { font-size: 0.7rem; font-weight: 700; color: var(--primary-dark, #0073cc); background: var(--primary-light, rgba(0, 140, 255, 0.1)); padding: 3px 8px; border-radius: 999px; }
 .slots-flex { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.5rem; }
 .slot-chip { padding: 6px 12px; border-radius: 8px; background: var(--primary-light, rgba(0, 140, 255, 0.1)); border: 1px solid transparent; color: var(--primary-dark, #0073cc); font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: 0.2s; outline: none;}
 .slot-chip:hover { background: var(--primary, #008cff); color: white; transform: translateY(-1px); box-shadow: 0 4px 10px var(--primary-light, rgba(0, 140, 255, 0.1)); }
+.slot-chip-enhanced { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 10px; border-radius: 10px; background: var(--primary-light, rgba(0, 140, 255, 0.08)); border: 1px solid rgba(0, 140, 255, 0.15); color: var(--primary-dark, #0073cc); cursor: pointer; transition: 0.2s; outline: none; }
+.slot-chip-enhanced:hover { background: var(--primary, #008cff); color: white; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 140, 255, 0.2); border-color: transparent; }
+.slot-chip-enhanced:hover .slot-price { color: rgba(255,255,255,0.85); }
+.slot-time { font-size: 0.88rem; font-weight: 700; }
+.slot-price { font-size: 0.7rem; font-weight: 500; color: var(--text-mid, #6c757d); }
+.slot-summary { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
+.summary-item { font-size: 0.75rem; background: #f1f5f9; border: 1px solid #e2e8f0; padding: 4px 8px; border-radius: 6px; color: #475569; }
+.continuous-info { margin-top: 0.6rem; display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.continuous-badge { font-size: 0.7rem; background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; padding: 3px 8px; border-radius: 6px; font-weight: 600; }
 
 .confirm-comp { background: #ffffff; border: 2px solid var(--primary, #008cff); border-radius: 16px; padding: 1.5rem; box-shadow: 0 8px 24px var(--primary-light, rgba(0, 140, 255, 0.1)); }
 .comp-title { font-size: 1.1rem; font-weight: 700; color: var(--primary, #008cff); margin-bottom: 1.25rem; display: flex; align-items: center; gap: 6px; }
@@ -402,12 +495,23 @@ const openVenueDetail = (club) => {
 .pay-now-btn { margin-top: 1rem; display: inline-block; padding: 10px 18px; border-radius: 10px; background: #059669; color: white; font-weight: 700; text-decoration: none; }
 .pay-now-btn:hover { background: #047857; color: white; }
 
-.history-card { display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg-base, #ffffff); border-radius: 12px; margin-bottom: 0.75rem; border: 1px solid var(--border, #e9ecef); box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
-.h-name { font-weight: 700; color: var(--text-hi, #1e293b); font-size: 0.95rem; margin-bottom: 4px; }
+.history-card { display: flex; justify-content: space-between; align-items: flex-start; padding: 1rem; background: var(--bg-base, #ffffff); border-radius: 12px; margin-bottom: 0.75rem; border: 1px solid var(--border, #e9ecef); box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+.history-main { flex: 1; min-width: 0; }
+.h-name { font-weight: 700; color: var(--text-hi, #1e293b); font-size: 0.95rem; margin-bottom: 4px; overflow-wrap: anywhere; }
 .h-date { font-size: 0.8rem; color: var(--text-mid, #6c757d); font-weight: 500; }
-.h-status { font-size: 0.7rem; font-weight: 700; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+.h-court { font-size: 0.75rem; color: var(--text-mid, #6c757d); margin-top: 2px; }
+.h-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.h-amount { font-size: 0.78rem; font-weight: 600; color: var(--text-hi, #1e293b); }
+.h-status { font-size: 0.7rem; font-weight: 700; padding: 4px 8px; border-radius: 6px; letter-spacing: 0.3px; white-space: nowrap; }
 .h-status.confirmed { background: #d1fae5; color: #059669; }
+.h-status.completed { background: #dbeafe; color: #1d4ed8; }
 .h-status.pending { background: #fef3c7; color: #d97706; }
+.h-status.waiting_payment { background: #fef3c7; color: #d97706; }
+.h-status.cancelled { background: #fee2e2; color: #dc2626; }
+
+.slot-suggestions-comp { background: var(--bg-base, #ffffff); padding: 1rem; border-radius: 12px; border: 1px solid #fbbf24; }
+.suggestions-header { font-size: 0.9rem; font-weight: 700; color: #92400e; margin-bottom: 0.75rem; }
+.suggestion-chip { background: #fffbeb !important; border-color: #fbbf24 !important; color: #92400e !important; }
 
 .profile-comp { display: flex; flex-direction: column; gap: 0.75rem; background: var(--bg-base, #ffffff); padding: 1.25rem; border-radius: 12px; border: 1px solid var(--border, #e9ecef); }
 .profile-item { font-size: 0.95rem; color: var(--text-hi, #1e293b); display: flex; flex-direction: column; gap: 4px; }
@@ -471,6 +575,21 @@ const openVenueDetail = (club) => {
 .insight-link-small:hover { background: var(--primary-light, rgba(0, 140, 255, 0.1)); }
 
 .club-detail-comp { background: var(--bg-base, #ffffff); padding: 1.25rem; border-radius: 16px; border: 1px solid var(--border, #e9ecef); }
+.detail-info-grid { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+.detail-info-grid .info-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; font-size: 0.88rem; }
+.detail-info-grid .info-item span { color: var(--text-mid, #6c757d); font-size: 0.78rem; font-weight: 500; flex-shrink: 0; }
+.detail-info-grid .info-item strong { color: var(--text-hi, #1e293b); font-size: 0.85rem; text-align: right; overflow-wrap: anywhere; }
+.text-closed { color: #dc2626 !important; }
+.vouchers-wrap { margin-bottom: 1rem; }
+.vouchers-title { font-size: 0.78rem; font-weight: 700; color: #92400e; margin-bottom: 0.4rem; }
+.voucher-chip { display: inline-flex; align-items: center; gap: 6px; background: #fffbeb; border: 1px solid #fbbf24; border-radius: 8px; padding: 4px 10px; margin-right: 0.4rem; margin-bottom: 0.3rem; }
+.voucher-code { font-size: 0.75rem; font-weight: 700; color: #92400e; }
+.voucher-value { font-size: 0.72rem; font-weight: 600; color: #d97706; background: #fef3c7; padding: 2px 5px; border-radius: 4px; }
+.amenity-price { font-size: 0.68rem; color: var(--primary-dark, #0073cc); margin-left: 2px; }
+.cheapest-wrap { margin-bottom: 1rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 0.75rem; }
+.cheapest-title { font-size: 0.78rem; font-weight: 700; color: #166534; margin-bottom: 0.4rem; }
+.cheapest-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; font-size: 0.8rem; color: #15803d; padding: 3px 0; }
+.cheapest-row strong { color: #166534; flex-shrink: 0; }
 .detail-banner {
   font-size: 1.15rem;
   font-weight: 700;
