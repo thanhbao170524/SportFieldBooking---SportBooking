@@ -280,18 +280,38 @@ export default {
 
     // --- Google Login ---
     initGoogle() {
+      const initializeGSI = () => {
+        if (window.google?.accounts?.id) {
+          window.google.accounts.id.initialize({
+            client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || "265183201039-tbm0nkoad98ftmn5pt43uiql7tnm3iuv.apps.googleusercontent.com",
+            callback: (response) => {
+              this.processSocialLogin(response.credential, 'google');
+            }
+          });
+        }
+      };
+
+      if (window.google?.accounts?.id) {
+        initializeGSI();
+        return;
+      }
+
+      const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+      if (existingScript) {
+        const interval = setInterval(() => {
+          if (window.google?.accounts?.id) {
+            clearInterval(interval);
+            initializeGSI();
+          }
+        }, 100);
+        return;
+      }
+
       const script = document.createElement('script');
       script.src = "https://accounts.google.com/gsi/client";
       script.async = true;
       script.defer = true;
-      script.onload = () => {
-        window.google.accounts.id.initialize({
-          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || "265183201039-tbm0nkoad98ftmn5pt43uiql7tnm3iuv.apps.googleusercontent.com",
-          callback: (response) => {
-            this.processSocialLogin(response.credential, 'google');
-          }
-        });
-      };
+      script.onload = initializeGSI;
       document.head.appendChild(script);
     },
 
